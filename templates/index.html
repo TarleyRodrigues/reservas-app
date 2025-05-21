@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agendamento de Visitas</title>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>Calendário de Agendamentos</h1>
+  <div id="calendar"></div>
+
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h2>Agendar</h2>
+      <form id="agendamento-form">
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" required>
+        <label for="tipo">Tipo de Serviço:</label>
+        <select id="tipo" required>
+          <option value="">Selecione</option>
+          <option value="visita">Visita Técnica</option>
+          <option value="entrega">Entrega de Chaves</option>
+        </select>
+        <label for="unidade">Número da Unidade:</label>
+        <input type="text" id="unidade" required>
+        <label for="empreendimento">Empreendimento:</label>
+        <input type="text" id="empreendimento" required>
+        <label for="data">Data:</label>
+        <input type="text" id="data" readonly>
+        <button type="submit">Agendar</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const calendarEl = document.getElementById('calendar');
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'pt-br',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek'
+        },
+        dateClick: function (info) {
+          document.getElementById('data').value = info.dateStr;
+          document.getElementById('modal').style.display = 'block';
+        },
+        events: '/agendamentos'
+      });
+
+      calendar.render();
+
+      const modal = document.getElementById("modal");
+      const closeBtn = document.querySelector(".close-btn");
+
+      closeBtn.onclick = () => modal.style.display = "none";
+      window.onclick = (e) => { if (e.target == modal) modal.style.display = "none"; };
+
+      document.getElementById("agendamento-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const agendamento = {
+          nome: document.getElementById('nome').value,
+          tipo: document.getElementById('tipo').value,
+          unidade: document.getElementById('unidade').value,
+          empreendimento: document.getElementById('empreendimento').value,
+          data: document.getElementById('data').value
+        };
+
+        fetch('/agendar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(agendamento)
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'ok') {
+            modal.style.display = "none";
+            this.reset();
+            calendar.refetchEvents();
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
