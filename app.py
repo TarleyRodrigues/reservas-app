@@ -1,25 +1,8 @@
-from flask import Flask, render_template, request, jsonify
-import sqlite3
+from flask import Flask, render_template, request, redirect, url_for
+from datetime import datetime
+import os
 
 app = Flask(__name__)
-
-def init_db():
-    conn = sqlite3.connect('agendamentos.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS agendamentos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT,
-            tipo TEXT,
-            unidade TEXT,
-            empreendimento TEXT,
-            data TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-init_db()
 
 @app.route('/')
 def index():
@@ -27,32 +10,16 @@ def index():
 
 @app.route('/agendar', methods=['POST'])
 def agendar():
-    data = request.get_json()
-    conn = sqlite3.connect('agendamentos.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO agendamentos (nome, tipo, unidade, empreendimento, data)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (data['nome'], data['tipo'], data['unidade'], data['empreendimento'], data['data']))
-    conn.commit()
-    conn.close()
-    return jsonify({'status': 'ok'})
+    nome = request.form.get('nome')
+    data = request.form.get('data')
+    tipo = request.form.get('tipo')
+    unidade = request.form.get('unidade')
+    empreendimento = request.form.get('empreendimento')
 
-@app.route('/agendamentos')
-def listar_agendamentos():
-    conn = sqlite3.connect('agendamentos.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT nome, tipo, unidade, empreendimento, data FROM agendamentos')
-    rows = cursor.fetchall()
-    conn.close()
+    print(f"[AGENDAMENTO] Nome: {nome} | Data: {data} | Tipo: {tipo} | Unidade: {unidade} | Empreendimento: {empreendimento}")
 
-    eventos = []
-    for row in rows:
-        eventos.append({
-            'title': f"{row[1].capitalize()} - Unidade {row[2]}",
-            'start': row[4]
-        })
-    return jsonify(eventos)
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
