@@ -1,7 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import sqlite3
+import os
 
 app = Flask(__name__)
+
 
 # Cria a tabela caso não exista
 
@@ -73,4 +75,5 @@ def eventos():
 
 
 if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
     app.run(debug=True)
