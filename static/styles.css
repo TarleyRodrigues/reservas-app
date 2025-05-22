@@ -5,25 +5,32 @@
 }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: var(--bg);
+  background: url("/static/images/background.png") no-repeat center center fixed;
+  background-size: cover;
   color: var(--text);
   margin: 0;
   padding: 20px;
   min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 
 /* Variáveis CSS para tema claro/escuro */
 :root {
-  --bg: #f5f7fa;
+  --bg: linear-gradient(135deg, #e0eafc, #cfdef3);
   --text: #222;
   --form-bg: #fff;
   --input-bg: #fff;
   --input-border: #ccc;
-  --input-focus-border: #4caf50;
-  --button-bg: #4caf50;
-  --button-hover-bg: #45a049;
+  --input-focus-border: #af4c4c;
+  --button-bg: #b42525;
+  --button-hover-bg: #6f3333;
   --button-text: #fff;
   --shadow: rgba(0,0,0,0.1);
 }
@@ -34,24 +41,30 @@ body.dark {
   --form-bg: #1f1f1f;
   --input-bg: #2a2a2a;
   --input-border: #555;
-  --input-focus-border: #66bb6a;
-  --button-bg: #66bb6a;
-  --button-hover-bg: #558b2f;
+  --input-focus-border: #bb8866;
+  --button-bg: #bb8e66;
+  --button-hover-bg: #8b582f;
   --button-text: #fff;
   --shadow: rgba(0,0,0,0.6);
 }
 
 /* Container do formulário */
 .form-wrapper {
-  background: var(--form-bg);
-  padding: 30px 40px;
+  background: rgba(255, 255, 255, 0.25); /* Transparência um pouco mais opaca */
+  backdrop-filter: blur(12px); /* Efeito de desfoque */
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 14px;
   max-width: 480px;
   width: 100%;
-  margin: 50px auto; /* 🔥 Centraliza horizontalmente */
-  box-shadow: 0 8px 24px var(--shadow);
+  margin: 40px auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); /* Sombra mais realista */
   position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.3); /* Borda sutil de vidro */
+  padding: 30px; /* Adiciona espaço interno para o conteúdo */
+  color: #000; /* Garante contraste com fundo claro */
 }
+
+
 
 
 /* Título */
@@ -101,18 +114,19 @@ form input:focus, form select:focus {
 
 /* Botão */
 .btn-agendar {
-  width: 100%;
-  background-color: var(--button-bg);
-  color: var(--button-text);
-  padding: 15px 0;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 1.2rem;
-  letter-spacing: 1px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  transition: background-color 0.3s ease, box-shadow 0.2s ease;
+    width: 100%;
+    padding: 12px;
+    margin-top: 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    color: white;
+    background: linear-gradient(135deg, rgba(167, 127, 40, 0.9), rgba(201, 186, 72, 0.9));
+    box-shadow: 0 4px 10px rgba(167, 116, 40, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
 }
 
 .btn-agendar:hover {
@@ -139,27 +153,117 @@ header {
   margin-bottom: 30px;
 }
 
-/* Logo estilizada */
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 800;
-  font-size: 1.6rem;
-  color: var(--text);
+/* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #ff8800;
+    padding: 15px 30px;
+    color: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
+.logo {
+    display: flex;
+    align-items: center;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+/* Logo exclusiva da tela de boas-vindas */
+.logo-boas-vindas {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: -100px; /* Sobe a imagem */
+    margin-bottom: 10px; /* Espaço abaixo */
+}
+
+.logo-boas-vindas img {
+    width: 400px;
+    height: auto;
+    display: block;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+
+
 .logo-icon {
-  font-size: 1.8rem;
+    margin-right: 8px;
+    font-size: 28px;
 }
 
 .logo-text {
-  font-weight: 800;
+    color: white;
 }
 
 .logo-dot {
-  color: var(--button-bg);
+    color: #ffc107;
 }
+
+.logo img {
+    height: 50px; /* ou o tamanho que desejar */
+    width: auto;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+
+.nav {
+    display: flex;
+    gap: 20px;
+}
+
+.nav-link {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.nav-link:hover {
+    color: #ffc107;
+}
+
+.logout {
+    color: #ff4d4f;
+}
+
+.logout:hover {
+    color: #ffcccc;
+}
+
+/* Main */
+main {
+    
+    background: url("/static/images/background.png") no-repeat center center fixed;
+  background-size: cover;
+  color: var(--text);
+  margin: 0;
+  padding: 20px;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .nav {
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 10px;
+    }
+}
+
 
 /* Botão no header */
 .header-btn {
@@ -183,11 +287,11 @@ header {
 body, html {
   height: 100%;
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
+  
+  
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   /* Sem display flex aqui! */
-  padding: 20px; /* ou remova se quiser */
+  
   min-height: 100vh;
 }
 
@@ -248,9 +352,9 @@ body.login-page .login-container {
 
 .login-container input[type="email"]:focus,
 .login-container input[type="password"]:focus {
-  border-color: #4caf50;
+  border-color: #ff7b00;
   outline: none;
-  box-shadow: 0 0 8px #4caf50aa;
+  box-shadow: 0 0 8px  #793c02;
 }
 
 /* Botão */
@@ -259,17 +363,17 @@ body.login-page .login-container {
   padding: 14px 0;
   border: none;
   border-radius: 12px;
-  background-color: #4caf50;
-  color: white;
+  background-color:  #b05704;
+  color: rgb(255, 255, 255);
   font-weight: 700;
   font-size: 1.1rem;
   cursor: pointer;
   transition: background-color 0.3s ease;
-  box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+  box-shadow: 0 5px 15px rgba(156, 98, 9, 0.51);
 }
 
 .login-container button:hover {
-  background-color: #43a047;
+  background-color: #ff8009;
 }
 
 /* Mensagens de erro */
@@ -281,4 +385,71 @@ body.login-page .login-container {
   font-weight: 600;
   font-size: 0.9rem;
   text-align: left;
+}
+/* Tela inicial */
+.home-container {
+  background: var(--form-bg);
+  padding: 40px;
+  border-radius: 20px;
+  max-width: 600px;
+  margin: 40px auto;
+  margin-top: 20px;
+  box-shadow: 0 8px 24px var(--shadow);
+  text-align: center;
+}
+
+.home-container h1 {
+  font-size: 2rem;
+  margin-bottom: 15px;
+  color: var(--text);
+}
+
+.home-container p {
+  font-size: 1.1rem;
+  margin-bottom: 25px;
+  color: var(--text);
+}
+
+.button-container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  background-color: var(--button-bg);
+  border: none;
+  color: var(--button-text);
+  padding: 14px 28px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn:hover {
+  background-color: var(--button-hover-bg);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+  text-decoration: none;
+}
+
+/* Botão de logout com cor diferenciada */
+.logout-btn {
+  background-color: #d31d1d;
+}
+
+.logout-btn:hover {
+  background-color: #b71c1c;
+}
+.glass {
+  background: rgba(255, 255, 255, 0.15); /* Leve transparência */
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }

@@ -1,46 +1,27 @@
-{% extends "base.html" %}
+{% extends "base_sem_header.html" %}
 
 {% block title %}Página Inicial{% endblock %}
 
 {% block content %}
-  <style>
-    .button-container {
-      margin-top: 30px;
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-    }
+  <div class="logo-boas-vindas">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo Reservas.app">
+  </div>
 
-    .btn {
-      background-color: #28a745; /* Verde */
-      border: none;
-      color: white;
-      padding: 15px 30px;
-      font-size: 18px;
-      font-weight: bold;
-      border-radius: 8px;
-      cursor: pointer;
-      text-decoration: none;
-      transition: background-color 0.3s ease;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      display: inline-block;
-    }
-
-    .btn:hover {
-      background-color: #218838; /* Verde mais escuro no hover */
-      text-decoration: none;
-      color: white;
-      box-shadow: 0 6px 8px rgba(0,0,0,0.15);
-    }
-  </style>
-
-  <h1>Meu Sistema</h1>
-  <p>Bem-vindo(a)!</p>
-  <p>Escolha uma opção:</p>
-
-  <div class="button-container">
-    <a href="{{ url_for('calendario') }}" class="btn">Ver Calendário</a>
-    <a href="{{ url_for('agendar') }}" class="btn">Fazer Agendamento</a>
-
+  <div class="home-container">
+    {% if current_user.is_authenticated %}
+        <h1>Bem-vindo, {{ current_user.email }}!</h1>
+        <p>Escolha uma opção abaixo:</p>
+        <div class="button-container">
+            <a href="{{ url_for('calendario') }}" class="btn">Ver Calendário</a>
+            <a href="{{ url_for('agendar') }}" class="btn">Fazer Agendamento</a>
+            <a href="{{ url_for('logout') }}" class="btn logout-btn">Sair</a>
+        </div>
+    {% else %}
+        <h1>Bem-vindo(a) ao Sistema de Reservas</h1>
+        <p>Por favor, faça login para acessar o sistema.</p>
+        <div class="button-container">
+            <a href="{{ url_for('login') }}" class="btn">Fazer Login</a>
+        </div>
+    {% endif %}
   </div>
 {% endblock %}

@@ -1,32 +1,42 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+    <style>
+  body {
+    background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
+    background-size: cover;
+    color: var(--text);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+</style>
 <head>
     <meta charset="UTF-8">
     <title>Login</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
-<body>
-    <body class="login-page">
-  
+<body class="login-page">
 
-    <div class="login-container">
-        <h2>Entrar na conta</h2>
-        
+    <div class="login-container glass">
+        <h2>Entrar na Conta</h2>
+
         {% with messages = get_flashed_messages() %}
             {% if messages %}
-                <ul>
+                <ul class="flash-messages">
                     {% for message in messages %}
                         <li>{{ message }}</li>
                     {% endfor %}
                 </ul>
             {% endif %}
         {% endwith %}
-        
+
         <form method="POST">
             <input type="email" name="email" placeholder="Email" required>
             <input type="password" name="senha" placeholder="Senha" required>
             <button type="submit">Entrar</button>
         </form>
     </div>
+
 </body>
 </html>

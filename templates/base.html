@@ -1,24 +1,42 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8" />
-    <title>{% block title %}Meu App{% endblock %}</title>
+    <meta charset="UTF-8">
+    <title>{% block title %}Reservas App{% endblock %}</title>
 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+    <!-- Imagem de fundo inline (para funcionar com Jinja/Flask) -->
+    <style>
+        body {
+            background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
+            background-size: cover;
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+    </style>
 </head>
 <body>
 
-  <header>
+  <header class="header">
     <div class="logo">
-    <span class="logo-icon">📅</span>
-    <span class="logo-text">Reservas<span class="logo-dot">.app</span></span>
-</div>
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo Reservas.app">
+    </div>
 
-    {% if current_user.is_authenticated %}
-      <form method="GET" action="{{ url_for('logout') }}">
-        <button type="submit" class="header-btn">Sair</button>
-      </form>
-    {% endif %}
+    <nav class="nav">
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('index') }}" class="nav-link">Início</a>
+        <a href="{{ url_for('calendario') }}" class="nav-link">Calendário</a>
+        <a href="{{ url_for('agendar') }}" class="nav-link">Agendar</a>
+        <a href="{{ url_for('logout') }}" class="nav-link logout">Sair</a>
+      {% else %}
+        <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+      {% endif %}
+    </nav>
   </header>
 
   <main>
