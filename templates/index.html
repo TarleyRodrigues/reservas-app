@@ -1,32 +1,46 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Agendamento</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-    <h1>Agendamento de Visitas e Entregas</h1>
-    <form action="/agendar" method="POST">
-        <label for="nome">Nome:</label><br>
-        <input type="text" id="nome" name="nome" required><br><br>
+{% extends "base.html" %}
 
-        <label for="data">Data:</label><br>
-        <input type="date" id="data" name="data" required><br><br>
+{% block title %}Página Inicial{% endblock %}
 
-        <label for="tipo">Tipo de Serviço:</label><br>
-        <select id="tipo" name="tipo" required>
-            <option value="Visita Técnica">Visita Técnica</option>
-            <option value="Entrega de Chaves">Entrega de Chaves</option>
-        </select><br><br>
+{% block content %}
+  <style>
+    .button-container {
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
 
-        <label for="unidade">Número da Unidade:</label><br>
-        <input type="text" id="unidade" name="unidade" required><br><br>
+    .btn {
+      background-color: #28a745; /* Verde */
+      border: none;
+      color: white;
+      padding: 15px 30px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background-color 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: inline-block;
+    }
 
-        <label for="empreendimento">Empreendimento:</label><br>
-        <input type="text" id="empreendimento" name="empreendimento" required><br><br>
+    .btn:hover {
+      background-color: #218838; /* Verde mais escuro no hover */
+      text-decoration: none;
+      color: white;
+      box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+    }
+  </style>
 
-        <button type="submit">Agendar</button>
-    </form>
-</body>
-</html>
+  <h1>Meu Sistema</h1>
+  <p>Bem-vindo(a)!</p>
+  <p>Escolha uma opção:</p>
+
+  <div class="button-container">
+    <a href="{{ url_for('calendario') }}" class="btn">Ver Calendário</a>
+    <a href="{{ url_for('agendar') }}" class="btn">Fazer Agendamento</a>
+
+  </div>
+{% endblock %}

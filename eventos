@@ -1,14 +1,14 @@
 import sqlite3
 from flask import app, jsonify
+from flask_login import login_required
 
 
 @app.route('/eventos')
+@login_required
 def eventos():
-    # Conecta no banco SQLite
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
 
-    # Busca todos os agendamentos
     cursor.execute(
         'SELECT id, nome, data, tipo, unidade, empreendimento FROM agendamentos')
     rows = cursor.fetchall()
@@ -18,12 +18,9 @@ def eventos():
     for row in rows:
         evento = {
             "id": row[0],
-            # Título que aparece no calendário: nome + tipo do agendamento
-            "title": f"{row[1]} ({row[3]})",
-            # Data do evento no formato YYYY-MM-DD
+            "title": f"{row[1]} ({row[3]})",  # Ex.: João (Entrega de chaves)
             "start": row[2]
         }
         eventos.append(evento)
 
-    # Retorna lista de eventos em formato JSON para o FullCalendar consumir
     return jsonify(eventos)

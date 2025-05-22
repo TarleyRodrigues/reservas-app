@@ -41,6 +41,11 @@ def load_user(user_id):
     return None
 
 
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+
 @app.route('/calendario')
 @login_required
 def calendario():
@@ -79,6 +84,55 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/eventos')
+@login_required
+def eventos():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+
+    cursor.execute(
+        'SELECT id, nome, data, tipo, unidade, empreendimento FROM agendamentos')
+    rows = cursor.fetchall()
+    conn.close()
+
+    eventos = []
+    for row in rows:
+        evento = {
+            "id": row[0],
+            "title": f"{row[1]} ({row[3]})",
+            "start": row[2]
+        }
+        eventos.append(evento)
+
+    return jsonify(eventos)
+
+
+@app.route('/agendar', methods=['GET', 'POST'])
+@login_required
+def agendar():
+    if request.method == 'GET':
+        # Renderiza o formulário de agendamento
+        return render_template('agendar.html')
+    elif request.method == 'POST':
+        # Aqui processa o formulário e salva no banco
+        nome = request.form['nome']
+        data = request.form['data']
+        tipo = request.form['tipo']
+        unidade = request.form['unidade']
+        empreendimento = request.form['empreendimento']
+
+        with sqlite3.connect('database.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO agendamentos (nome, data, tipo, unidade, empreendimento)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (nome, data, tipo, unidade, empreendimento))
+            conn.commit()
+
+        return redirect(url_for('index'))
+
+
+@app.route('/agendamentos')
 def init_db():
     with sqlite3.connect('database.db') as conn:
         cursor = conn.cursor()

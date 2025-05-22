@@ -1,0 +1,284 @@
+/* Reset e básico */
+* {
+  box-sizing: border-box;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+
+/* Variáveis CSS para tema claro/escuro */
+:root {
+  --bg: #f5f7fa;
+  --text: #222;
+  --form-bg: #fff;
+  --input-bg: #fff;
+  --input-border: #ccc;
+  --input-focus-border: #4caf50;
+  --button-bg: #4caf50;
+  --button-hover-bg: #45a049;
+  --button-text: #fff;
+  --shadow: rgba(0,0,0,0.1);
+}
+
+body.dark {
+  --bg: #121212;
+  --text: #eee;
+  --form-bg: #1f1f1f;
+  --input-bg: #2a2a2a;
+  --input-border: #555;
+  --input-focus-border: #66bb6a;
+  --button-bg: #66bb6a;
+  --button-hover-bg: #558b2f;
+  --button-text: #fff;
+  --shadow: rgba(0,0,0,0.6);
+}
+
+/* Container do formulário */
+.form-wrapper {
+  background: var(--form-bg);
+  padding: 30px 40px;
+  border-radius: 14px;
+  max-width: 480px;
+  width: 100%;
+  margin: 50px auto; /* 🔥 Centraliza horizontalmente */
+  box-shadow: 0 8px 24px var(--shadow);
+  position: relative;
+}
+
+
+/* Título */
+h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 2rem;
+}
+
+/* Labels */
+form label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Inputs e selects */
+form input, form select {
+  width: 100%;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  border: 2px solid var(--input-border);
+  background-color: var(--input-bg);
+  font-size: 1rem;
+  color: var(--text);
+  outline-offset: 2px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+form input::placeholder {
+  color: #999;
+  font-weight: 400;
+}
+
+form input:focus, form select:focus {
+  border-color: var(--input-focus-border);
+  box-shadow: 0 0 8px var(--input-focus-border);
+  outline: none;
+}
+
+/* Botão */
+.btn-agendar {
+  width: 100%;
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  padding: 15px 0;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: background-color 0.3s ease, box-shadow 0.2s ease;
+}
+
+.btn-agendar:hover {
+  background-color: var(--button-hover-bg);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+}
+
+/* Toggle modo claro/escuro */
+.theme-toggle {
+  position: absolute;
+  top:
+    20px;
+  right: 20px;}
+  /* Header */
+header {
+  width: 100%;
+  background-color: var(--form-bg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+  box-shadow: 0 4px 12px var(--shadow);
+  border-radius: 0 0 20px 20px;
+  margin-bottom: 30px;
+}
+
+/* Logo estilizada */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 1.6rem;
+  color: var(--text);
+}
+
+.logo-icon {
+  font-size: 1.8rem;
+}
+
+.logo-text {
+  font-weight: 800;
+}
+
+.logo-dot {
+  color: var(--button-bg);
+}
+
+/* Botão no header */
+.header-btn {
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s ease, box-shadow 0.2s ease;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+.header-btn:hover {
+  background-color: var(--button-hover-bg);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+}
+/* Container da página: tela cheia, centraliza o conteúdo */
+/* Estilos globais para body e html — sem flex nem centralização */
+body, html {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  /* Sem display flex aqui! */
+  padding: 20px; /* ou remova se quiser */
+  min-height: 100vh;
+}
+
+/* Agora, só para a página de login: */
+body.login-page, body.login-page html {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0; /* remove o padding padrão */
+  background: #f0f2f5; /* Pode ser override */
+}
+
+/* Quadro branco centralizado só no login */
+body.login-page .login-container {
+  background: white;
+  padding: 40px 50px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+  width: 360px;
+  max-width: 90vw;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+
+/* Quadro branco centralizado */
+.login-container {
+  background: white;
+  padding: 40px 50px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+  width: 360px;
+  max-width: 90vw;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* Título do login */
+.login-container h2 {
+  margin-bottom: 24px;
+  font-weight: 700;
+  font-size: 1.8rem;
+  color: #333;
+}
+
+/* Inputs */
+.login-container input[type="email"],
+.login-container input[type="password"] {
+  width: 100%;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  border: 1.8px solid #ccc;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+  box-sizing: border-box;
+}
+
+.login-container input[type="email"]:focus,
+.login-container input[type="password"]:focus {
+  border-color: #4caf50;
+  outline: none;
+  box-shadow: 0 0 8px #4caf50aa;
+}
+
+/* Botão */
+.login-container button {
+  width: 100%;
+  padding: 14px 0;
+  border: none;
+  border-radius: 12px;
+  background-color: #4caf50;
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+}
+
+.login-container button:hover {
+  background-color: #43a047;
+}
+
+/* Mensagens de erro */
+.login-container ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+  color: #d32f2f;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: left;
+}

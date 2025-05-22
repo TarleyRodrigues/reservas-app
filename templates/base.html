@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>{% block title %}Meu App{% endblock %}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+    <span class="logo-icon">📅</span>
+    <span class="logo-text">Reservas<span class="logo-dot">.app</span></span>
+</div>
+
+    {% if current_user.is_authenticated %}
+      <form method="GET" action="{{ url_for('logout') }}">
+        <button type="submit" class="header-btn">Sair</button>
+      </form>
+    {% endif %}
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+</body>
+</html>
