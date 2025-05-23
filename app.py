@@ -152,8 +152,12 @@ def eventos():
     for row in rows:
         evento = {
             "id": row[0],
-            "title": f"{row[1]} ({row[3]})",
-            "start": row[2]
+            "title": f"{row[1]} ({row[3]})",  # Nome (Tipo)
+            "start": row[2],
+            "extendedProps": {
+                "unidade": row[4],
+                "empreendimento": row[5]
+            }
         }
         eventos.append(evento)
 
@@ -181,7 +185,7 @@ def agendar():
             ''', (nome, data, tipo, unidade, empreendimento))
             conn.commit()
 
-        return redirect(url_for('index'))
+        return redirect(url_for('calendario'))
 
 
 # 🏗️ Criação do banco de dados

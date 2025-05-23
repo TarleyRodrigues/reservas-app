@@ -49,10 +49,41 @@
                 center: 'title',
                 right: 'dayGridMonth,listMonth'
             },
-            events: '/eventos' // Rota que fornece os dados em JSON
+            events: '/eventos', // Rota que fornece os dados em JSON
+            eventContent: function(arg) {
+                // Customização do conteúdo do evento
+                if (arg.view.type === 'listMonth') {
+                    return {
+                        html: `
+                            <div class="fc-event-details">
+                                <div class="fc-event-title">${arg.event.title}</div>
+                                <div class="fc-event-meta">
+                                    <span>${arg.event.extendedProps.unidade}</span> | 
+                                    <span>${arg.event.extendedProps.empreendimento}</span>
+                                </div>
+                            </div>
+                        `
+                    };
+                }
+                return { html: arg.event.title };
+            }
         });
 
         calendar.render();
     });
 </script>
+
+<style>
+    .fc-event-details {
+        padding: 5px;
+    }
+    .fc-event-title {
+        font-weight: bold;
+        margin-bottom: 3px;
+    }
+    .fc-event-meta {
+        font-size: 0.85em;
+        color: #555;
+    }
+</style>
 {% endblock %}
