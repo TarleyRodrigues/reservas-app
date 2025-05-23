@@ -449,6 +449,21 @@ body.login-page .login-container {
 .logout-btn:hover {
   background-color: #b71c1c;
 }
+
+.btn-remove {
+    background: #f44336;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-remove:hover {
+    background: #d32f2f;
+}
+
 .glass {
   background: rgba(255, 255, 255, 0.15); /* Leve transparência */
   border-radius: 16px;

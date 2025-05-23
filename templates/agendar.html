@@ -23,27 +23,64 @@
         <label for="tipo">Tipo de agendamento</label>
         <select id="tipo" name="tipo" required>
             <option value="" disabled selected>Selecione o tipo</option>
-            <option value="Entrega de chaves">Entrega de chaves</option>
-            <option value="Visita Técnica">Visita Técnica</option>
+            {% for tipo in tipos_agendamento %}
+                <option value="{{ tipo.nome }}">{{ tipo.nome }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="empreendimento">Empreendimento</label>
+        <select id="empreendimento" name="empreendimento" required>
+            <option value="" disabled selected>Selecione o empreendimento</option>
+            {% for emp in empreendimentos %}
+                {% if emp.ativo %}
+                    <option value="{{ emp.nome }}">{{ emp.nome }}</option>
+                {% endif %}
+            {% endfor %}
         </select>
 
         <label for="unidade">Unidade</label>
-        <input id="unidade" type="text" name="unidade" placeholder="Número da unidade" required>
-
-        <label for="empreendimento">Empreendimento</label>
-        <input id="empreendimento" type="text" name="empreendimento" placeholder="Nome do empreendimento" required>
+        <select id="unidade" name="unidade" required>
+            <option value="" disabled selected>Selecione a unidade</option>
+            {% for unidade in unidades %}
+                {% if unidade.ativo %}
+                    <option value="{{ unidade.nome }}" data-emp="{{ unidade.empreendimento_id }}">
+                        {{ unidade.nome }}
+                    </option>
+                {% endif %}
+            {% endfor %}
+        </select>
 
         <button type="submit" class="btn-agendar">Agendar</button>
     </form>
 </div>
 
 <script>
-  const toggleBtn = document.getElementById('toggleTheme');
-  const body = document.body;
+    // Toggle de tema
+    const toggleBtn = document.getElementById('toggleTheme');
+    const body = document.body;
 
-  toggleBtn.addEventListener('click', () => {
-    body.classList.toggle('dark');
-    toggleBtn.textContent = body.classList.contains('dark') ? '☀️' : '🌙';
-  });
+    toggleBtn.addEventListener('click', () => {
+        body.classList.toggle('dark');
+        toggleBtn.textContent = body.classList.contains('dark') ? '☀️' : '🌙';
+    });
+
+    // Filtro de unidades por empreendimento
+    document.getElementById('empreendimento').addEventListener('change', function() {
+        const empSelecionado = this.value;
+        const unidadesSelect = document.getElementById('unidade');
+        const todasUnidades = unidadesSelect.querySelectorAll('option');
+        
+        // Resetar seleção
+        unidadesSelect.value = '';
+        
+        // Mostrar apenas unidades do empreendimento selecionado
+        todasUnidades.forEach(opt => {
+            if (opt.value === '' || opt.textContent.includes(empSelecionado)) {
+                opt.style.display = 'block';
+            } else {
+                opt.style.display = 'none';
+            }
+        });
+    });
 </script>
 {% endblock %}

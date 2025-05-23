@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}Reservas App{% endblock %}</title>
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 
@@ -17,6 +16,66 @@
             padding: 20px;
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        main {
+            flex: 1;
+            padding: 20px 0;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 10px 20px;
+            margin-bottom: 20px;
+        }
+        
+        .logo img {
+            height: 50px;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .nav-link {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover {
+            background-color: #f0f0f0;
+            color: #0066cc;
+        }
+        
+        .logout {
+            color: #d32f2f;
+        }
+        
+        .logout:hover {
+            background-color: #ffebee;
+        }
+        
+        .admin-link {
+            color: #388e3c;
+            font-weight: bold;
+        }
+        
+        .admin-link:hover {
+            background-color: #e8f5e9;
         }
     </style>
 </head>
@@ -32,14 +91,35 @@
         <a href="{{ url_for('index') }}" class="nav-link">Início</a>
         <a href="{{ url_for('calendario') }}" class="nav-link">Calendário</a>
         <a href="{{ url_for('agendar') }}" class="nav-link">Agendar</a>
+        
+        <!-- Link para Configurações (visível apenas para admin) -->
+        {% if current_user.email == 'admin@admin.com' %}
+          <a href="{{ url_for('configuracoes') }}" class="nav-link admin-link">Configurações</a>
+        {% endif %}
+        
         <a href="{{ url_for('logout') }}" class="nav-link logout">Sair</a>
+        
+        <!-- Mostrar nome do usuário logado -->
+        <span class="user-info">Olá, {{ current_user.email }}</span>
       {% else %}
         <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+        <a href="{{ url_for('cadastro') }}" class="nav-link">Cadastre-se</a>
       {% endif %}
     </nav>
   </header>
 
   <main>
+    <!-- Mensagens Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for category, message in messages %}
+            <div class="flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    
     {% block content %}{% endblock %}
   </main>
 
