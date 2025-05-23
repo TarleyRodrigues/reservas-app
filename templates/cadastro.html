@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-    <style>
+<style>
   body {
     background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
     background-size: cover;
@@ -31,11 +31,12 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('cadastro') }}">
+        <form method="POST" action="{{ url_for('cadastro') }}" id="formCadastro" onsubmit="return validarSenhas()">
             <input type="text" name="nome" placeholder="Nome completo" required>
             <input type="email" name="email" placeholder="Email" required>
-            <input type="password" name="senha" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
-            <input type="password" name="confirmar_senha" placeholder="Confirmar Senha" required>
+            <input type="password" name="senha" id="senha" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
+            <input type="password" name="confirmar_senha" id="confirmar_senha" placeholder="Confirmar Senha" required>
+            <div id="senhaError" class="error-message" style="color: #c62828; display: none;"></div>
             <button type="submit">Cadastrar</button>
         </form>
 
@@ -43,6 +44,43 @@
             Já tem uma conta? <a href="{{ url_for('login') }}">Faça login</a>
         </div>
     </div>
+
+    <script>
+        function validarSenhas() {
+            const senha = document.getElementById('senha').value;
+            const confirmarSenha = document.getElementById('confirmar_senha').value;
+            const errorElement = document.getElementById('senhaError');
+
+            if (senha !== confirmarSenha) {
+                errorElement.textContent = 'As senhas não coincidem!';
+                errorElement.style.display = 'block';
+                return false;
+            }
+
+            if (senha.length < 6) {
+                errorElement.textContent = 'A senha deve ter pelo menos 6 caracteres';
+                errorElement.style.display = 'block';
+                return false;
+            }
+
+            errorElement.style.display = 'none';
+            return true;
+        }
+
+        // Validação em tempo real
+        document.getElementById('confirmar_senha').addEventListener('input', function() {
+            const senha = document.getElementById('senha').value;
+            const confirmarSenha = this.value;
+            const errorElement = document.getElementById('senhaError');
+
+            if (senha !== confirmarSenha && confirmarSenha.length > 0) {
+                errorElement.textContent = 'As senhas não coincidem!';
+                errorElement.style.display = 'block';
+            } else {
+                errorElement.style.display = 'none';
+            }
+        });
+    </script>
 
 </body>
 </html>

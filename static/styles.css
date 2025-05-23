@@ -361,7 +361,7 @@ body.login-page .login-container {
   list-style: none;
   padding: 0;
   margin: 0 0 16px 0;
-  color: #d32f2f;
+  color: #2bcd2b;
   font-weight: 600;
   font-size: 0.9rem;
   text-align: left;
@@ -456,4 +456,57 @@ body.login-page .login-container {
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.25);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+/* Adicione estas classes */
+.error-message {
+    background-color: #ffebee;
+    color: #c62828;
+    padding: 8px;
+    border-radius: 4px;
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+input:invalid {
+    border-color: #ffcdd2;
+}
+
+/* Melhoria visual para os inputs */
+input {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    transition: border 0.3s;
+}
+
+input:focus {
+    border-color: #4fc3f7;
+    outline: none;
+}
+
+.register-link {
+    margin-top: 20px;
+    text-align: center;
+    color: #fff;
+}
+
+.register-link a {
+    color: #4fc3f7;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.register-link a:hover {
+    color: #0288d1;
+    text-decoration: underline;
+}
+
+.register-link p {
+    margin: 0;
+    font-size: 14px;
 }

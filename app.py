@@ -71,7 +71,7 @@ def login():
 
         if user and check_password_hash(user.senha_hash, senha):
             login_user(user)
-            return redirect(url_for('calendario'))
+            return redirect(url_for('index'))
         else:
             flash('Email ou senha incorretos.')
             return redirect(url_for('login'))
@@ -90,15 +90,31 @@ def logout():
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
     if request.method == 'POST':
-        nome = request.form['nome']
-        email = request.form['email']
-        senha = request.form['senha']
-        confirmar_senha = request.form['confirmar_senha']
+        nome = request.form.get('nome', '').strip()
+        email = request.form.get('email', '').strip()
+        senha = request.form.get('senha', '')
+        confirmar_senha = request.form.get('confirmar_senha', '')
 
-        # Validações (como já mostrado anteriormente)
-        # ... (código de validação)
+        # Validações
+        if not nome or not email or not senha or not confirmar_senha:
+            flash('Todos os campos são obrigatórios', 'error')
+            return redirect(url_for('cadastro'))
 
-        # Cria o novo usuário com nome
+        if senha != confirmar_senha:
+            flash('As senhas não coincidem', 'error')
+            return redirect(url_for('cadastro'))
+
+        if len(senha) < 6:
+            flash('A senha deve ter pelo menos 6 caracteres', 'error')
+            return redirect(url_for('cadastro'))
+
+        # Verifica se usuário já existe
+        usuario_existente = buscar_usuario_por_email(email)
+        if usuario_existente:
+            flash('Este email já está cadastrado', 'error')
+            return redirect(url_for('cadastro'))
+
+        # Cria o novo usuário
         senha_hash = generate_password_hash(senha)
         try:
             with sqlite3.connect('database.db') as conn:
