@@ -264,10 +264,16 @@ def configuracoes():
             ''').fetchall()
 
         return render_template('configuracoes.html', tipos=tipos, empreendimentos=empreendimentos, unidades=unidades)
+
+    except sqlite3.DatabaseError as e:
+        flash('Erro de banco ao carregar configurações', 'error')
+        app.logger.error(f'Erro de banco em configuracoes: {e}')
     except Exception as e:
-        flash('Erro ao carregar configurações', 'error')
-        app.logger.error(f'Erro em configuracoes: {e}')
-        return render_template('configuracoes.html', tipos=[], empreendimentos=[], unidades=[])
+        flash('Erro inesperado ao carregar configurações', 'error')
+        app.logger.error(f'Erro inesperado em configuracoes: {e}')
+
+    return render_template('configuracoes.html', tipos=[], empreendimentos=[], unidades=[])
+
 
 # ➕ Adicionar tipo
 
@@ -333,6 +339,7 @@ def adicionar_tipo():
         except sqlite3.IntegrityError:
             flash('Este tipo já existe!', 'error')
     return redirect(url_for('configuracoes'))
+
 # Listar todas as rotas
 
 
@@ -411,18 +418,6 @@ def init_db():
         FOREIGN KEY (unidade_id) REFERENCES unidades(id)
     )
 ''')
-
-        # Dados iniciais (se não existirem)
-        cursor.execute(
-            "INSERT OR IGNORE INTO tipos_agendamento (nome) VALUES ('Visita Técnica')")
-        cursor.execute(
-            "INSERT OR IGNORE INTO empreendimentos (nome) VALUES ('Empreendimento Padrão')")
-
-        # Garante que a unidade só será criada se existir o empreendimento com ID 1
-        cursor.execute(
-            "INSERT OR IGNORE INTO unidades (nome, empreendimento_id) VALUES ('Unidade 1', 1)")
-
-        conn.commit()
 
 
 def criar_usuario_inicial():

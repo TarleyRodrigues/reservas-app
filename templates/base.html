@@ -1,84 +1,118 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>{% block title %}Reservas App{% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 
-    <!-- Imagem de fundo inline (para funcionar com Jinja/Flask) -->
-    <style>
-        body {
-            background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
-            background-size: cover;
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        main {
-            flex: 1;
-            padding: 20px 0;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 0;
-            background-color: rgba(255, 255, 255, 0.9);
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            padding: 10px 20px;
-            margin-bottom: 20px;
-        }
-        
-        .logo img {
-            height: 50px;
-        }
-        
-        .nav {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-        
-        .nav-link {
-            text-decoration: none;
-            color: #333;
-            font-weight: 500;
-            padding: 8px 12px;
-            border-radius: 5px;
-            transition: all 0.3s ease;
-        }
-        
-        .nav-link:hover {
-            background-color: #f0f0f0;
-            color: #0066cc;
-        }
-        
-        .logout {
-            color: #d32f2f;
-        }
-        
-        .logout:hover {
-            background-color: #ffebee;
-        }
-        
-        .admin-link {
-            color: #388e3c;
-            font-weight: bold;
-        }
-        
-        .admin-link:hover {
-            background-color: #e8f5e9;
-        }
-    </style>
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Reservas App{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+  <!-- Imagem de fundo inline (para funcionar com Jinja/Flask) -->
+  <style>
+    body {
+      background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
+      background-size: cover;
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+    }
+
+    main {
+      flex: 1;
+      padding: 20px 0;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 0;
+      background-color: rgba(255, 255, 255, 0.9);
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 10px 20px;
+      margin-bottom: 20px;
+    }
+
+    .logo img {
+      height: 50px;
+    }
+
+    .nav {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .nav-link {
+      text-decoration: none;
+      color: #333;
+      font-weight: 500;
+      padding: 8px 12px;
+      border-radius: 5px;
+      transition: all 0.3s ease;
+    }
+
+    .nav-link:hover {
+      background-color: #f0f0f0;
+      color: #0066cc;
+    }
+
+    .logout {
+      color: #d32f2f;
+    }
+
+    .logout:hover {
+      background-color: #ffebee;
+    }
+
+    .admin-link {
+      color: #388e3c;
+      font-weight: bold;
+    }
+
+    .admin-link:hover {
+      background-color: #e8f5e9;
+    }
+
+    /* Estilos do Toast */
+    #toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+    }
+
+    .toast {
+      min-width: 220px;
+      margin-bottom: 10px;
+      padding: 12px 20px;
+      color: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      font-weight: 600;
+      font-size: 0.9rem;
+      user-select: none;
+    }
+
+    .toast.success {
+      background-color: #4caf50;
+      /* verde */
+    }
+
+    .toast.error {
+      background-color: #f44336;
+      /* vermelho */
+    }
+  </style>
 </head>
+
 <body>
 
   <header class="header">
@@ -88,40 +122,65 @@
 
     <nav class="nav">
       {% if current_user.is_authenticated %}
-        <a href="{{ url_for('index') }}" class="nav-link">Início</a>
-        <a href="{{ url_for('calendario') }}" class="nav-link">Calendário</a>
-        <a href="{{ url_for('agendar') }}" class="nav-link">Agendar</a>
-        
-        <!-- Link para Configurações (visível apenas para admin) -->
-        {% if current_user.email == 'admin@admin.com' %}
-          <a href="{{ url_for('configuracoes') }}" class="nav-link admin-link">Configurações</a>
-        {% endif %}
-        
-        <a href="{{ url_for('logout') }}" class="nav-link logout">Sair</a>
-        
-        <!-- Mostrar nome do usuário logado -->
-        <span class="user-info">Olá, {{ current_user.email }}</span>
+      <a href="{{ url_for('index') }}" class="nav-link">Início</a>
+      <a href="{{ url_for('calendario') }}" class="nav-link">Calendário</a>
+      <a href="{{ url_for('agendar') }}" class="nav-link">Agendar</a>
+
+      {% if current_user.email == 'admin@admin.com' %}
+      <a href="{{ url_for('configuracoes') }}" class="nav-link admin-link">Configurações</a>
+      {% endif %}
+
+      <a href="{{ url_for('logout') }}" class="nav-link logout">Sair</a>
+      <span class="user-info">Olá, {{ current_user.email }}</span>
       {% else %}
-        <a href="{{ url_for('login') }}" class="nav-link">Login</a>
-        <a href="{{ url_for('cadastro') }}" class="nav-link">Cadastre-se</a>
+      <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+      <a href="{{ url_for('cadastro') }}" class="nav-link">Cadastre-se</a>
       {% endif %}
     </nav>
   </header>
 
   <main>
-    <!-- Mensagens Flash -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="flash-messages">
-          {% for category, message in messages %}
-            <div class="flash-{{ category }}">{{ message }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-    
+    <!-- Contêiner para Toasts -->
+    <div id="toast-container"></div>
+
     {% block content %}{% endblock %}
   </main>
 
+  <script>
+    function showToast(message, type) {
+      const container = document.getElementById('toast-container');
+
+      const toast = document.createElement('div');
+      toast.textContent = message;
+      toast.className = 'toast ' + type; // success ou error
+
+      container.appendChild(toast);
+
+      // Fade in
+      setTimeout(() => {
+        toast.style.opacity = '1';
+      }, 100);
+
+      // Fade out e remoção
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => {
+          container.removeChild(toast);
+        }, 500);
+      }, 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      {% with messages = get_flashed_messages(with_categories = true) %}
+      {% if messages %}
+      {% for category, message in messages %}
+      showToast("{{ message }}", "{{ category }}");
+      {% endfor %}
+      {% endif %}
+      {% endwith %}
+    });
+  </script>
+
 </body>
+
 </html>
