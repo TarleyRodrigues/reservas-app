@@ -123,7 +123,7 @@ form input:focus, form select:focus {
   /* Header */
 header {
   width: 100%;
-  background-color: var(--form-bg);
+  background-color: rgba(211, 191, 191, 0.182);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -138,9 +138,9 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: hsl(0deg 0.22% 15.24% / 56%);
+    background-color: rgba(211, 191, 191, 0.182);
     padding: 15px 30px;
-    color: white;
+    color: rgb(251, 0, 0);
     box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
