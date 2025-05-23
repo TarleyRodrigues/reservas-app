@@ -184,41 +184,89 @@ def debug_user():
     })
 
 
+@app.route('/toggle_empreendimento')
+def toggle_empreendimento():
+    # lógica para alternar algo no empreendimento
+    return redirect(url_for('alguma_rota'))
+
+
+@app.route('/remover_empreendimento/<int:emp_id>', methods=['POST'])
+@login_required
+def remover_empreendimento(emp_id):
+    if current_user.email != 'admin@admin.com':
+        flash('Acesso restrito a administradores', 'error')
+        return redirect(url_for('index'))
+    try:
+        with sqlite3.connect('database.db') as conn:
+            conn.execute('DELETE FROM empreendimentos WHERE id = ?', (emp_id,))
+            conn.commit()
+        flash('Empreendimento removido com sucesso!', 'success')
+    except Exception as e:
+        flash('Erro ao remover empreendimento', 'error')
+        app.logger.error(f'Erro ao remover empreendimento: {e}')
+    return redirect(url_for('configuracoes'))
+
+
+@app.route('/toggle_unidade/<int:unidade_id>', methods=['POST'])
+@login_required
+def toggle_unidade(unidade_id):
+    if current_user.email != 'admin@admin.com':
+        flash('Acesso restrito a administradores', 'error')
+        return redirect(url_for('index'))
+    try:
+        with sqlite3.connect('database.db') as conn:
+            # Pega o status atual
+            cur = conn.execute(
+                'SELECT ativo FROM unidades WHERE id = ?', (unidade_id,))
+            row = cur.fetchone()
+            if row:
+                novo_status = 0 if row[0] == 1 else 1
+                conn.execute(
+                    'UPDATE unidades SET ativo = ? WHERE id = ?', (novo_status, unidade_id))
+                conn.commit()
+                flash('Status da unidade atualizado.', 'success')
+            else:
+                flash('Unidade não encontrada.', 'error')
+    except Exception as e:
+        flash('Erro ao atualizar status da unidade.', 'error')
+        app.logger.error(f'Erro em toggle_unidade: {e}')
+    return redirect(url_for('configuracoes'))
+
+
 @app.route('/agendar', methods=['GET', 'POST'])
 @login_required
 def agendar():
     conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row  # para acessar por nome
-
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
     if request.method == 'POST':
         nome = request.form['nome']
         data = request.form['data']
+        hora = request.form['hora']
         tipo = request.form['tipo']
         empreendimento = request.form['empreendimento']
         unidade = request.form['unidade']
 
-        # Aqui você precisa mapear os nomes para os ids correspondentes antes de salvar
         cursor.execute(
             'SELECT id FROM tipos_agendamento WHERE nome = ?', (tipo,))
         tipo_id = cursor.fetchone()
         cursor.execute(
             'SELECT id FROM empreendimentos WHERE nome = ?', (empreendimento,))
         empreendimento_id = cursor.fetchone()
-        cursor.execute('SELECT id FROM unidades WHERE nome = ? AND empreendimento_id = ?',
-                       (unidade, empreendimento_id['id']))
+        cursor.execute('''
+            SELECT id FROM unidades WHERE nome = ? AND empreendimento_id = ?
+        ''', (unidade, empreendimento_id['id']))
         unidade_id = cursor.fetchone()
 
         if not (tipo_id and empreendimento_id and unidade_id):
             flash('Dados inválidos. Verifique os campos selecionados.')
             return redirect(url_for('agendar'))
 
-        # Inserir agendamento
         cursor.execute('''
-            INSERT INTO agendamentos (cliente_nome, data_hora, tipo_id, unidade_id)
-            VALUES (?, ?, ?, ?)
-        ''', (nome, data, tipo_id['id'], unidade_id['id']))
+            INSERT INTO agendamentos (usuario_id, tipo_id, unidade_id, data, hora)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (current_user.id, tipo_id['id'], unidade_id['id'], data, hora))
 
         conn.commit()
         conn.close()
@@ -226,20 +274,18 @@ def agendar():
         flash('Agendamento realizado com sucesso!')
         return redirect(url_for('agendar'))
 
-    # No GET, só busca dados para popular selects
+    # GET
     cursor.execute('SELECT * FROM tipos_agendamento WHERE ativo = 1')
     tipos_agendamento = cursor.fetchall()
-
     cursor.execute('SELECT * FROM empreendimentos WHERE ativo = 1')
     empreendimentos = cursor.fetchall()
-
     cursor.execute('SELECT * FROM unidades WHERE ativo = 1')
     unidades = cursor.fetchall()
-
     conn.close()
 
     return render_template('agendar.html', tipos_agendamento=tipos_agendamento,
                            empreendimentos=empreendimentos, unidades=unidades)
+
 
 # ⚙️ Configurações
 
@@ -424,18 +470,18 @@ def init_db():
 
         # ✅ Tabela que estava faltando
         cursor.execute('''
-    CREATE TABLE IF NOT EXISTS agendamentos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario_id INTEGER NOT NULL,
-        tipo_id INTEGER NOT NULL,
-        unidade_id INTEGER NOT NULL,
-        data TEXT NOT NULL,
-        hora TEXT NOT NULL,
-        FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
-        FOREIGN KEY (tipo_id) REFERENCES tipos_agendamento(id),
-        FOREIGN KEY (unidade_id) REFERENCES unidades(id)
-    )
-''')
+            CREATE TABLE IF NOT EXISTS agendamentos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario_id INTEGER NOT NULL,
+                tipo_id INTEGER NOT NULL,
+                unidade_id INTEGER NOT NULL,
+                data TEXT NOT NULL,
+                hora TEXT NOT NULL,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+                FOREIGN KEY (tipo_id) REFERENCES tipos_agendamento(id),
+                FOREIGN KEY (unidade_id) REFERENCES unidades(id)
+            )
+        ''')
 
 
 def criar_usuario_inicial():

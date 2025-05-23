@@ -20,6 +20,9 @@
         <label for="data">Data</label>
         <input id="data" type="date" name="data" required>
 
+        <label for="hora">Hora</label>
+        <input id="hora" type="time" name="hora" required>
+
         <label for="tipo">Tipo de agendamento</label>
         <select id="tipo" name="tipo" required>
             <option value="" disabled selected>Selecione o tipo</option>
@@ -70,15 +73,22 @@
         const unidadesSelect = document.getElementById('unidade');
         const todasUnidades = unidadesSelect.querySelectorAll('option');
 
-        // Resetar seleção
         unidadesSelect.value = '';
 
-        // Mostrar apenas unidades do empreendimento selecionado
         todasUnidades.forEach(opt => {
-            if (opt.value === '' || opt.textContent.includes(empSelecionado)) {
+            if (opt.value === '') {
                 opt.style.display = 'block';
             } else {
-                opt.style.display = 'none';
+                const empId = opt.getAttribute('data-emp');
+                const empNomeSelecionado = Array.from(
+                    document.querySelectorAll('#empreendimento option')
+                ).find(op => op.value === empSelecionado)?.textContent;
+
+                if (opt.textContent.includes(empNomeSelecionado)) {
+                    opt.style.display = 'block';
+                } else {
+                    opt.style.display = 'none';
+                }
             }
         });
     });

@@ -4,6 +4,7 @@
 <div class="config-container">
     <h1>Configurações do Sistema</h1>
 
+    <!-- Tipos de Agendamento -->
     <div class="config-section">
         <h2>Tipos de Agendamento</h2>
         <form method="POST" action="{{ url_for('adicionar_tipo') }}">
@@ -23,6 +24,7 @@
         </ul>
     </div>
 
+    <!-- Empreendimentos -->
     <div class="config-section">
         <h2>Empreendimentos</h2>
         <form method="POST" action="{{ url_for('adicionar_empreendimento') }}">
@@ -40,8 +42,8 @@
                         {{ 'Desativar' if empreendimento.ativo else 'Ativar' }}
                     </button>
                 </form>
-                <form method="POST" action="{{ url_for('remover_empreendimento') }}" style="display:inline;">
-                    <input type="hidden" name="emp_id" value="{{ empreendimento.id }}">
+                <form method="POST" action="{{ url_for('remover_empreendimento', emp_id=empreendimento.id) }}"
+                    style="display:inline;">
                     <button type="submit" class="btn-remove">Remover</button>
                 </form>
             </li>
@@ -49,6 +51,7 @@
         </ul>
     </div>
 
+    <!-- Unidades -->
     <div class="config-section">
         <h2>Unidades</h2>
         <form method="POST" action="{{ url_for('adicionar_unidade') }}">
@@ -62,27 +65,24 @@
             <button type="submit" class="btn-add">Adicionar</button>
         </form>
 
-
         <ul class="config-list">
             {% for unidade in unidades %}
             <li>
                 {{ unidade.nome }} ({{ unidade.empreendimento }})
-                <form method="POST" action="{{ url_for('toggle_unidade') }}" style="display:inline;">
-                    <input type="hidden" name="unidade_id" value="{{ unidade.id }}">
+                <form method="POST" action="{{ url_for('toggle_unidade', unidade_id=unidade.id) }}"
+                    style="display:inline;">
                     <button type="submit" class="btn-toggle">
                         {{ 'Desativar' if unidade.ativo else 'Ativar' }}
                     </button>
                 </form>
-                <form method="POST" action="{{ url_for('remover_unidade') }}" style="display:inline;">
-                    <input type="hidden" name="unidade_id" value="{{ unidade.id }}">
-                    <button type="submit" class="btn-remove">Remover</button>
-                </form>
+
             </li>
             {% endfor %}
         </ul>
     </div>
 </div>
 
+<!-- Estilo -->
 <style>
     .config-container {
         max-width: 800px;
@@ -137,9 +137,9 @@
     }
 </style>
 
+<!-- Confirmação de remoção -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // Confirmação antes de remover
         document.querySelectorAll('.btn-remove').forEach(button => {
             button.addEventListener('click', function (e) {
                 if (!confirm('Tem certeza que deseja remover este item?')) {
