@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+    <style>
+  body {
+    background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
+    background-size: cover;
+    color: var(--text);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+</style>
+<head>
+    <meta charset="UTF-8">
+    <title>Cadastro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="login-page">
+
+    <div class="login-container glass">
+        <h2>Criar Nova Conta</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flash-messages">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('cadastro') }}">
+            <input type="text" name="nome" placeholder="Nome completo" required>
+            <input type="email" name="email" placeholder="Email" required>
+            <input type="password" name="senha" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
+            <input type="password" name="confirmar_senha" placeholder="Confirmar Senha" required>
+            <button type="submit">Cadastrar</button>
+        </form>
+
+        <div class="login-link">
+            Já tem uma conta? <a href="{{ url_for('login') }}">Faça login</a>
+        </div>
+    </div>
+
+</body>
+</html>

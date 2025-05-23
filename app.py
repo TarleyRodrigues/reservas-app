@@ -87,7 +87,40 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/cadastro', methods=['GET', 'POST'])
+def cadastro():
+    if request.method == 'POST':
+        nome = request.form['nome']
+        email = request.form['email']
+        senha = request.form['senha']
+        confirmar_senha = request.form['confirmar_senha']
+
+        # Validações (como já mostrado anteriormente)
+        # ... (código de validação)
+
+        # Cria o novo usuário com nome
+        senha_hash = generate_password_hash(senha)
+        try:
+            with sqlite3.connect('database.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    'INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)',
+                    (nome, email, senha_hash)
+                )
+                conn.commit()
+
+            flash('Cadastro realizado com sucesso! Faça login.', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            flash('Erro ao cadastrar usuário. Tente novamente.', 'error')
+            app.logger.error(f'Erro no cadastro: {str(e)}')
+            return redirect(url_for('cadastro'))
+
+    return render_template('cadastro.html')
+
 # 🔗 Retorna eventos no calendário
+
+
 @app.route('/eventos')
 @login_required
 def eventos():
@@ -175,9 +208,23 @@ def criar_usuario_inicial():
         except sqlite3.IntegrityError:
             print("Usuário inicial já existe.")
 
+# Adicione isso antes do init_db()
+
+
+def atualizar_tabela_usuarios():
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("ALTER TABLE usuarios ADD COLUMN nome TEXT")
+            conn.commit()
+            print("Coluna nome adicionada à tabela usuarios")
+        except sqlite3.OperationalError:
+            print("Coluna nome já existe ou erro ao adicionar")
+
 
 # 🚀 Execução inicial
 init_db()
+atualizar_tabela_usuarios()
 criar_usuario_inicial()
 
 
