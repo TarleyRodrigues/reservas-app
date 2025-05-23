@@ -36,7 +36,7 @@
             <option value="" disabled selected>Selecione o empreendimento</option>
             {% for emp in empreendimentos %}
             {% if emp.ativo %}
-            <option value="{{ emp.nome }}">{{ emp.nome }}</option>
+            <option value="{{ emp.id }}">{{ emp.nome }}</option>
             {% endif %}
             {% endfor %}
         </select>
@@ -67,28 +67,25 @@
         toggleBtn.textContent = body.classList.contains('dark') ? '☀️' : '🌙';
     });
 
-    // Filtro de unidades por empreendimento
+    // Filtro de unidades por empreendimento (filtra pelo id)
     document.getElementById('empreendimento').addEventListener('change', function () {
-        const empSelecionado = this.value;
+        const empSelecionado = this.value; // id do empreendimento selecionado
         const unidadesSelect = document.getElementById('unidade');
         const todasUnidades = unidadesSelect.querySelectorAll('option');
 
-        unidadesSelect.value = '';
+        unidadesSelect.value = ''; // reseta seleção da unidade
 
         todasUnidades.forEach(opt => {
+            // sempre mostrar a opção padrão (value vazio)
             if (opt.value === '') {
                 opt.style.display = 'block';
+                return;
+            }
+            const empId = opt.getAttribute('data-emp');
+            if (empId === empSelecionado) {
+                opt.style.display = 'block';
             } else {
-                const empId = opt.getAttribute('data-emp');
-                const empNomeSelecionado = Array.from(
-                    document.querySelectorAll('#empreendimento option')
-                ).find(op => op.value === empSelecionado)?.textContent;
-
-                if (opt.textContent.includes(empNomeSelecionado)) {
-                    opt.style.display = 'block';
-                } else {
-                    opt.style.display = 'none';
-                }
+                opt.style.display = 'none';
             }
         });
     });
