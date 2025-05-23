@@ -184,19 +184,62 @@ def debug_user():
     })
 
 
-@app.route('/agendar', methods=['GET'])
+@app.route('/agendar', methods=['GET', 'POST'])
 @login_required
 def agendar():
-    with sqlite3.connect('database.db') as conn:
-        conn.row_factory = sqlite3.Row
-        tipos = conn.execute(
-            'SELECT * FROM tipos_agendamento WHERE ativo = 1').fetchall()
-        empreendimentos = conn.execute(
-            'SELECT * FROM empreendimentos WHERE ativo = 1').fetchall()
-        unidades = conn.execute(
-            'SELECT * FROM unidades WHERE ativo = 1').fetchall()
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row  # para acessar por nome
 
-    return render_template('agendar.html', tipos=tipos, empreendimentos=empreendimentos, unidades=unidades)
+    cursor = conn.cursor()
+
+    if request.method == 'POST':
+        nome = request.form['nome']
+        data = request.form['data']
+        tipo = request.form['tipo']
+        empreendimento = request.form['empreendimento']
+        unidade = request.form['unidade']
+
+        # Aqui você precisa mapear os nomes para os ids correspondentes antes de salvar
+        cursor.execute(
+            'SELECT id FROM tipos_agendamento WHERE nome = ?', (tipo,))
+        tipo_id = cursor.fetchone()
+        cursor.execute(
+            'SELECT id FROM empreendimentos WHERE nome = ?', (empreendimento,))
+        empreendimento_id = cursor.fetchone()
+        cursor.execute('SELECT id FROM unidades WHERE nome = ? AND empreendimento_id = ?',
+                       (unidade, empreendimento_id['id']))
+        unidade_id = cursor.fetchone()
+
+        if not (tipo_id and empreendimento_id and unidade_id):
+            flash('Dados inválidos. Verifique os campos selecionados.')
+            return redirect(url_for('agendar'))
+
+        # Inserir agendamento
+        cursor.execute('''
+            INSERT INTO agendamentos (cliente_nome, data_hora, tipo_id, unidade_id)
+            VALUES (?, ?, ?, ?)
+        ''', (nome, data, tipo_id['id'], unidade_id['id']))
+
+        conn.commit()
+        conn.close()
+
+        flash('Agendamento realizado com sucesso!')
+        return redirect(url_for('agendar'))
+
+    # No GET, só busca dados para popular selects
+    cursor.execute('SELECT * FROM tipos_agendamento WHERE ativo = 1')
+    tipos_agendamento = cursor.fetchall()
+
+    cursor.execute('SELECT * FROM empreendimentos WHERE ativo = 1')
+    empreendimentos = cursor.fetchall()
+
+    cursor.execute('SELECT * FROM unidades WHERE ativo = 1')
+    unidades = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('agendar.html', tipos_agendamento=tipos_agendamento,
+                           empreendimentos=empreendimentos, unidades=unidades)
 
 # ⚙️ Configurações
 

@@ -24,7 +24,7 @@
         <select id="tipo" name="tipo" required>
             <option value="" disabled selected>Selecione o tipo</option>
             {% for tipo in tipos_agendamento %}
-                <option value="{{ tipo.nome }}">{{ tipo.nome }}</option>
+            <option value="{{ tipo.nome }}">{{ tipo.nome }}</option>
             {% endfor %}
         </select>
 
@@ -32,9 +32,9 @@
         <select id="empreendimento" name="empreendimento" required>
             <option value="" disabled selected>Selecione o empreendimento</option>
             {% for emp in empreendimentos %}
-                {% if emp.ativo %}
-                    <option value="{{ emp.nome }}">{{ emp.nome }}</option>
-                {% endif %}
+            {% if emp.ativo %}
+            <option value="{{ emp.nome }}">{{ emp.nome }}</option>
+            {% endif %}
             {% endfor %}
         </select>
 
@@ -42,11 +42,11 @@
         <select id="unidade" name="unidade" required>
             <option value="" disabled selected>Selecione a unidade</option>
             {% for unidade in unidades %}
-                {% if unidade.ativo %}
-                    <option value="{{ unidade.nome }}" data-emp="{{ unidade.empreendimento_id }}">
-                        {{ unidade.nome }}
-                    </option>
-                {% endif %}
+            {% if unidade.ativo %}
+            <option value="{{ unidade.nome }}" data-emp="{{ unidade.empreendimento_id }}">
+                {{ unidade.nome }}
+            </option>
+            {% endif %}
             {% endfor %}
         </select>
 
@@ -65,14 +65,14 @@
     });
 
     // Filtro de unidades por empreendimento
-    document.getElementById('empreendimento').addEventListener('change', function() {
+    document.getElementById('empreendimento').addEventListener('change', function () {
         const empSelecionado = this.value;
         const unidadesSelect = document.getElementById('unidade');
         const todasUnidades = unidadesSelect.querySelectorAll('option');
-        
+
         // Resetar seleção
         unidadesSelect.value = '';
-        
+
         // Mostrar apenas unidades do empreendimento selecionado
         todasUnidades.forEach(opt => {
             if (opt.value === '' || opt.textContent.includes(empSelecionado)) {
