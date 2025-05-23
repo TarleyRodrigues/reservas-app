@@ -15,8 +15,7 @@
             {% for tipo in tipos %}
             <li>
                 {{ tipo.nome }}
-                <form method="POST" action="{{ url_for('remover_tipo') }}" style="display:inline;">
-                    <input type="hidden" name="tipo_id" value="{{ tipo.id }}">
+                <form method="POST" action="{{ url_for('remover_tipo', tipo_id=tipo.id) }}" style="display:inline;">
                     <button type="submit" class="btn-remove">Remover</button>
                 </form>
             </li>

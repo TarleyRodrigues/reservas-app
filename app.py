@@ -340,9 +340,27 @@ def adicionar_tipo():
             flash('Este tipo já existe!', 'error')
     return redirect(url_for('configuracoes'))
 
+
+@app.route('/remover_tipo/<int:tipo_id>', methods=['POST'])
+@login_required
+def remover_tipo(tipo_id):
+    if current_user.email != 'admin@admin.com':
+        flash('Acesso restrito a administradores', 'error')
+        return redirect(url_for('index'))
+
+    try:
+        with sqlite3.connect('database.db') as conn:
+            conn.execute(
+                'DELETE FROM tipos_agendamento WHERE id = ?', (tipo_id,))
+            conn.commit()
+            flash('Tipo removido com sucesso!', 'success')
+    except Exception as e:
+        flash('Erro ao remover tipo', 'error')
+        app.logger.error(f'Erro ao remover tipo: {e}')
+    return redirect(url_for('configuracoes'))
+
+
 # Listar todas as rotas
-
-
 @app.route('/listar_rotas')
 def listar_rotas():
     return jsonify({

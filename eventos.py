@@ -13,18 +13,20 @@ def eventos():
     cursor = conn.cursor()
 
     cursor.execute('''
-        SELECT 
-            a.id,
-            a.cliente_nome,
-            a.data_hora,
-            t.nome AS tipo_nome,
-            u.nome AS unidade_nome,
-            e.nome AS empreendimento_nome
-        FROM agendamentos a
-        JOIN tipos_agendamento t ON a.tipo_id = t.id
-        JOIN unidades u ON a.unidade_id = u.id
-        JOIN empreendimentos e ON u.empreendimento_id = e.id
-    ''')
+    SELECT 
+        a.id,
+        u.email AS cliente_email,
+        t.nome AS tipo_nome,
+        un.nome AS unidade_nome,
+        e.nome AS empreendimento_nome,
+        a.data,
+        a.hora
+    FROM agendamentos a
+    JOIN usuarios u ON a.usuario_id = u.id
+    JOIN tipos_agendamento t ON a.tipo_id = t.id
+    JOIN unidades un ON a.unidade_id = un.id
+    JOIN empreendimentos e ON un.empreendimento_id = e.id
+''')
 
     rows = cursor.fetchall()
     conn.close()
