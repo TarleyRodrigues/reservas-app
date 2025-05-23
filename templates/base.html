@@ -1,3 +1,5 @@
+Corrija completamente minha base.html se existir esses erros informados e retorne completo corrigido:
+"
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -174,13 +176,13 @@
       {% with messages = get_flashed_messages(with_categories = true) %}
       {% if messages %}
       {% for category, message in messages %}
-      showToast("{{ message }}", "{{ category }}");
-      {% endfor %}
-      {% endif %}
-      {% endwith %}
+      showToast({{ message| tojson }}, {{ category| tojson }});
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
     });
   </script>
 
 </body>
 
-</html>
+</html>"
