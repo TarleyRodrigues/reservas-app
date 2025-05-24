@@ -8,7 +8,6 @@
 
     <h2>Fazer Agendamento</h2>
 
-    <!-- 🔗 Botão para acessar o calendário -->
     <a href="{{ url_for('calendario') }}" class="header-btn" style="display: inline-block; margin-bottom: 20px;">
         📅 Ver Calendário
     </a>
@@ -24,32 +23,28 @@
         <input id="hora" type="time" name="hora" required>
 
         <label for="tipo">Tipo de agendamento</label>
-        <select id="tipo" name="tipo" required>
+        <select id="tipo" name="tipo_id" required>
             <option value="" disabled selected>Selecione o tipo</option>
-            {% for tipo in tipos_agendamento %}
-            <option value="{{ tipo.nome }}">{{ tipo.nome }}</option>
+            {% for tipo in tipos %}
+                <option value="{{ tipo.id }}">{{ tipo.nome }}</option>
             {% endfor %}
         </select>
 
         <label for="empreendimento">Empreendimento</label>
-        <select id="empreendimento" name="empreendimento" required>
+        <select id="empreendimento" name="empreendimento_id" required>
             <option value="" disabled selected>Selecione o empreendimento</option>
             {% for emp in empreendimentos %}
-            {% if emp.ativo %}
-            <option value="{{ emp.id }}">{{ emp.nome }}</option>
-            {% endif %}
+                <option value="{{ emp.id }}">{{ emp.nome }}</option>
             {% endfor %}
         </select>
 
         <label for="unidade">Unidade</label>
-        <select id="unidade" name="unidade" required>
+        <select id="unidade" name="unidade_id" required>
             <option value="" disabled selected>Selecione a unidade</option>
             {% for unidade in unidades %}
-            {% if unidade.ativo %}
-            <option value="{{ unidade.nome }}" data-emp="{{ unidade.empreendimento_id }}">
-                {{ unidade.nome }}
-            </option>
-            {% endif %}
+                <option value="{{ unidade.id }}" data-emp="{{ unidade.empreendimento_id }}">
+                    {{ unidade.nome }} ({{ unidade.empreendimento }})
+                </option>
             {% endfor %}
         </select>
 
@@ -67,22 +62,17 @@
         toggleBtn.textContent = body.classList.contains('dark') ? '☀️' : '🌙';
     });
 
-    // Filtro de unidades por empreendimento (filtra pelo id)
-    document.getElementById('empreendimento').addEventListener('change', function () {
-        const empSelecionado = this.value; // id do empreendimento selecionado
+    // Filtro de unidades por empreendimento
+    document.getElementById('empreendimento').addEventListener('change', function() {
+        const empId = this.value;
         const unidadesSelect = document.getElementById('unidade');
-        const todasUnidades = unidadesSelect.querySelectorAll('option');
-
-        unidadesSelect.value = ''; // reseta seleção da unidade
-
-        todasUnidades.forEach(opt => {
-            // sempre mostrar a opção padrão (value vazio)
-            if (opt.value === '') {
-                opt.style.display = 'block';
-                return;
-            }
-            const empId = opt.getAttribute('data-emp');
-            if (empId === empSelecionado) {
+        
+        // Resetar seleção
+        unidadesSelect.value = '';
+        
+        // Mostrar apenas unidades do empreendimento selecionado
+        unidadesSelect.querySelectorAll('option').forEach(opt => {
+            if (!opt.value || opt.dataset.emp === empId) {
                 opt.style.display = 'block';
             } else {
                 opt.style.display = 'none';

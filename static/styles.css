@@ -101,6 +101,15 @@ form input, form select {
   font-family: inherit;
 }
 
+select option[disabled]:first-child {
+    color: #999;
+}
+
+/* Melhoria visual para o filtro de unidades */
+select option[style*="display: none"] {
+    display: none !important;
+}
+
 form input::placeholder {
   color: #999;
   font-weight: 400;
