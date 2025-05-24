@@ -43,9 +43,9 @@
             <option value="" disabled selected>Selecione a unidade</option>
             {% for unidade in unidades %}
                 <option value="{{ unidade.id }}" data-emp="{{ unidade.empreendimento_id }}">
-                    {{ unidade.nome }} ({{ unidade.empreendimento }})
-                </option>
-            {% endfor %}
+                {{ unidade.nome }} ({{ unidade.nome_empreendimento }})
+            </option>
+        {% endfor %}
         </select>
 
         <button type="submit" class="btn-agendar">Agendar</button>
