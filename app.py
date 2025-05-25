@@ -456,6 +456,7 @@ def agendar():
 # ⚙️ Configurações
 
 
+# app.py - Rota configuracoes ajustada
 @app.route('/configuracoes')
 @login_required
 def configuracoes():
@@ -463,21 +464,16 @@ def configuracoes():
         flash('Acesso restrito a administradores', 'error')
         return redirect(url_for('index'))
 
-    conn = None  # Inicializa conn como None
+    conn = None
+    tipos_data = []
+    empreendimentos_data = []
     try:
         conn = sqlite3.connect('database.db')
         conn.row_factory = sqlite3.Row
-        tipos = conn.execute('SELECT * FROM tipos_agendamento').fetchall()
-        empreendimentos = conn.execute(
+        tipos_data = conn.execute('SELECT * FROM tipos_agendamento').fetchall()
+        empreendimentos_data = conn.execute(
             'SELECT * FROM empreendimentos').fetchall()
-        unidades = conn.execute('''
-            SELECT u.id, u.nome, u.ativo, e.nome as empreendimento_nome 
-            FROM unidades u
-            JOIN empreendimentos e ON u.empreendimento_id = e.id
-        ''').fetchall()  # Renomeado para evitar conflito com o objeto 'empreendimentos'
-
-        return render_template('configuracoes.html', tipos=tipos, empreendimentos=empreendimentos, unidades=unidades)
-
+        # Não carregamos mais todas as unidades aqui
     except sqlite3.DatabaseError as e:
         flash('Erro de banco ao carregar configurações', 'error')
         app.logger.error(f'Erro de banco em configuracoes: {e}')
@@ -487,8 +483,10 @@ def configuracoes():
     finally:
         if conn:
             conn.close()
-    # Retornar com listas vazias em caso de erro para o template não quebrar
-    return render_template('configuracoes.html', tipos=[], empreendimentos=[], unidades=[])
+
+    return render_template('configuracoes.html',
+                           tipos=tipos_data,
+                           empreendimentos=empreendimentos_data)
 
 # ➕ Adicionar tipo, empreendimento, unidade
 
