@@ -1,3 +1,4 @@
+# app.py
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import (
     LoginManager, UserMixin, login_user,
@@ -10,8 +11,9 @@ from flask import (
 import logging
 import sqlite3
 import os
-from datetime import datetime  # Importar datetime para trabalhar com datas e horas
+from datetime import datetime
 
+# ... (resto das suas importações e configurações iniciais) ...
 # Certifique-se de que eventos.py está no mesmo diretório ou no path correto
 # from eventos import eventos_bp # Deixe descomentado se você tiver este blueprint
 
@@ -159,20 +161,21 @@ def eventos():
         FROM agendamentos a
         JOIN usuarios u ON a.usuario_id = u.id
         JOIN tipos_agendamento t ON a.tipo_id = t.id
-    ''')
+    ''')  # Adicionar JOIN com unidades e empreendimentos se necessário
     rows = cursor.fetchall()
     conn.close()
 
-    eventos = []
+    eventos_lista = []  # Renomeado para evitar conflito com a função 'eventos'
     for row in rows:
         evento = {
             "id": row[0],
             "title": f"{row[1]} ({row[3]})",
+            # Ajustar se a data incluir hora e for para o FullCalendar
             "start": row[2]
         }
-        eventos.append(evento)
+        eventos_lista.append(evento)
 
-    return jsonify(eventos)
+    return jsonify(eventos_lista)
 
 
 @app.route('/debug-user')
@@ -184,12 +187,69 @@ def debug_user():
         'is_admin': current_user.email == 'admin@admin.com'
     })
 
+# --- INÍCIO DA ALTERAÇÃO/IMPLEMENTAÇÃO ---
 
-@app.route('/toggle_empreendimento')
+
+# Especificar methods=['POST']
+@app.route('/toggle_empreendimento', methods=['POST'])
+@login_required
 def toggle_empreendimento():
-    # lógica para alternar algo no empreendimento
-    # Esta rota não está sendo usada ou tem um retorno genérico
-    return redirect(url_for('index'))  # Redirecionar para uma rota válida
+    if current_user.email != 'admin@admin.com':
+        flash('Acesso restrito a administradores.', 'error')
+        return redirect(url_for('index'))
+
+    empreendimento_id = request.form.get('empreendimento_id')
+    if not empreendimento_id:
+        flash('ID do empreendimento não fornecido.', 'error')
+        return redirect(url_for('configuracoes'))
+
+    try:
+        with sqlite3.connect('database.db') as conn:
+            conn.row_factory = sqlite3.Row  # Para acessar colunas pelo nome
+            cursor = conn.cursor()
+
+            # Buscar o empreendimento e seu status atual
+            empreendimento = cursor.execute(
+                'SELECT id, ativo FROM empreendimentos WHERE id = ?',
+                (empreendimento_id,)
+            ).fetchone()
+
+            if empreendimento:
+                # Inverter o status (0 para 1, 1 para 0)
+                novo_status = 0 if empreendimento['ativo'] == 1 else 1
+
+                cursor.execute(
+                    'UPDATE empreendimentos SET ativo = ? WHERE id = ?',
+                    (novo_status, empreendimento_id)
+                )
+                conn.commit()
+
+                # Se desativar um empreendimento, também desativar suas unidades
+                if novo_status == 0:
+                    cursor.execute(
+                        'UPDATE unidades SET ativo = 0 WHERE empreendimento_id = ?',
+                        (empreendimento_id,)
+                    )
+                    conn.commit()
+                    flash(
+                        f'Empreendimento e suas unidades foram desativados.', 'success')
+                else:
+                    flash(
+                        f'Empreendimento foi ativado. Você pode precisar reativar unidades individualmente se desejar.', 'success')
+
+            else:
+                flash('Empreendimento não encontrado.', 'error')
+
+    except sqlite3.Error as e:
+        flash(
+            f'Erro no banco de dados ao tentar alterar o status do empreendimento: {e}', 'error')
+        app.logger.error(f"Erro DB em toggle_empreendimento: {e}")
+    except Exception as e:
+        flash(f'Ocorreu um erro inesperado: {e}', 'error')
+        app.logger.error(f"Erro inesperado em toggle_empreendimento: {e}")
+
+    return redirect(url_for('configuracoes'))
+# --- FIM DA ALTERAÇÃO/IMPLEMENTAÇÃO ---
 
 
 @app.route('/remover_empreendimento/<int:emp_id>', methods=['POST'])
@@ -200,9 +260,14 @@ def remover_empreendimento(emp_id):
         return redirect(url_for('index'))
     try:
         with sqlite3.connect('database.db') as conn:
+            # Antes de remover o empreendimento, verificar se existem unidades associadas
+            # Ou definir uma política (ex: remover unidades associadas ou impedir remoção)
+            # Por simplicidade, vamos remover. Cuidado com ON DELETE CASCADE se definido no DB.
+            conn.execute(
+                'DELETE FROM unidades WHERE empreendimento_id = ?', (emp_id,))
             conn.execute('DELETE FROM empreendimentos WHERE id = ?', (emp_id,))
             conn.commit()
-        flash('Empreendimento removido com sucesso!', 'success')
+        flash('Empreendimento e suas unidades foram removidos com sucesso!', 'success')
     except Exception as e:
         flash('Erro ao remover empreendimento', 'error')
         app.logger.error(f'Erro ao remover empreendimento: {e}')
@@ -217,14 +282,19 @@ def toggle_unidade(unidade_id):
         return redirect(url_for('index'))
     try:
         with sqlite3.connect('database.db') as conn:
-            # Pega o status atual
-            cur = conn.execute(
-                'SELECT ativo FROM unidades WHERE id = ?', (unidade_id,))
-            row = cur.fetchone()
-            if row:
-                novo_status = 0 if row[0] == 1 else 1
-                conn.execute(
-                    'UPDATE unidades SET ativo = ? WHERE id = ?', (novo_status, unidade_id))
+            conn.row_factory = sqlite3.Row  # Para acessar colunas pelo nome
+            cur = conn.cursor()  # Usar cursor para executar e depois commitar
+
+            unidade = cur.execute(
+                'SELECT ativo FROM unidades WHERE id = ?', (unidade_id,)
+            ).fetchone()
+
+            if unidade:
+                novo_status = 0 if unidade['ativo'] == 1 else 1
+                cur.execute(
+                    'UPDATE unidades SET ativo = ? WHERE id = ?', (
+                        novo_status, unidade_id)
+                )
                 conn.commit()
                 flash('Status da unidade atualizado.', 'success')
             else:
@@ -243,7 +313,7 @@ def agendar():
 
     try:
         if request.method == 'POST':
-            # Obter dados do formulário
+            # Este campo 'nome' parece ser para o título do agendamento, não do usuário
             nome = request.form['nome']
             data_str = request.form['data']
             hora_str = request.form['hora']
@@ -251,31 +321,25 @@ def agendar():
             unidade_id = request.form['unidade_id']
 
             app.logger.debug(
-                f"Dados recebidos para agendamento (POST): Nome={nome}, Data={data_str}, Hora={hora_str}, Tipo ID={tipo_id}, Unidade ID={unidade_id}")
+                f"Dados recebidos para agendamento (POST): Nome do evento={nome}, Data={data_str}, Hora={hora_str}, Tipo ID={tipo_id}, Unidade ID={unidade_id}")
 
-            # Validação e conversão de dados
             try:
-                # Converte strings para objetos date/time para validação
                 data_agendamento_obj = datetime.strptime(
                     data_str, '%Y-%m-%d').date()
                 hora_agendamento_obj = datetime.strptime(
                     hora_str, '%H:%M').time()
-
-                # Converte para strings no formato esperado pelo SQLite
                 data_para_db = data_agendamento_obj.strftime('%Y-%m-%d')
                 hora_para_db = hora_agendamento_obj.strftime('%H:%M')
-
                 tipo_id = int(tipo_id)
                 unidade_id = int(unidade_id)
-                usuario_id = current_user.id  # Pega o ID do usuário logado
+                usuario_id = current_user.id
 
             except ValueError as ve:
                 flash(
                     f'Erro de formato nos dados: {str(ve)}. Verifique a data e a hora.', 'error')
                 app.logger.error(
                     f'Erro de conversão de dados em /agendar (POST): {str(ve)}', exc_info=True)
-
-                # Recarrega dados para os selects em caso de erro e renderiza o template novamente
+                # Recarregar dados para os selects
                 tipos_refresh = conn.execute(
                     'SELECT id, nome FROM tipos_agendamento WHERE ativo = 1').fetchall()
                 empreendimentos_refresh = conn.execute(
@@ -283,38 +347,62 @@ def agendar():
                 unidades_refresh = conn.execute('''
                     SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
                     FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
-                    WHERE u.ativo = 1
+                    WHERE u.ativo = 1 AND e.ativo = 1
                 ''').fetchall()
+                return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
+                                       form_data=request.form)  # Passa o form data para repopular
 
-                return render_template(
-                    'agendar.html',
-                    tipos=tipos_refresh,
-                    empreendimentos=empreendimentos_refresh,
-                    unidades=unidades_refresh,
-                    # Preenche os campos do formulário com os dados que o usuário digitou
-                    nome=nome,
-                    data=data_str,
-                    hora=hora_str,
-                    # Certifique-se de que tipo_id_selected é string para o template
-                    tipo_id_selected=str(tipo_id),
-                    # Certifique-se de que unidade_id_selected é string
-                    unidade_id_selected=str(unidade_id)
-                )
+            # Verificar se a unidade e o tipo selecionados estão ativos
+            unidade_selecionada = conn.execute('''
+                SELECT u.*, e.ativo as empreendimento_ativo 
+                FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id 
+                WHERE u.id = ?
+            ''', (unidade_id,)).fetchone()
 
-            except Exception as e:  # Captura outros erros durante a conversão
+            tipo_selecionado = conn.execute(
+                'SELECT * FROM tipos_agendamento WHERE id = ?', (tipo_id,)).fetchone()
+
+            if not (unidade_selecionada and unidade_selecionada['ativo'] and unidade_selecionada['empreendimento_ativo']):
                 flash(
-                    f'Erro inesperado na validação dos dados: {str(e)}', 'error')
-                app.logger.error(
-                    f'Erro inesperado de validação em /agendar (POST): {str(e)}', exc_info=True)
-                return redirect(url_for('agendar'))
+                    'A unidade selecionada (ou seu empreendimento) não está ativa.', 'error')
+                # Recarregar dados para os selects
+                tipos_refresh = conn.execute(
+                    'SELECT id, nome FROM tipos_agendamento WHERE ativo = 1').fetchall()
+                empreendimentos_refresh = conn.execute(
+                    'SELECT id, nome FROM empreendimentos WHERE ativo = 1').fetchall()
+                unidades_refresh = conn.execute('''
+                    SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
+                    FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
+                    WHERE u.ativo = 1 AND e.ativo = 1
+                ''').fetchall()
+                return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
+                                       form_data=request.form)
 
-            # Inserir no banco de dados
+            if not (tipo_selecionado and tipo_selecionado['ativo']):
+                flash('O tipo de agendamento selecionado não está ativo.', 'error')
+                # Recarregar dados para os selects
+                tipos_refresh = conn.execute(
+                    'SELECT id, nome FROM tipos_agendamento WHERE ativo = 1').fetchall()
+                empreendimentos_refresh = conn.execute(
+                    'SELECT id, nome FROM empreendimentos WHERE ativo = 1').fetchall()
+                unidades_refresh = conn.execute('''
+                    SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
+                    FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
+                    WHERE u.ativo = 1 AND e.ativo = 1
+                ''').fetchall()
+                return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
+                                       form_data=request.form)
+
             try:
+                # Se o campo 'nome' do formulário for para um título específico do agendamento,
+                # você precisará adicionar uma coluna na tabela 'agendamentos' para armazená-lo.
+                # Por enquanto, vou assumir que 'nome' no formulário não é para ser salvo diretamente
+                # ou que será usado para compor o título do evento no calendário (como já faz).
+                # Se for para salvar, a query INSERT precisa ser ajustada.
                 conn.execute(
                     '''INSERT INTO agendamentos (usuario_id, tipo_id, unidade_id, data, hora)
                        VALUES (?, ?, ?, ?, ?)''',
-                    (usuario_id, tipo_id, unidade_id,
-                     data_para_db, hora_para_db)  # <--- AQUI ESTÁ A MUDANÇA PRINCIPAL
+                    (usuario_id, tipo_id, unidade_id, data_para_db, hora_para_db)
                 )
                 conn.commit()
                 flash('Agendamento realizado com sucesso!', 'success')
@@ -327,8 +415,7 @@ def agendar():
                     f'Erro ao salvar agendamento no banco de dados: {str(db_error)}', 'error')
                 app.logger.error(
                     f'Erro de DB em /agendar (POST): {str(db_error)}', exc_info=True)
-
-                # Recarrega dados para os selects em caso de erro e renderiza o template novamente
+                # Recarregar dados para os selects
                 tipos_refresh = conn.execute(
                     'SELECT id, nome FROM tipos_agendamento WHERE ativo = 1').fetchall()
                 empreendimentos_refresh = conn.execute(
@@ -336,56 +423,35 @@ def agendar():
                 unidades_refresh = conn.execute('''
                     SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
                     FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
-                    WHERE u.ativo = 1
+                    WHERE u.ativo = 1 AND e.ativo = 1
                 ''').fetchall()
-
-                return render_template(
-                    'agendar.html',
-                    tipos=tipos_refresh,
-                    empreendimentos=empreendimentos_refresh,
-                    unidades=unidades_refresh,
-                    nome=nome,
-                    data=data_str,
-                    hora=hora_str,
-                    tipo_id_selected=str(tipo_id),
-                    unidade_id_selected=str(unidade_id)
-                )
+                return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
+                                       form_data=request.form)
 
         else:  # request.method == 'GET'
-            # Carrega tipos ativos
             tipos = conn.execute(
-                'SELECT id, nome FROM tipos_agendamento WHERE ativo = 1'
-            ).fetchall()
-
-            # Carrega empreendimentos ativos
+                'SELECT id, nome FROM tipos_agendamento WHERE ativo = 1').fetchall()
             empreendimentos = conn.execute(
-                'SELECT id, nome FROM empreendimentos WHERE ativo = 1'
-            ).fetchall()
-
-            # Consulta para unidades com nome do empreendimento
+                'SELECT id, nome FROM empreendimentos WHERE ativo = 1').fetchall()
+            # Mostrar apenas unidades ativas de empreendimentos ativos
             unidades = conn.execute('''
                 SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
                 FROM unidades u
                 JOIN empreendimentos e ON u.empreendimento_id = e.id
-                WHERE u.ativo = 1
+                WHERE u.ativo = 1 AND e.ativo = 1 
             ''').fetchall()
-
             app.logger.debug(f"Unidades carregadas para GET: {unidades}")
-
-            return render_template(
-                'agendar.html',
-                tipos=tipos,
-                empreendimentos=empreendimentos,
-                unidades=unidades
-            )
+            return render_template('agendar.html', tipos=tipos, empreendimentos=empreendimentos, unidades=unidades)
 
     except Exception as e:
         flash(f'Erro interno ao processar agendamento: {str(e)}', 'error')
         app.logger.error(
             f'Erro inesperado em /agendar: {str(e)}', exc_info=True)
+        # Ou uma página de erro mais específica
         return redirect(url_for('index'))
     finally:
-        conn.close()
+        if conn:  # Garante que a conexão só é fechada se foi aberta
+            conn.close()
 
 # ⚙️ Configurações
 
@@ -397,17 +463,18 @@ def configuracoes():
         flash('Acesso restrito a administradores', 'error')
         return redirect(url_for('index'))
 
+    conn = None  # Inicializa conn como None
     try:
-        with sqlite3.connect('database.db') as conn:
-            conn.row_factory = sqlite3.Row
-            tipos = conn.execute('SELECT * FROM tipos_agendamento').fetchall()
-            empreendimentos = conn.execute(
-                'SELECT * FROM empreendimentos').fetchall()
-            unidades = conn.execute('''
-                SELECT u.id, u.nome, u.ativo, e.nome as empreendimento
-                FROM unidades u
-                JOIN empreendimentos e ON u.empreendimento_id = e.id
-            ''').fetchall()
+        conn = sqlite3.connect('database.db')
+        conn.row_factory = sqlite3.Row
+        tipos = conn.execute('SELECT * FROM tipos_agendamento').fetchall()
+        empreendimentos = conn.execute(
+            'SELECT * FROM empreendimentos').fetchall()
+        unidades = conn.execute('''
+            SELECT u.id, u.nome, u.ativo, e.nome as empreendimento_nome 
+            FROM unidades u
+            JOIN empreendimentos e ON u.empreendimento_id = e.id
+        ''').fetchall()  # Renomeado para evitar conflito com o objeto 'empreendimentos'
 
         return render_template('configuracoes.html', tipos=tipos, empreendimentos=empreendimentos, unidades=unidades)
 
@@ -417,35 +484,49 @@ def configuracoes():
     except Exception as e:
         flash('Erro inesperado ao carregar configurações', 'error')
         app.logger.error(f'Erro inesperado em configuracoes: {e}')
-
+    finally:
+        if conn:
+            conn.close()
+    # Retornar com listas vazias em caso de erro para o template não quebrar
     return render_template('configuracoes.html', tipos=[], empreendimentos=[], unidades=[])
 
-# ➕ Adicionar tipo
+# ➕ Adicionar tipo, empreendimento, unidade
 
 
 @app.route('/adicionar_empreendimento', methods=['POST'])
 @login_required
 def adicionar_empreendimento():
+    if current_user.email != 'admin@admin.com':  # Verificação de admin
+        flash('Acesso restrito a administradores', 'error')
+        return redirect(url_for('index'))
+
     nome = request.form.get('nome', '').strip()
     app.logger.debug(f"Nome recebido para empreendimento: '{nome}'")
     if nome:
         try:
             with sqlite3.connect('database.db') as conn:
+                # Por padrão, um novo empreendimento é ativo (definido no CREATE TABLE)
                 conn.execute(
                     'INSERT INTO empreendimentos (nome) VALUES (?)', (nome,))
                 conn.commit()
             flash('Empreendimento adicionado com sucesso!', 'success')
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError:  # Nome do empreendimento é UNIQUE
             flash('Este empreendimento já existe!', 'error')
+        except Exception as e:
+            flash('Erro ao adicionar empreendimento.', 'error')
+            app.logger.error(f"Erro ao adicionar empreendimento: {e}")
     else:
         flash('Nome do empreendimento é obrigatório.', 'error')
-
     return redirect(url_for('configuracoes'))
 
 
 @app.route('/adicionar_unidade', methods=['POST'])
 @login_required
 def adicionar_unidade():
+    if current_user.email != 'admin@admin.com':  # Verificação de admin
+        flash('Acesso restrito a administradores', 'error')
+        return redirect(url_for('index'))
+
     nome = request.form.get('nome', '').strip()
     empreendimento_id = request.form.get('empreendimento_id')
 
@@ -455,34 +536,57 @@ def adicionar_unidade():
 
     try:
         with sqlite3.connect('database.db') as conn:
+            # Verificar se o empreendimento pai está ativo antes de adicionar unidade
+            empreendimento_pai = conn.execute(
+                "SELECT ativo FROM empreendimentos WHERE id = ?", (empreendimento_id,)).fetchone()
+            # Se não encontrado ou inativo
+            if not empreendimento_pai or not empreendimento_pai[0]:
+                flash(
+                    'Não é possível adicionar unidade a um empreendimento inativo.', 'error')
+                return redirect(url_for('configuracoes'))
+
+            # Por padrão, uma nova unidade é ativa (definido no CREATE TABLE)
             conn.execute(
                 'INSERT INTO unidades (nome, empreendimento_id) VALUES (?, ?)',
-                (nome, empreendimento_id)
+                # Garantir que empreendimento_id é int
+                (nome, int(empreendimento_id))
             )
             conn.commit()
         flash('Unidade adicionada com sucesso!', 'success')
-    except sqlite3.IntegrityError:
+    except sqlite3.IntegrityError:  # UNIQUE(nome, empreendimento_id)
         flash('Essa unidade já existe nesse empreendimento.', 'error')
+    except ValueError:  # Erro ao converter empreendimento_id para int
+        flash('ID do empreendimento inválido.', 'error')
     except Exception as e:
         app.logger.error(f'Erro ao adicionar unidade: {str(e)}')
         flash('Erro ao adicionar unidade.', 'error')
-
     return redirect(url_for('configuracoes'))
 
 
 @app.route('/adicionar_tipo', methods=['POST'])
 @login_required
 def adicionar_tipo():
-    novo_tipo = request.form['novo_tipo'].strip()
+    if current_user.email != 'admin@admin.com':  # Verificação de admin
+        flash('Acesso restrito a administradores', 'error')
+        return redirect(url_for('index'))
+
+    # Usar get para evitar KeyError
+    novo_tipo = request.form.get('novo_tipo', '').strip()
     if novo_tipo:
         try:
             with sqlite3.connect('database.db') as conn:
+                # Por padrão, um novo tipo é ativo (definido no CREATE TABLE)
                 conn.execute(
                     'INSERT INTO tipos_agendamento (nome) VALUES (?)', (novo_tipo,))
                 conn.commit()
-            flash('Tipo adicionado com sucesso!', 'success')
-        except sqlite3.IntegrityError:
-            flash('Este tipo já existe!', 'error')
+            flash('Tipo de agendamento adicionado com sucesso!', 'success')
+        except sqlite3.IntegrityError:  # Nome do tipo é UNIQUE
+            flash('Este tipo de agendamento já existe!', 'error')
+        except Exception as e:
+            flash('Erro ao adicionar tipo de agendamento.', 'error')
+            app.logger.error(f"Erro ao adicionar tipo: {e}")
+    else:
+        flash('Nome do tipo de agendamento é obrigatório.', 'error')
     return redirect(url_for('configuracoes'))
 
 
@@ -492,9 +596,9 @@ def remover_tipo(tipo_id):
     if current_user.email != 'admin@admin.com':
         flash('Acesso restrito a administradores', 'error')
         return redirect(url_for('index'))
-
     try:
         with sqlite3.connect('database.db') as conn:
+            # Adicionar verificação se o tipo está em uso antes de deletar, se necessário
             conn.execute(
                 'DELETE FROM tipos_agendamento WHERE id = ?', (tipo_id,))
             conn.commit()
@@ -504,43 +608,69 @@ def remover_tipo(tipo_id):
         app.logger.error(f'Erro ao remover tipo: {e}')
     return redirect(url_for('configuracoes'))
 
-# rotas de Verificacoes
+# app.py (adicione esta nova rota)
+
+# ... (outras rotas) ...
 
 
-@app.route('/listar_rotas')
-def listar_rotas():
-    return jsonify({
-        'rotas': [str(rule) for rule in app.url_map.iter_rules()]
-    })
+@app.route('/remover_unidade/<int:unidade_id>', methods=['POST'])
+@login_required
+def remover_unidade(unidade_id):
+    if current_user.email != 'admin@admin.com':
+        flash('Acesso restrito a administradores.', 'error')
+        return redirect(url_for('index'))
 
-
-@app.route('/teste_insert')
-def teste_insert():
     try:
         with sqlite3.connect('database.db') as conn:
-            conn.execute(
-                "INSERT INTO empreendimentos (nome) VALUES (?)", ("Teste Inserção",))
-            conn.commit()
-        return "Inserido com sucesso!"
+            cursor = conn.cursor()
+
+            # Verificar se a unidade existe antes de tentar deletar
+            unidade = cursor.execute(
+                'SELECT id FROM unidades WHERE id = ?', (unidade_id,)
+            ).fetchone()
+
+            if not unidade:
+                flash('Unidade não encontrada.', 'error')
+                return redirect(url_for('configuracoes'))
+
+            # Considerar o que acontece com agendamentos ligados a esta unidade.
+            # A foreign key em 'agendamentos' para 'unidade_id' está como ON DELETE RESTRICT.
+            # Isso significa que o SQLite impedirá a deleção da unidade se houver agendamentos
+            # referenciando-a. Você precisa decidir como lidar com isso:
+            # 1. Manter o RESTRICT e mostrar um erro se estiver em uso.
+            # 2. Alterar para ON DELETE CASCADE na tabela agendamentos (deleta agendamentos associados).
+            # 3. Alterar para ON DELETE SET NULL (define unidade_id como NULL nos agendamentos).
+            # 4. Deletar manualmente os agendamentos antes de deletar a unidade.
+
+            # Por enquanto, vamos tentar deletar e capturar a exceção de integridade.
+            try:
+                cursor.execute(
+                    'DELETE FROM unidades WHERE id = ?', (unidade_id,))
+                conn.commit()
+                flash('Unidade removida com sucesso!', 'success')
+            except sqlite3.IntegrityError:
+                # Isso acontecerá se ON DELETE RESTRICT estiver ativo e a unidade estiver em uso.
+                flash(
+                    'Erro: Esta unidade não pode ser removida pois está associada a agendamentos existentes.', 'error')
+                app.logger.warning(
+                    f"Tentativa de remover unidade {unidade_id} em uso.")
+
+    except sqlite3.Error as e:
+        flash(f'Erro no banco de dados ao remover unidade: {e}', 'error')
+        app.logger.error(f"Erro DB em remover_unidade: {e}")
     except Exception as e:
-        return f"Erro: {e}"
+        flash(f'Ocorreu um erro inesperado ao remover unidade: {e}', 'error')
+        app.logger.error(f"Erro inesperado em remover_unidade: {e}")
 
+    return redirect(url_for('configuracoes'))
 
-@app.route('/debug-unidades')
-def debug_unidades():
-    with sqlite3.connect('database.db') as conn:
-        conn.row_factory = sqlite3.Row
-        unidades = conn.execute('''
-            SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento
-            FROM unidades u
-            JOIN empreendimentos e ON u.empreendimento_id = e.id
-        ''').fetchall()
-        return jsonify([dict(u) for u in unidades])
+# ... (resto do app.py) ...
+
+# ... (suas rotas de debug e init_db) ...
 
 # 🧱 Banco de dados
 
 
-# 🧱 Banco de dados
 def init_db():
     with sqlite3.connect('database.db') as conn:
         cursor = conn.cursor()
@@ -549,7 +679,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS tipos_agendamento (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nome TEXT UNIQUE NOT NULL,
-                ativo BOOLEAN DEFAULT 1
+                ativo INTEGER DEFAULT 1 CHECK(ativo IN (0, 1)) -- Usar INTEGER para booleano
             )
         ''')
 
@@ -557,7 +687,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS empreendimentos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nome TEXT UNIQUE NOT NULL,
-                ativo BOOLEAN DEFAULT 1
+                ativo INTEGER DEFAULT 1 CHECK(ativo IN (0, 1)) -- Usar INTEGER para booleano
             )
         ''')
 
@@ -566,8 +696,8 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nome TEXT NOT NULL,
                 empreendimento_id INTEGER NOT NULL,
-                ativo BOOLEAN DEFAULT 1,
-                FOREIGN KEY (empreendimento_id) REFERENCES empreendimentos(id),
+                ativo INTEGER DEFAULT 1 CHECK(ativo IN (0, 1)), -- Usar INTEGER para booleano
+                FOREIGN KEY (empreendimento_id) REFERENCES empreendimentos(id) ON DELETE CASCADE, -- Adicionado ON DELETE CASCADE
                 UNIQUE(nome, empreendimento_id)
             )
         ''')
@@ -581,49 +711,66 @@ def init_db():
             )
         ''')
 
-        # -- Tabela agendamentos ajustada
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS agendamentos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 usuario_id INTEGER NOT NULL,
                 tipo_id INTEGER NOT NULL,
                 unidade_id INTEGER NOT NULL,
-                data TEXT NOT NULL, -- Armazenar como TEXT 'YYYY-MM-DD' para compatibilidade
-                hora TEXT NOT NULL, -- Armazenar como TEXT 'HH:MM'
-                FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
-                FOREIGN KEY (tipo_id) REFERENCES tipos_agendamento(id),
-                FOREIGN KEY (unidade_id) REFERENCES unidades(id)
+                data TEXT NOT NULL,
+                hora TEXT NOT NULL,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL, -- Ou CASCADE, dependendo da regra
+                FOREIGN KEY (tipo_id) REFERENCES tipos_agendamento(id) ON DELETE RESTRICT, -- Impedir deleção se em uso
+                FOREIGN KEY (unidade_id) REFERENCES unidades(id) ON DELETE RESTRICT -- Impedir deleção se em uso
             )
         ''')
+        conn.commit()  # Commit após todas as criações de tabela
 
 
 def criar_usuario_inicial():
     with sqlite3.connect('database.db') as conn:
         cursor = conn.cursor()
-        senha_hash = generate_password_hash('123456')
-        try:
-            cursor.execute(
-                'INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)',
-                ('Administrador', 'admin@admin.com', senha_hash)
-            )
-            conn.commit()
-        except sqlite3.IntegrityError:
-            print("Usuário inicial já existe.")
+        # Verificar se o usuário admin já existe
+        admin_exists = cursor.execute(
+            "SELECT id FROM usuarios WHERE email = ?", ('admin@admin.com',)).fetchone()
+        if not admin_exists:
+            # Use uma senha mais forte em produção
+            senha_hash = generate_password_hash('123456')
+            try:
+                cursor.execute(
+                    'INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)',
+                    ('Administrador', 'admin@admin.com', senha_hash)
+                )
+                conn.commit()
+                app.logger.info("Usuário administrador inicial criado.")
+            except sqlite3.IntegrityError:
+                app.logger.info(
+                    "Usuário administrador inicial já existe (verificação de concorrência).")
+        else:
+            app.logger.info("Usuário administrador inicial já existe.")
 
-
-def atualizar_tabela_usuarios():
-    with sqlite3.connect('database.db') as conn:
-        try:
-            conn.execute("ALTER TABLE usuarios ADD COLUMN nome TEXT")
-            conn.commit()
-        except sqlite3.OperationalError:
-            pass  # Coluna já existe
+# Remover atualizar_tabela_usuarios() se a coluna 'nome' já está no CREATE TABLE
+# def atualizar_tabela_usuarios():
+#     with sqlite3.connect('database.db') as conn:
+#         try:
+#             # Verificar se a coluna 'nome' já existe antes de tentar adicioná-la
+#             cursor = conn.cursor()
+#             cursor.execute("PRAGMA table_info(usuarios)")
+#             columns = [info[1] for info in cursor.fetchall()]
+#             if 'nome' not in columns:
+#                 conn.execute("ALTER TABLE usuarios ADD COLUMN nome TEXT")
+#                 conn.commit()
+#                 app.logger.info("Coluna 'nome' adicionada à tabela 'usuarios'.")
+#             else:
+#                 app.logger.info("Coluna 'nome' já existe na tabela 'usuarios'.")
+#         except sqlite3.OperationalError as e:
+#             app.logger.warning(f"Possível erro ao tentar adicionar coluna 'nome' (pode já existir): {e}")
 
 
 # 🚀 Execução
 if __name__ == '__main__':
-    init_db()
-    # Pode ser removido depois de garantir que a coluna 'nome' existe
-    atualizar_tabela_usuarios()
-    criar_usuario_inicial()
+    with app.app_context():  # Necessário para operações de DB fora de uma requisição, se usar extensões Flask
+        init_db()
+        # atualizar_tabela_usuarios() # Descomente se precisar rodar uma vez
+        criar_usuario_inicial()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=True)
