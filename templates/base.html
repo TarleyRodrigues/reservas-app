@@ -98,6 +98,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // As mensagens são renderizadas pelo Jinja como chamadas JS válidas
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}

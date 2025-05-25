@@ -5,9 +5,9 @@
     <!-- Menu Lateral -->
     <div class="config-sidebar">
         <ul class="config-menu">
-            <li><a href="#" data-target="tipos">Tipos de Agendamento</a></li>
-            <li><a href="#" data-target="empreendimentos">Empreendimentos e Unidades</a></li>
-            <!-- Adicionar mais itens de menu aqui no futuro, se necessário -->
+            <li><a href="#" data-target="tipos" class="config-menu-link">Tipos de Agendamento</a></li>
+            <li><a href="#" data-target="empreendimentos" class="config-menu-link">Empreendimentos e Unidades</a></li>
+            <li><a href="#" data-target="seguranca" class="config-menu-link">Segurança</a></li>
         </ul>
     </div>
 
@@ -19,17 +19,22 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {# Mapear categoria do Flask para tipo de toast se necessário #}
+                    {% set toast_type = category %}
+                    {% if category == 'danger' %}{% set toast_type = 'error' %}{% endif %}
+                    {# O JS do base.html já deve estar mostrando os toasts #}
+                    {# Esta div é apenas para mostrar as mensagens se o JS falhar ou como fallback #}
+                    <div class="alert alert-{{ toast_type }}" style="display:none;">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <!-- Seção Tipos de Agendamento (inicialmente visível ou controlada por JS) -->
+        <!-- Seção Tipos de Agendamento -->
         <div id="config-tipos" class="config-content-section">
             <h2>Tipos de Agendamento</h2>
             <form method="POST" action="{{ url_for('adicionar_tipo') }}" class="config-form">
                 <input type="text" name="novo_tipo" placeholder="Nome do novo tipo" required>
-                <button type="submit" class="btn-add">Adicionar Tipo</button>
+                <button type="submit" class="btn btn-primary btn-sm">Adicionar Tipo</button> {# MODIFIED: Classes de botão #}
             </form>
             <table class="config-table">
                 <thead>
@@ -49,9 +54,8 @@
                             </span>
                         </td>
                         <td>
-                            {# Se implementado, botão de toggle_tipo aqui #}
                             <form method="POST" action="{{ url_for('remover_tipo', tipo_id=tipo.id) }}" style="display:inline;" class="form-remove">
-                                <button type="submit" class="btn-remove btn-sm">Remover</button>
+                                <button type="submit" class="btn btn-danger btn-sm">Remover</button> {# MODIFIED: Classes de botão #}
                             </form>
                         </td>
                     </tr>
@@ -62,12 +66,12 @@
             </table>
         </div>
 
-        <!-- Seção Empreendimentos e Unidades (inicialmente oculta ou controlada por JS) -->
+        <!-- Seção Empreendimentos e Unidades -->
         <div id="config-empreendimentos" class="config-content-section" style="display: none;">
             <h2>Empreendimentos</h2>
             <form method="POST" action="{{ url_for('adicionar_empreendimento') }}" class="config-form">
                 <input type="text" name="nome" placeholder="Nome do novo empreendimento" required>
-                <button type="submit" class="btn-add">Adicionar Empreendimento</button>
+                <button type="submit" class="btn btn-primary btn-sm">Adicionar Empreendimento</button> {# MODIFIED: Classes de botão #}
             </form>
             <table class="config-table" id="empreendimentos-table">
                 <thead>
@@ -75,7 +79,7 @@
                         <th>Nome</th>
                         <th>Status</th>
                         <th>Ações</th>
-                        <th>Ver Unidades</th>
+                        <th>Unidades</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -90,16 +94,16 @@
                         <td>
                             <form method="POST" action="{{ url_for('toggle_empreendimento') }}" style="display:inline;">
                                 <input type="hidden" name="empreendimento_id" value="{{ empreendimento.id }}">
-                                <button type="submit" class="btn-toggle btn-sm {% if empreendimento.ativo %}btn-warning{% else %}btn-success{% endif %}">
+                                <button type="submit" class="btn btn-sm {% if empreendimento.ativo %}btn-toggle btn-warning{% else %}btn-toggle btn-success{% endif %}">
                                     {{ 'Desativar' if empreendimento.ativo else 'Ativar' }}
                                 </button>
                             </form>
                             <form method="POST" action="{{ url_for('remover_empreendimento', emp_id=empreendimento.id) }}" style="display:inline;" class="form-remove">
-                                <button type="submit" class="btn-remove btn-sm">Remover</button>
+                                <button type="submit" class="btn btn-danger btn-sm">Remover</button> {# MODIFIED: Classes de botão #}
                             </form>
                         </td>
                         <td>
-                            <button class="btn-view-units btn-sm btn-info" data-id="{{ empreendimento.id }}">Ver Unidades</button>
+                            <button class="btn-view-units btn btn-info btn-sm" data-id="{{ empreendimento.id }}">Ver Unidades</button> {# MODIFIED: Classes de botão #}
                         </td>
                     </tr>
                     {% else %}
@@ -107,15 +111,13 @@
                     {% endfor %}
                 </tbody>
             </table>
-
             <hr>
-            <!-- Seção de Unidades (será populada por JavaScript) -->
             <div id="unidades-section" style="display: none;">
                 <h3 id="unidades-title">Unidades do Empreendimento: <span id="selected-empreendimento-nome"></span></h3>
                 <form method="POST" action="{{ url_for('adicionar_unidade') }}" class="config-form" id="form-adicionar-unidade">
                     <input type="hidden" name="empreendimento_id" id="form-unidade-empreendimento-id" value="">
                     <input type="text" name="nome" placeholder="Nome da nova unidade" required>
-                    <button type="submit" class="btn-add">Adicionar Unidade</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Adicionar Unidade</button> {# MODIFIED: Classes de botão #}
                 </form>
                 <table class="config-table" id="unidades-table">
                     <thead>
@@ -126,100 +128,155 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Linhas de unidades serão inseridas aqui por JS -->
                         <tr><td colspan="3" id="no-units-message">Selecione um empreendimento para ver suas unidades.</td></tr>
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- Seção de Segurança -->
+        <div id="config-seguranca" class="config-content-section" style="display: none;">
+            <h2>Gerenciamento de Administradores</h2>
+            <h3>Administradores Atuais</h3>
+            {% if admin_users %}
+            <table class="config-table" id="admin-users-table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for admin_user in admin_users %}
+                    <tr>
+                        <td>{{ admin_user.nome if admin_user.nome else 'N/A' }}</td>
+                        <td>{{ admin_user.email }}</td>
+                        <td>
+                            {# Regra para não remover o próprio usuário ou o admin principal (ajuste 'admin@admin.com' se necessário) #}
+                            {% if admin_user.id != current_user.id and admin_user.email != 'admin@admin.com' %}
+                            <form method="POST" action="{{ url_for('remover_admin', user_id=admin_user.id) }}" style="display:inline;" class="form-remove">
+                                <button type="submit" class="btn btn-danger btn-sm">Remover Status Admin</button>
+                            </form>
+                            {% elif admin_user.id == current_user.id %}
+                                <span>(Você)</span>
+                            {% else %}
+                                <span>(Admin Principal)</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>Nenhum administrador configurado (além do principal, se houver).</p>
+            {% endif %}
+            <hr>
+            <h3>Promover Usuário a Administrador</h3>
+            {% if normal_users %}
+            <form method="POST" action="{{ url_for('promover_admin') }}" id="form-promover-admin" class="config-form">
+                <select name="user_to_promote_id" required>
+                    <option value="">Selecione um usuário...</option>
+                    {% for user in normal_users %}
+                        <option value="{{ user.id }}">{{ user.nome if user.nome else user.email }} ({{ user.email }})</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-success btn-sm">Tornar Admin</button> {# MODIFIED: Classes de botão #}
+            </form>
+            {% else %}
+            <p>Não há usuários normais para promover no momento.</p>
+            {% endif %}
         </div>
     </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const menuLinks = document.querySelectorAll('.config-menu a');
+    const menuLinks = document.querySelectorAll('.config-menu-link'); // MODIFIED: Seletor mais específico
     const contentSections = document.querySelectorAll('.config-content-section');
     const unidadesSection = document.getElementById('unidades-section');
     const unidadesTableBody = document.querySelector('#unidades-table tbody');
     const selectedEmpreendimentoNome = document.getElementById('selected-empreendimento-nome');
     const formUnidadeEmpreendimentoId = document.getElementById('form-unidade-empreendimento-id');
-    const noUnitsMessageRow = document.getElementById('no-units-message').parentNode; // A linha <tr> que contém a mensagem
+    const noUnitsMessageRowOriginal = document.getElementById('no-units-message').parentNode.cloneNode(true); // Clonar para resetar
 
-    // Função para mostrar a seção correta e atualizar o menu
-    function showSection(targetId) {
+    function showSection(targetId, keepUnitsVisible = false) {
         contentSections.forEach(section => {
             section.style.display = (section.id === 'config-' + targetId) ? 'block' : 'none';
         });
         menuLinks.forEach(link => {
             link.classList.toggle('active', link.dataset.target === targetId);
         });
-        // Se não for a seção de empreendimentos, esconde a seção de unidades
-        if (targetId !== 'empreendimentos') {
+        
+        if (targetId !== 'empreendimentos' && !keepUnitsVisible) {
             unidadesSection.style.display = 'none';
-        } else {
-            // Se for a seção de empreendimentos, mas nenhuma unidade carregada, mostra a mensagem inicial
-            if (unidadesTableBody.children.length <= 1 && unidadesTableBody.contains(noUnitsMessageRow)) { // <=1 para contar o <tr> da mensagem
-                 unidadesSection.style.display = 'block'; // Mostra a seção de unidades
+        } else if (targetId === 'empreendimentos') {
+            // Se as unidades já foram carregadas para um empreendimento, mantenha visível.
+            // Senão, mostre a mensagem para selecionar um.
+            if (unidadesTableBody.children.length > 0 && unidadesTableBody.firstChild.id !== 'no-units-message') {
+                 unidadesSection.style.display = 'block';
+            } else {
+                resetUnidadesView(); // Isso mostrará a mensagem "Selecione um empreendimento"
+                unidadesSection.style.display = 'block'; // Garante que a seção de unidades (com a msg) é visível
             }
         }
     }
 
-    // Event listener para os links do menu
     menuLinks.forEach(link => {
         link.addEventListener('click', function (e) {
             e.preventDefault();
             const target = this.dataset.target;
+            history.pushState(null, '', `{{ url_for('configuracoes') }}?tab=${target}`); // NEW: Atualiza URL sem recarregar
             showSection(target);
-            // Se clicou em empreendimentos, reseta a seleção de unidades
             if (target === 'empreendimentos') {
-                resetUnidadesView();
+                 // Não reseta imediatamente, espera clique em "Ver Unidades" ou se active_emp_id for lido
             }
         });
     });
 
-    // Mostrar a primeira seção por padrão (ou a que tiver 'active' no HTML)
-    showSection('tipos'); // Ou 'empreendimentos' se preferir
-
-    // Event listeners para botões "Ver Unidades"
     document.querySelectorAll('.btn-view-units').forEach(button => {
         button.addEventListener('click', function() {
             const empreendimentoId = this.dataset.id;
             const empreendimentoNome = this.closest('tr').querySelector('td:first-child').textContent;
+            // Adicionar o ID do empreendimento à URL para persistência, se desejado
+            history.pushState(null, '', `{{ url_for('configuracoes') }}?tab=empreendimentos&active_emp_id=${empreendimentoId}`);
             loadUnidades(empreendimentoId, empreendimentoNome);
         });
     });
 
     function resetUnidadesView() {
-        unidadesTableBody.innerHTML = ''; // Limpa a tabela
-        unidadesTableBody.appendChild(noUnitsMessageRow); // Adiciona a mensagem de volta
-        noUnitsMessageRow.style.display = ''; // Garante que a mensagem é visível
+        unidadesTableBody.innerHTML = '';
+        unidadesTableBody.appendChild(noUnitsMessageRowOriginal.cloneNode(true)); // Usar clone para resetar a mensagem
         selectedEmpreendimentoNome.textContent = '';
         formUnidadeEmpreendimentoId.value = '';
-        unidadesSection.style.display = 'block'; // Mantém a seção de unidades visível mas vazia
+        // unidadesSection.style.display = 'none'; // Decidir se esconde ou mostra com a mensagem
     }
 
     async function loadUnidades(empreendimentoId, empreendimentoNome) {
         selectedEmpreendimentoNome.textContent = empreendimentoNome;
-        formUnidadeEmpreendimentoId.value = empreendimentoId; // Preenche o ID no form de adicionar unidade
+        formUnidadeEmpreendimentoId.value = empreendimentoId;
         unidadesSection.style.display = 'block';
-        unidadesTableBody.innerHTML = '<tr><td colspan="3">Carregando unidades...</td></tr>'; // Feedback de carregamento
+        unidadesTableBody.innerHTML = '<tr><td colspan="3">Carregando unidades...</td></tr>';
 
         try {
-            const response = await fetch(`/api/empreendimento/${empreendimentoId}/unidades`);
+            const response = await fetch(`{{ url_for('api_get_unidades_por_empreendimento', empreendimento_id=0) }}`.replace('0', empreendimentoId)); // Usar url_for
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorData = await response.json().catch(() => ({detail: "Erro desconhecido ao buscar unidades."}));
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
             }
             const unidades = await response.json();
             
-            unidadesTableBody.innerHTML = ''; // Limpa o "Carregando..."
+            unidadesTableBody.innerHTML = '';
             if (unidades.length === 0) {
-                unidadesTableBody.appendChild(noUnitsMessageRow);
-                noUnitsMessageRow.querySelector('td').textContent = 'Nenhuma unidade cadastrada para este empreendimento.';
-                noUnitsMessageRow.style.display = '';
+                const noUnitsMsg = noUnitsMessageRowOriginal.cloneNode(true);
+                noUnitsMsg.querySelector('td').textContent = 'Nenhuma unidade cadastrada para este empreendimento.';
+                unidadesTableBody.appendChild(noUnitsMsg);
             } else {
-                noUnitsMessageRow.style.display = 'none'; // Esconde a mensagem se há unidades
                 unidades.forEach(unidade => {
                     const row = unidadesTableBody.insertRow();
+                    const toggleUrl = `{{ url_for('toggle_unidade', unidade_id=0) }}`.replace('0', unidade.id);
+                    const removeUrl = `{{ url_for('remover_unidade', unidade_id=0) }}`.replace('0', unidade.id);
+                    
                     row.innerHTML = `
                         <td>${unidade.nome}</td>
                         <td>
@@ -228,31 +285,31 @@ document.addEventListener('DOMContentLoaded', function () {
                             </span>
                         </td>
                         <td>
-                            <form method="POST" action="/toggle_unidade/${unidade.id}" style="display:inline;">
+                            <form method="POST" action="${toggleUrl}" style="display:inline;">
                                 <input type="hidden" name="unidade_id" value="${unidade.id}">
-                                <button type="submit" class="btn-toggle btn-sm ${unidade.ativo ? 'btn-warning' : 'btn-success'}">
+                                 {# Adicionar campo hidden para empreendimento_id se precisar no redirect do toggle_unidade #}
+                                <input type="hidden" name="source_empreendimento_id" value="${empreendimentoId}">
+                                <button type="submit" class="btn btn-sm ${unidade.ativo ? 'btn-toggle btn-warning' : 'btn-toggle btn-success'}">
                                     ${unidade.ativo ? 'Desativar' : 'Ativar'}
                                 </button>
                             </form>
-                            <form method="POST" action="/remover_unidade/${unidade.id}" style="display:inline;" class="form-remove">
-                                <button type="submit" class="btn-remove btn-sm">Remover</button>
+                            <form method="POST" action="${removeUrl}" style="display:inline;" class="form-remove">
+                                 {# Adicionar campo hidden para empreendimento_id se precisar no redirect do remover_unidade #}
+                                <input type="hidden" name="source_empreendimento_id" value="${empreendimentoId}">
+                                <button type="submit" class="btn btn-danger btn-sm">Remover</button>
                             </form>
                         </td>
                     `;
-                    // Adicionar event listener para o novo botão de remover (se necessário, pois a página não recarrega)
                     const removeForm = row.querySelector('.form-remove');
-                    if(removeForm) { // Adicionar confirmação para botões carregados dinamicamente
-                        addConfirmationToForm(removeForm);
-                    }
+                    if(removeForm) { addConfirmationToForm(removeForm); }
                 });
             }
         } catch (error) {
             console.error('Erro ao carregar unidades:', error);
-            unidadesTableBody.innerHTML = '<tr><td colspan="3" class="text-danger">Erro ao carregar unidades. Tente novamente.</td></tr>';
+            unidadesTableBody.innerHTML = `<tr><td colspan="3" class="text-danger">Erro ao carregar unidades: ${error.message}</td></tr>`;
         }
     }
     
-    // Confirmação de remoção (reutilizada e aplicada dinamicamente)
     function addConfirmationToForm(form) {
         form.addEventListener('submit', function (e) {
             if (!confirm('Tem certeza que deseja remover este item? Esta ação não pode ser desfeita.')) {
@@ -260,11 +317,27 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-    // Aplicar aos formulários de remoção já existentes na página
     document.querySelectorAll('form.form-remove').forEach(form => {
         addConfirmationToForm(form);
     });
 
+    // Lógica para carregar a aba correta com base no parâmetro da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTabFromUrl = urlParams.get('tab');
+    const activeEmpIdFromUrl = urlParams.get('active_emp_id');
+
+    if (activeTabFromUrl) {
+        showSection(activeTabFromUrl, activeTabFromUrl === 'empreendimentos' && activeEmpIdFromUrl);
+        if (activeTabFromUrl === 'empreendimentos' && activeEmpIdFromUrl) {
+            const empRow = document.querySelector(`#empreendimentos-table tr[data-empreendimento-id="${activeEmpIdFromUrl}"]`);
+            if (empRow) {
+                const empName = empRow.querySelector('td:first-child').textContent;
+                loadUnidades(activeEmpIdFromUrl, empName);
+            }
+        }
+    } else {
+        showSection('tipos'); // Aba padrão
+    }
 });
 </script>
 {% endblock %}
