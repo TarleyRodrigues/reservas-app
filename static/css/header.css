@@ -1,0 +1,91 @@
+/* static/css/header.css */
+
+/* Header */
+header {
+    width: 100%;
+    background-color: rgba(211, 191, 191, 0.182);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 40px;
+    box-shadow: 0 4px 12px var(--shadow);
+    border-radius: 0 0 20px 20px;
+    margin-bottom: 30px;
+}
+
+/* Header (duplicação, mantendo a mais detalhada para um caso geral) */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(211, 191, 191, 0.182);
+    padding: 15px 30px;
+    color: rgb(251, 0, 0); /* Verificar se é intencional que o texto do header seja vermelho */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    font-size: 24px;
+    font-weight: bold;
+    gap: 10px; /* Consolidado aqui */
+}
+
+/* Logo exclusiva da tela de boas-vindas */
+.logo-boas-vindas {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: -100px; /* Sobe a imagem */
+    margin-bottom: 10px; /* Espaço abaixo */
+}
+
+.logo-boas-vindas img {
+    width: 400px;
+    height: auto;
+    display: block;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.logo-icon {
+    margin-right: 8px;
+    font-size: 28px;
+}
+
+.logo-text {
+    color: white;
+}
+
+.logo-dot {
+    color: #ffc107;
+}
+
+.logo img {
+    height: 50px; /* ou o tamanho que desejar */
+    width: auto;
+}
+
+.nav {
+    display: flex;
+    gap: 20px;
+}
+
+.nav-link {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.nav-link:hover {
+    color: #ffc107;
+}
+
+.logout {
+    color: #ff4d4f;
+}
+
+.logout:hover {
+    color: #ffcccc;
+}

@@ -25,7 +25,7 @@
                 {% endif %}
 
                 <a href="{{ url_for('logout') }}" class="nav-link logout">Sair</a>
-                <span class="user-info">Olá, {{ current_user.nome if current_user.nome else current_user.email }}</span> {# Mostra nome se existir, senão email #}
+                <span class="user-info">Olá, {{ current_user.nome if current_user.nome else current_user.email }}</span>
             {% else %}
                 <a href="{{ url_for('login') }}" class="nav-link">Login</a>
                 <a href="{{ url_for('cadastro') }}" class="nav-link">Cadastre-se</a>
@@ -39,39 +39,62 @@
         {% block content %}{% endblock %}
     </main>
 
-    {# Um possível local para um rodapé (footer) se necessário no futuro #}
     {# 
     <footer>
-        <p>© {{ NOME_DO_ANO_ATUAL }} Reservas App. Todos os direitos reservados.</p>
+        <p>© {% now 'Y' %} Reservas App. Todos os direitos reservados.</p> {# Exemplo de como pegar o ano atual com Jinja #}
     </footer>
     #}
 
     <script>
         function showToast(message, type) {
             const container = document.getElementById('toast-container');
-            if (!container) return; // Garante que o container existe
+            if (!container) {
+                console.error('Toast container not found!');
+                return;
+            }
 
             const toast = document.createElement('div');
             toast.textContent = message;
-            toast.className = 'toast ' + type; // ex: "toast success" ou "toast error"
+            
+            // Mapeia categorias do Flask (como 'danger') para classes CSS (como 'error') se necessário
+            let toastTypeClass = type;
+            if (type === 'danger') { // Flask usa 'danger' para erros por padrão em algumas extensões
+                toastTypeClass = 'error';
+            } else if (type === 'message') { // Flask pode usar 'message' para info genérica
+                 toastTypeClass = 'info'; // Supondo que você tem uma classe .toast.info
+            }
+            // Garante que apenas classes válidas (success, error, warning, info) sejam usadas
+            // ou use um tipo padrão se a categoria não for reconhecida.
+            const validTypes = ['success', 'error', 'warning', 'info'];
+            if (!validTypes.includes(toastTypeClass)) {
+                toastTypeClass = 'info'; // Default para info se a categoria não for mapeada
+            }
 
+            toast.className = 'toast ' + toastTypeClass;
             container.appendChild(toast);
 
-            // Força o reflow para garantir que a transição de opacidade ocorra
-            // void toast.offsetWidth; 
+            // Força um reflow para que o navegador aplique os estilos iniciais (opacity: 0, transform: translateX(100%))
+            // antes de adicionar a classe .show que inicia a transição.
+            void toast.offsetWidth;
+
+            // Adiciona a classe 'show' para animar a entrada do toast
+            toast.classList.add('show');
+
+            // Define um temporizador para remover o toast
+            const duration = 3500; // Tempo que o toast fica visível antes de começar a desaparecer
+            const fadeOutDuration = 400; // Duração da animação de fade-out (deve corresponder ao CSS transition-duration)
 
             setTimeout(() => {
-                toast.style.opacity = '1';
-            }, 10); // Pequeno delay para garantir que a classe foi aplicada antes da opacidade
-
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.addEventListener('transitionend', () => { // Espera a transição de fade-out terminar
-                    if (toast.parentNode === container) { // Verifica se ainda é filho antes de remover
+                toast.classList.remove('show'); // Inicia a animação de saída (opacity: 0, transform: translateX(100%))
+                
+                // Remove o elemento do DOM após a transição de saída terminar
+                setTimeout(() => {
+                    if (toast.parentNode === container) { // Verifica se o toast ainda está no container
                         container.removeChild(toast);
                     }
-                }, { once: true }); // O listener só precisa rodar uma vez
-            }, 3000); // Tempo que o toast fica visível
+                }, fadeOutDuration);
+
+            }, duration);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -84,6 +107,6 @@
             {% endwith %}
         });
     </script>
-    {% block scripts_extra %}{% endblock %} {# Bloco para JS específico da página no final do body #}
+    {% block scripts_extra %}{% endblock %}
 </body>
 </html>

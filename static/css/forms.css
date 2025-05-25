@@ -1,0 +1,133 @@
+/* static/css/forms.css */
+
+/* Título */
+h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: var(--text);
+    font-weight: 700;
+    font-size: 2rem;
+}
+
+/* Labels */
+form label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+/* Inputs e selects */
+form input, form select {
+    width: 100%;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    border: 2px solid var(--input-border);
+    background-color: var(--input-bg);
+    font-size: 1rem;
+    color: var(--text);
+    outline-offset: 2px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    font-weight: 500;
+    font-family: inherit;
+}
+
+select option[disabled]:first-child {
+    color: #999;
+}
+
+/* Melhoria visual para o filtro de unidades */
+select option[style*="display: none"] {
+    display: none !important;
+}
+
+form input::placeholder {
+    color: #999;
+    font-weight: 400;
+}
+
+form input:focus, form select:focus {
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 8px var(--input-focus-border);
+    outline: none;
+}
+
+/* Título do login */
+.login-container h2 {
+    margin-bottom: 24px;
+    font-weight: 700;
+    font-size: 1.8rem;
+    color: #333;
+}
+
+/* Inputs da tela de login */
+.login-container input[type="email"],
+.login-container input[type="password"] {
+    width: 100%;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    border: 1.8px solid #ccc;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.login-container input[type="email"]:focus,
+.login-container input[type="password"]:focus {
+    border-color: #ff7b00;
+    outline: none;
+    box-shadow: 0 0 8px #793c02;
+}
+
+/* Botão do login */
+.login-container button {
+    width: 100%;
+    padding: 14px 0;
+    border: none;
+    border-radius: 12px;
+    background-color: #b05704;
+    color: rgb(255, 255, 255);
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    box-shadow: 0 5px 15px rgba(156, 98, 9, 0.51);
+}
+
+.login-container button:hover {
+    background-color: #ff8009;
+}
+
+/* Mensagens de erro no login */
+.login-container ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 16px 0;
+    color: #2bcd2b;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: left;
+}
+
+input:invalid {
+    border-color: #ffcdd2;
+}
+
+/* Melhoria visual para os inputs (geral) */
+input {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    transition: border 0.3s;
+}
+
+input:focus {
+    border-color: #4fc3f7;
+    outline: none;
+}

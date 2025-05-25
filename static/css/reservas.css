@@ -1,0 +1,153 @@
+/* static/css/reservas.css */
+
+/* Tela inicial */
+.home-container h1 {
+    font-size: 2rem;
+    margin-bottom: 15px;
+    color: var(--text);
+}
+
+.home-container p {
+    font-size: 1.1rem;
+    margin-bottom: 25px;
+    color: var(--text);
+}
+
+/* Links de registro */
+.register-link {
+    margin-top: 20px;
+    text-align: center;
+    color: #fff;
+}
+
+.register-link a {
+    color: #4fc3f7;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.register-link a:hover {
+    color: #0288d1;
+    text-decoration: underline;
+}
+
+.register-link p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* ================================================ */
+/* ESTILOS DA PÁGINA DE CONFIGURAÇÕES */
+/* ================================================ */
+
+.config-page-container {
+    display: flex;
+    font-family: sans-serif; /* Considere usar a variável --font-family se definida, ou 'Segoe UI', etc. */
+    max-width: 1200px;
+    margin: 20px auto;
+    border: 1px solid #ddd; /* Considere usar var(--input-border) ou uma nova variável para consistência */
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.config-sidebar {
+    width: 220px;
+    background-color: #f4f4f4; /* Considere var(--form-bg) ou uma cor de tema */
+    padding: 15px;
+    border-right: 1px solid #ddd; /* Considere var(--input-border) */
+}
+
+.config-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.config-menu li a {
+    display: block;
+    padding: 10px 15px;
+    color: #333; /* Considere var(--text) */
+    text-decoration: none;
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+
+.config-menu li a:hover,
+.config-menu li a.active {
+    background-color: #007bff; /* Cor de destaque, pode ser uma variável */
+    color: white; /* Considere var(--button-text) */
+}
+
+.config-main-content {
+    flex-grow: 1;
+    padding: 20px;
+    background-color: #fff; /* Considere var(--form-bg) ou var(--bg) dependendo do tema */
+}
+
+.config-main-content h1 {
+    margin-top: 0;
+    border-bottom: 1px solid #eee; /* Considere var(--input-border) */
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    color: #333; /* Considere var(--text) */
+}
+
+.config-content-section {
+    margin-bottom: 30px;
+    padding: 15px;
+    background: #fdfdfd;
+    border-radius: 8px;
+    border: 1px solid #e7e7e7;
+}
+
+.config-content-section h2,
+#unidades-section h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333; /* Considere var(--text) */
+    border-bottom: 1px solid #eee; /* Considere var(--input-border) */
+    padding-bottom: 10px;
+}
+
+.config-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+
+.config-form input[type="text"],
+.config-form select {
+    padding: 8px 12px; /* Poderia usar o padding dos seus inputs globais */
+    border: 1px solid #ccc; /* var(--input-border) */
+    border-radius: 4px; /* Poderia ser seu border-radius global para inputs */
+    flex-grow: 1;
+}
+
+.config-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.config-table th,
+.config-table td {
+    text-align: left;
+    padding: 10px 8px;
+    border-bottom: 1px solid #eee; /* var(--input-border) */
+}
+
+.config-table th {
+    background-color: #f2f2f2; /* Uma cor de fundo para cabeçalho */
+    font-weight: 600;
+}
+
+.status {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+.status-active { background-color: #e7f7e7; color: #0d6a0d; }
+.status-inactive { background-color: #fdeaea; color: #a31414; }

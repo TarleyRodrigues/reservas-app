@@ -1,0 +1,107 @@
+/* static/css/buttons.css */
+
+/* Botão no header */
+.header-btn {
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.3s ease, box-shadow 0.2s ease;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+.header-btn:hover {
+    background-color: var(--button-hover-bg);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+}
+
+.btn {
+    background-color: var(--button-bg);
+    border: none;
+    color: var(--button-text);
+    padding: 14px 28px;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn:hover {
+    background-color: var(--button-hover-bg);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    text-decoration: none;
+}
+
+/* Botão específico de agendar */
+.btn-agendar {
+    width: fit-content;
+    padding: 12px 24px;
+    margin: 20px auto 0;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    color: white;
+    background: linear-gradient(135deg, rgba(167, 40, 40, 0.9), rgba(201, 72, 72, 0.9));
+    box-shadow: 0 4px 10px rgba(167, 40, 40, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    display: block; /* Necessário para margin auto funcionar */
+}
+
+.btn-agendar:hover {
+    background-color: var(--button-hover-bg);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+}
+
+/* Botão de logout com cor diferenciada */
+.logout-btn {
+    background-color: #d31d1d;
+}
+
+.logout-btn:hover {
+    background-color: #b71c1c;
+}
+
+.btn-remove {
+    background: #f44336;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-remove:hover {
+    background: #d32f2f;
+}
+
+/* Botões específicos da página de configurações */
+.btn-add, .btn-remove, .btn-toggle, .btn-view-units {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px; /* Poderia ser seu border-radius global para botões */
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease;
+    /* color: var(--button-text); */ /* Se aplicável */
+}
+.btn-sm { padding: 5px 10px; font-size: 0.85em; }
+
+.btn-add { background-color: #28a745; color: white; } /* Cores específicas ok, ou use var(--button-bg) se apropriado */
+.btn-add:hover { background-color: #218838; }
+
+.btn-toggle.btn-success { background-color: #17a2b8; color: white; }
+.btn-toggle.btn-success:hover { background-color: #138496; }
+.btn-toggle.btn-warning { background-color: #ffc107; color: #212529; }
+.btn-toggle.btn-warning:hover { background-color: #e0a800; }
+.btn-info { background-color: #007bff; color: white; }
+.btn-info:hover { background-color: #0056b3; }

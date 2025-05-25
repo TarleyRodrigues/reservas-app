@@ -1,0 +1,110 @@
+/* static/css/base.css */
+
+/* Reset e básico */
+* {
+    box-sizing: border-box;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+    background: url("/static/images/background.png") no-repeat center center fixed;
+    background-size: cover;
+    color: var(--text);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Variáveis CSS para tema claro/escuro */
+:root {
+    --bg: linear-gradient(135deg, #e0eafc, #cfdef3);
+    --text: #222;
+    --form-bg: #fff;
+    --input-bg: #fff;
+    --input-border: #ccc;
+    --input-focus-border: #af4c4c;
+    --button-bg: #b42525;
+    --button-hover-bg: #6f3333;
+    --button-text: #fff;
+    --shadow: rgba(0,0,0,0.1);
+}
+
+body.dark {
+    --bg: #121212;
+    --text: #eee;
+    --form-bg: #1f1f1f;
+    --input-bg: #2a2a2a;
+    --input-border: #555;
+    --input-focus-border: #bb8866;
+    --button-bg: #bb8e66;
+    --button-hover-bg: #8b582f;
+    --button-text: #fff;
+    --shadow: rgba(0,0,0,0.6);
+}
+
+/* Toggle modo claro/escuro */
+.theme-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+/* Estilos globais para body e html — sem flex nem centralização */
+body, html {
+    height: 100%;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+}
+
+/* Mensagens de erro e toasts */
+.error-message {
+    background-color: #ffebee;
+    color: #c62828;
+    padding: 8px;
+    border-radius: 4px;
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+#toast-container {
+    position: fixed;
+    top: 80px; /* Ajuste conforme necessário */
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden; /* Para garantir que os toasts não causem scrollbar ao sair */
+}
+
+.toast {
+    min-width: 250px;
+    padding: 15px 20px;
+    color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    opacity: 0; /* Começa invisível */
+    transform: translateX(110%); /* Começa fora da tela à direita (110% para garantir) */
+    transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out; /* Duração da animação */
+    font-weight: 500;
+    font-size: 0.95rem;
+    user-select: none;
+}
+
+.toast.show {
+    opacity: 1; /* Torna visível */
+    transform: translateX(0); /* Move para a posição final */
+}
+
+.toast.success { background-color: #4caf50; }
+.toast.error { background-color: #f44336; }
+.toast.warning { background-color: #ff9800; }
+.toast.info { background-color: #2196F3; }
