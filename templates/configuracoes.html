@@ -1,183 +1,202 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="config-container">
-    <h1>Configurações do Sistema</h1>
-
-    <!-- Mensagens Flash -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <!-- Tipos de Agendamento -->
-    <div class="config-section">
-        <h2>Tipos de Agendamento</h2>
-        <form method="POST" action="{{ url_for('adicionar_tipo') }}" class="config-form">
-            <input type="text" name="novo_tipo" placeholder="Nome do novo tipo" required>
-            <button type="submit" class="btn-add">Adicionar Tipo</button>
-        </form>
-
-        <table class="config-table">
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for tipo in tipos %}
-                <tr>
-                    <td>{{ tipo.nome }}</td>
-                    <td>
-                        <span class="status {% if tipo.ativo %}status-active{% else %}status-inactive{% endif %}">
-                            {% if tipo.ativo %}Ativo{% else %}Inativo{% endif %}
-                        </span>
-                    </td>
-                    <td>
-                        {# O bloco problemático referente a 'toggle_tipo' foi REMOVIDO daqui #}
-                        <form method="POST" action="{{ url_for('remover_tipo', tipo_id=tipo.id) }}" style="display:inline;" class="form-remove">
-                            <button type="submit" class="btn-remove btn-sm">Remover</button>
-                        </form>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="3">Nenhum tipo de agendamento cadastrado.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div class="config-page-container">
+    <!-- Menu Lateral -->
+    <div class="config-sidebar">
+        <ul class="config-menu">
+            <li><a href="#" data-target="tipos">Tipos de Agendamento</a></li>
+            <li><a href="#" data-target="empreendimentos">Empreendimentos e Unidades</a></li>
+            <!-- Adicionar mais itens de menu aqui no futuro, se necessário -->
+        </ul>
     </div>
 
-    <!-- Empreendimentos -->
-    <div class="config-section">
-        <h2>Empreendimentos</h2>
-        <form method="POST" action="{{ url_for('adicionar_empreendimento') }}" class="config-form">
-            <input type="text" name="nome" placeholder="Nome do novo empreendimento" required>
-            <button type="submit" class="btn-add">Adicionar Empreendimento</button>
-        </form>
+    <!-- Área de Conteúdo Principal -->
+    <div class="config-main-content">
+        <h1>Configurações do Sistema</h1>
 
-        <table class="config-table">
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for empreendimento in empreendimentos %}
-                <tr>
-                    <td>{{ empreendimento.nome }}</td>
-                    <td>
-                        <span class="status {% if empreendimento.ativo %}status-active{% else %}status-inactive{% endif %}">
-                            {% if empreendimento.ativo %}Ativo{% else %}Inativo{% endif %}
-                        </span>
-                    </td>
-                    <td>
-                        <form method="POST" action="{{ url_for('toggle_empreendimento') }}" style="display:inline;">
-                            <input type="hidden" name="empreendimento_id" value="{{ empreendimento.id }}">
-                            <button type="submit" class="btn-toggle btn-sm {% if empreendimento.ativo %}btn-warning{% else %}btn-success{% endif %}">
-                                {{ 'Desativar' if empreendimento.ativo else 'Ativar' }}
-                            </button>
-                        </form>
-                        <form method="POST" action="{{ url_for('remover_empreendimento', emp_id=empreendimento.id) }}" style="display:inline;" class="form-remove">
-                            <button type="submit" class="btn-remove btn-sm">Remover</button>
-                        </form>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="3">Nenhum empreendimento cadastrado.</td>
-                </tr>
+        <!-- Mensagens Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
                 {% endfor %}
-            </tbody>
-        </table>
-    </div>
+            {% endif %}
+        {% endwith %}
 
-    <!-- Unidades -->
-    <div class="config-section">
-        <h2>Unidades</h2>
-        <form method="POST" action="{{ url_for('adicionar_unidade') }}" class="config-form">
-            <select name="empreendimento_id" required>
-                <option value="">Selecione um empreendimento</option>
-                {% for emp in empreendimentos %}
-                    {% if emp.ativo %}
-                        <option value="{{ emp.id }}">{{ emp.nome }}</option>
-                    {% endif %}
-                {% endfor %}
-            </select>
-            <input type="text" name="nome" placeholder="Nome da nova unidade" required>
-            <button type="submit" class="btn-add">Adicionar Unidade</button>
-        </form>
+        <!-- Seção Tipos de Agendamento (inicialmente visível ou controlada por JS) -->
+        <div id="config-tipos" class="config-content-section">
+            <h2>Tipos de Agendamento</h2>
+            <form method="POST" action="{{ url_for('adicionar_tipo') }}" class="config-form">
+                <input type="text" name="novo_tipo" placeholder="Nome do novo tipo" required>
+                <button type="submit" class="btn-add">Adicionar Tipo</button>
+            </form>
+            <table class="config-table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tipo in tipos %}
+                    <tr>
+                        <td>{{ tipo.nome }}</td>
+                        <td>
+                            <span class="status {% if tipo.ativo %}status-active{% else %}status-inactive{% endif %}">
+                                {% if tipo.ativo %}Ativo{% else %}Inativo{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {# Se implementado, botão de toggle_tipo aqui #}
+                            <form method="POST" action="{{ url_for('remover_tipo', tipo_id=tipo.id) }}" style="display:inline;" class="form-remove">
+                                <button type="submit" class="btn-remove btn-sm">Remover</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3">Nenhum tipo de agendamento cadastrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-        <table class="config-table">
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>Empreendimento</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for unidade in unidades %}
-                <tr>
-                    <td>{{ unidade.nome }}</td>
-                    <td>{{ unidade.empreendimento_nome }}</td>
-                    <td>
-                        <span class="status {% if unidade.ativo %}status-active{% else %}status-inactive{% endif %}">
-                            {% if unidade.ativo %}Ativa{% else %}Inativa{% endif %}
-                        </span>
-                    </td>
-                    <td>
-                        <form method="POST" action="{{ url_for('toggle_unidade', unidade_id=unidade.id) }}" style="display:inline;">
-                            <input type="hidden" name="unidade_id" value="{{ unidade.id }}">
-                            <button type="submit" class="btn-toggle btn-sm {% if unidade.ativo %}btn-warning{% else %}btn-success{% endif %}">
-                                {{ 'Desativar' if unidade.ativo else 'Ativar' }}
-                            </button>
-                        </form>
-                        <!-- 
-                        <form method="POST" action="{{ url_for('remover_unidade', unidade_id=unidade.id) }}" style="display:inline;" class="form-remove">
-                            <button type="submit" class="btn-remove btn-sm">Remover</button>
-                        </form>
-                        -->
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="4">Nenhuma unidade cadastrada.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <!-- Seção Empreendimentos e Unidades (inicialmente oculta ou controlada por JS) -->
+        <div id="config-empreendimentos" class="config-content-section" style="display: none;">
+            <h2>Empreendimentos</h2>
+            <form method="POST" action="{{ url_for('adicionar_empreendimento') }}" class="config-form">
+                <input type="text" name="nome" placeholder="Nome do novo empreendimento" required>
+                <button type="submit" class="btn-add">Adicionar Empreendimento</button>
+            </form>
+            <table class="config-table" id="empreendimentos-table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                        <th>Ver Unidades</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for empreendimento in empreendimentos %}
+                    <tr data-empreendimento-id="{{ empreendimento.id }}">
+                        <td>{{ empreendimento.nome }}</td>
+                        <td>
+                            <span class="status {% if empreendimento.ativo %}status-active{% else %}status-inactive{% endif %}">
+                                {% if empreendimento.ativo %}Ativo{% else %}Inativo{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ url_for('toggle_empreendimento') }}" style="display:inline;">
+                                <input type="hidden" name="empreendimento_id" value="{{ empreendimento.id }}">
+                                <button type="submit" class="btn-toggle btn-sm {% if empreendimento.ativo %}btn-warning{% else %}btn-success{% endif %}">
+                                    {{ 'Desativar' if empreendimento.ativo else 'Ativar' }}
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('remover_empreendimento', emp_id=empreendimento.id) }}" style="display:inline;" class="form-remove">
+                                <button type="submit" class="btn-remove btn-sm">Remover</button>
+                            </form>
+                        </td>
+                        <td>
+                            <button class="btn-view-units btn-sm btn-info" data-id="{{ empreendimento.id }}">Ver Unidades</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4">Nenhum empreendimento cadastrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <hr>
+            <!-- Seção de Unidades (será populada por JavaScript) -->
+            <div id="unidades-section" style="display: none;">
+                <h3 id="unidades-title">Unidades do Empreendimento: <span id="selected-empreendimento-nome"></span></h3>
+                <form method="POST" action="{{ url_for('adicionar_unidade') }}" class="config-form" id="form-adicionar-unidade">
+                    <input type="hidden" name="empreendimento_id" id="form-unidade-empreendimento-id" value="">
+                    <input type="text" name="nome" placeholder="Nome da nova unidade" required>
+                    <button type="submit" class="btn-add">Adicionar Unidade</button>
+                </form>
+                <table class="config-table" id="unidades-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Linhas de unidades serão inseridas aqui por JS -->
+                        <tr><td colspan="3" id="no-units-message">Selecione um empreendimento para ver suas unidades.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Estilo -->
 <style>
-    .config-container {
-        max-width: 900px;
-        margin: 20px auto;
-        padding: 20px;
+    .config-page-container {
+        display: flex;
         font-family: sans-serif;
-    }
-
-    .config-section {
-        margin-bottom: 40px;
-        padding: 20px;
-        background: #f9f9f9;
-        border: 1px solid #e0e0e0;
+        max-width: 1200px; /* Ajuste conforme necessário */
+        margin: 20px auto;
+        border: 1px solid #ddd;
         border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        overflow: hidden; /* Para conter os floats ou flex items */
     }
 
-    .config-section h2 {
+    .config-sidebar {
+        width: 220px; /* Largura do menu lateral */
+        background-color: #f4f4f4;
+        padding: 15px;
+        border-right: 1px solid #ddd;
+    }
+
+    .config-menu {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .config-menu li a {
+        display: block;
+        padding: 10px 15px;
+        color: #333;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-bottom: 5px;
+    }
+
+    .config-menu li a:hover,
+    .config-menu li a.active {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .config-main-content {
+        flex-grow: 1; /* Ocupa o restante do espaço */
+        padding: 20px;
+        background-color: #fff;
+    }
+    
+    .config-main-content h1 {
+        margin-top: 0;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+
+    .config-content-section {
+        margin-bottom: 30px;
+        padding: 15px;
+        background: #fdfdfd; /* Um pouco mais claro que o sidebar */
+        border-radius: 8px;
+        border: 1px solid #e7e7e7;
+    }
+
+    .config-content-section h2, 
+    #unidades-section h3 {
         margin-top: 0;
         margin-bottom: 20px;
         color: #333;
@@ -185,6 +204,7 @@
         padding-bottom: 10px;
     }
 
+    /* Reutilizando estilos anteriores para tabelas, formulários, botões */
     .config-form {
         display: flex;
         gap: 10px;
@@ -217,10 +237,6 @@
         background-color: #f2f2f2;
         font-weight: 600;
     }
-
-    .config-table tr:last-child td {
-        border-bottom: none;
-    }
     
     .status {
         padding: 3px 8px;
@@ -228,102 +244,161 @@
         font-size: 0.85em;
         font-weight: bold;
     }
-    .status-active {
-        background-color: #e7f7e7;
-        color: #0d6a0d;
-    }
-    .status-inactive {
-        background-color: #fdeaea;
-        color: #a31414;
-    }
+    .status-active { background-color: #e7f7e7; color: #0d6a0d; }
+    .status-inactive { background-color: #fdeaea; color: #a31414; }
 
-    .btn-add,
-    .btn-remove,
-    .btn-toggle {
-        padding: 8px 12px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.9em;
-        transition: background-color 0.2s ease;
+    .btn-add, .btn-remove, .btn-toggle, .btn-view-units {
+        padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer;
+        font-size: 0.9em; transition: background-color 0.2s ease;
     }
-    .btn-sm {
-        padding: 5px 10px;
-        font-size: 0.85em;
-    }
+    .btn-sm { padding: 5px 10px; font-size: 0.85em; }
+    .btn-add { background-color: #28a745; color: white; }
+    .btn-add:hover { background-color: #218838; }
+    .btn-remove { background-color: #dc3545; color: white; }
+    .btn-remove:hover { background-color: #c82333; }
+    .btn-toggle.btn-success { background-color: #17a2b8; color: white; }
+    .btn-toggle.btn-success:hover { background-color: #138496; }
+    .btn-toggle.btn-warning { background-color: #ffc107; color: #212529; }
+    .btn-toggle.btn-warning:hover { background-color: #e0a800; }
+    .btn-info { background-color: #007bff; color: white; }
+    .btn-info:hover { background-color: #0056b3; }
 
-    .btn-add {
-        background-color: #28a745;
-        color: white;
-    }
-    .btn-add:hover {
-        background-color: #218838;
-    }
-
-    .btn-remove {
-        background-color: #dc3545;
-        color: white;
-    }
-    .btn-remove:hover {
-        background-color: #c82333;
-    }
-
-    .btn-toggle.btn-success {
-        background-color: #17a2b8;
-        color: white;
-    }
-    .btn-toggle.btn-success:hover {
-        background-color: #138496;
-    }
-
-    .btn-toggle.btn-warning {
-        background-color: #ffc107;
-        color: #212529;
-    }
-    .btn-toggle.btn-warning:hover {
-        background-color: #e0a800;
-    }
-
-    .alert {
-        padding: 10px;
-        margin-bottom: 15px;
-        border: 1px solid transparent;
-        border-radius: 4px;
-    }
-    .alert-success {
-        color: #155724;
-        background-color: #d4edda;
-        border-color: #c3e6cb;
-    }
-    .alert-error {
-        color: #721c24;
-        background-color: #f8d7da;
-        border-color: #f5c6cb;
-    }
-    .alert-warning {
-        color: #856404;
-        background-color: #fff3cd;
-        border-color: #ffeeba;
-    }
-    .alert-info {
-        color: #0c5460;
-        background-color: #d1ecf1;
-        border-color: #bee5eb;
-    }
+    .alert { /* Estilos de alerta já definidos anteriormente */ }
+    /* ... (copie os estilos de alerta de antes) ... */
+     .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
+    .alert-error { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
 </style>
 
-<!-- Confirmação de remoção -->
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const removeForms = document.querySelectorAll('form.form-remove'); 
-        
-        removeForms.forEach(form => {
-            form.addEventListener('submit', function (e) {
-                if (!confirm('Tem certeza que deseja remover este item? Esta ação não pode ser desfeita.')) {
-                    e.preventDefault();
-                }
-            });
+document.addEventListener('DOMContentLoaded', function () {
+    const menuLinks = document.querySelectorAll('.config-menu a');
+    const contentSections = document.querySelectorAll('.config-content-section');
+    const unidadesSection = document.getElementById('unidades-section');
+    const unidadesTableBody = document.querySelector('#unidades-table tbody');
+    const selectedEmpreendimentoNome = document.getElementById('selected-empreendimento-nome');
+    const formUnidadeEmpreendimentoId = document.getElementById('form-unidade-empreendimento-id');
+    const noUnitsMessageRow = document.getElementById('no-units-message').parentNode; // A linha <tr> que contém a mensagem
+
+    // Função para mostrar a seção correta e atualizar o menu
+    function showSection(targetId) {
+        contentSections.forEach(section => {
+            section.style.display = (section.id === 'config-' + targetId) ? 'block' : 'none';
+        });
+        menuLinks.forEach(link => {
+            link.classList.toggle('active', link.dataset.target === targetId);
+        });
+        // Se não for a seção de empreendimentos, esconde a seção de unidades
+        if (targetId !== 'empreendimentos') {
+            unidadesSection.style.display = 'none';
+        } else {
+            // Se for a seção de empreendimentos, mas nenhuma unidade carregada, mostra a mensagem inicial
+            if (unidadesTableBody.children.length <= 1 && unidadesTableBody.contains(noUnitsMessageRow)) { // <=1 para contar o <tr> da mensagem
+                 unidadesSection.style.display = 'block'; // Mostra a seção de unidades
+            }
+        }
+    }
+
+    // Event listener para os links do menu
+    menuLinks.forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = this.dataset.target;
+            showSection(target);
+            // Se clicou em empreendimentos, reseta a seleção de unidades
+            if (target === 'empreendimentos') {
+                resetUnidadesView();
+            }
         });
     });
+
+    // Mostrar a primeira seção por padrão (ou a que tiver 'active' no HTML)
+    showSection('tipos'); // Ou 'empreendimentos' se preferir
+
+    // Event listeners para botões "Ver Unidades"
+    document.querySelectorAll('.btn-view-units').forEach(button => {
+        button.addEventListener('click', function() {
+            const empreendimentoId = this.dataset.id;
+            const empreendimentoNome = this.closest('tr').querySelector('td:first-child').textContent;
+            loadUnidades(empreendimentoId, empreendimentoNome);
+        });
+    });
+
+    function resetUnidadesView() {
+        unidadesTableBody.innerHTML = ''; // Limpa a tabela
+        unidadesTableBody.appendChild(noUnitsMessageRow); // Adiciona a mensagem de volta
+        noUnitsMessageRow.style.display = ''; // Garante que a mensagem é visível
+        selectedEmpreendimentoNome.textContent = '';
+        formUnidadeEmpreendimentoId.value = '';
+        unidadesSection.style.display = 'block'; // Mantém a seção de unidades visível mas vazia
+    }
+
+    async function loadUnidades(empreendimentoId, empreendimentoNome) {
+        selectedEmpreendimentoNome.textContent = empreendimentoNome;
+        formUnidadeEmpreendimentoId.value = empreendimentoId; // Preenche o ID no form de adicionar unidade
+        unidadesSection.style.display = 'block';
+        unidadesTableBody.innerHTML = '<tr><td colspan="3">Carregando unidades...</td></tr>'; // Feedback de carregamento
+
+        try {
+            const response = await fetch(`/api/empreendimento/${empreendimentoId}/unidades`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const unidades = await response.json();
+            
+            unidadesTableBody.innerHTML = ''; // Limpa o "Carregando..."
+            if (unidades.length === 0) {
+                unidadesTableBody.appendChild(noUnitsMessageRow);
+                noUnitsMessageRow.querySelector('td').textContent = 'Nenhuma unidade cadastrada para este empreendimento.';
+                noUnitsMessageRow.style.display = '';
+            } else {
+                noUnitsMessageRow.style.display = 'none'; // Esconde a mensagem se há unidades
+                unidades.forEach(unidade => {
+                    const row = unidadesTableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${unidade.nome}</td>
+                        <td>
+                            <span class="status ${unidade.ativo ? 'status-active' : 'status-inactive'}">
+                                ${unidade.ativo ? 'Ativa' : 'Inativa'}
+                            </span>
+                        </td>
+                        <td>
+                            <form method="POST" action="/toggle_unidade/${unidade.id}" style="display:inline;">
+                                <input type="hidden" name="unidade_id" value="${unidade.id}">
+                                <button type="submit" class="btn-toggle btn-sm ${unidade.ativo ? 'btn-warning' : 'btn-success'}">
+                                    ${unidade.ativo ? 'Desativar' : 'Ativar'}
+                                </button>
+                            </form>
+                            <form method="POST" action="/remover_unidade/${unidade.id}" style="display:inline;" class="form-remove">
+                                <button type="submit" class="btn-remove btn-sm">Remover</button>
+                            </form>
+                        </td>
+                    `;
+                    // Adicionar event listener para o novo botão de remover (se necessário, pois a página não recarrega)
+                    const removeForm = row.querySelector('.form-remove');
+                    if(removeForm) { // Adicionar confirmação para botões carregados dinamicamente
+                        addConfirmationToForm(removeForm);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao carregar unidades:', error);
+            unidadesTableBody.innerHTML = '<tr><td colspan="3" class="text-danger">Erro ao carregar unidades. Tente novamente.</td></tr>';
+        }
+    }
+    
+    // Confirmação de remoção (reutilizada e aplicada dinamicamente)
+    function addConfirmationToForm(form) {
+        form.addEventListener('submit', function (e) {
+            if (!confirm('Tem certeza que deseja remover este item? Esta ação não pode ser desfeita.')) {
+                e.preventDefault();
+            }
+        });
+    }
+    // Aplicar aos formulários de remoção já existentes na página
+    document.querySelectorAll('form.form-remove').forEach(form => {
+        addConfirmationToForm(form);
+    });
+
+});
 </script>
 {% endblock %}

@@ -492,6 +492,51 @@ def configuracoes():
 
 # ➕ Adicionar tipo, empreendimento, unidade
 
+# app.py (adicionar esta nova rota)
+
+# ... (suas outras rotas) ...
+
+
+@app.route('/api/empreendimento/<int:empreendimento_id>/unidades')
+@login_required  # Proteger a API
+def api_get_unidades_por_empreendimento(empreendimento_id):
+    if current_user.email != 'admin@admin.com':  # Apenas admin pode ver
+        return jsonify({"error": "Acesso não autorizado"}), 403
+
+    conn = None
+    try:
+        conn = sqlite3.connect('database.db')
+        conn.row_factory = sqlite3.Row
+
+        # Verificar se o empreendimento existe
+        empreendimento = conn.execute(
+            "SELECT id FROM empreendimentos WHERE id = ?", (empreendimento_id,)).fetchone()
+        if not empreendimento:
+            return jsonify({"error": "Empreendimento não encontrado"}), 404
+
+        unidades = conn.execute(
+            "SELECT id, nome, ativo FROM unidades WHERE empreendimento_id = ?",
+            (empreendimento_id,)
+        ).fetchall()
+
+        # Converter para uma lista de dicionários para jsonify
+        lista_unidades = [dict(unidade) for unidade in unidades]
+        return jsonify(lista_unidades)
+
+    except sqlite3.Error as e:
+        app.logger.error(
+            f"Erro DB em api_get_unidades_por_empreendimento: {e}")
+        return jsonify({"error": "Erro no banco de dados"}), 500
+    except Exception as e:
+        app.logger.error(
+            f"Erro inesperado em api_get_unidades_por_empreendimento: {e}")
+        return jsonify({"error": "Erro interno do servidor"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+# ... (resto do app.py)
+
 
 @app.route('/adicionar_empreendimento', methods=['POST'])
 @login_required
