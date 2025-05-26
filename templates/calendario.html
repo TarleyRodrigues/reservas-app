@@ -6,14 +6,13 @@
 <h1 style="text-align:center;">Calendário de Agendamentos</h1>
 
 <div style="text-align: center; margin-bottom: 20px;">
-    <form action="{{ url_for('agendar') }}">
-        <button type="submit" class="btn-agendar">Fazer Agendamento</button>
-    </form>
+        <form action="{{ url_for('agendar') }}">
+                <button type="submit" class="btn-agendar">Fazer Agendamento</button>
+            </form>
 </div>
 
 <div id="calendar"></div>
 
-<!-- FullCalendar CSS -->
 <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/index.global.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.11/index.global.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.11/index.global.min.css" rel="stylesheet">
@@ -23,18 +22,17 @@
         max-width: 900px;
         margin: 20px auto;
         background-color: white;
+        /* Considere usar variáveis CSS aqui */
         padding: 20px;
         border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
 </style>
 
-<!-- FullCalendar JS -->
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.11/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.11/index.global.min.js"></script>
 
-<!-- Localização PT-BR -->
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales-all.global.min.js"></script>
 
 <script>
@@ -50,22 +48,52 @@
                 right: 'dayGridMonth,listMonth'
             },
             events: '/eventos', // Rota que fornece os dados em JSON
-            eventContent: function(arg) {
+            eventContent: function (arg) {
                 // Customização do conteúdo do evento
                 if (arg.view.type === 'listMonth') {
+                    // NOVO: Obter a observação do extendedProps
+                    const observacoes = arg.event.extendedProps.observacoes;
+
                     return {
                         html: `
-                            <div class="fc-event-details">
-                                <div class="fc-event-title">${arg.event.title}</div>
-                                <div class="fc-event-meta">
+                            <div class="fc-event-details">
+                                <div class="fc-event-title">${arg.event.title}</div>
+                                <div class="fc-event-meta">
+                                    <span>${arg.event.extendedProps.usuario_nome}</span> | 
                                     <span>${arg.event.extendedProps.unidade}</span> | 
-                                    <span>${arg.event.extendedProps.empreendimento}</span>
-                                </div>
-                            </div>
-                        `
+                                    <span>${arg.event.extendedProps.empreendimento}</span>
+                                </div>
+                                ${observacoes ? `<div class="fc-event-notes">Obs: ${observacoes}</div>` : ''}
+                            </div>
+                        `
                     };
                 }
+                // Para outras visualizações (como dayGridMonth), você pode querer exibir as observações ao clicar no evento
                 return { html: arg.event.title };
+            },
+            // Opcional: Adicionar um manipulador de clique para exibir mais detalhes em um modal ou alert
+            eventClick: function (info) {
+                if (info.view.type === 'dayGridMonth') { // Apenas para a visualização mensal
+                    const eventTitle = info.event.title;
+                    const usuario = info.event.extendedProps.usuario_nome;
+                    const tipo = info.event.extendedProps.tipo;
+                    const unidade = info.event.extendedProps.unidade;
+                    const empreendimento = info.event.extendedProps.empreendimento;
+                    const observacoes = info.event.extendedProps.observacoes;
+
+                    let details = `Detalhes do Agendamento:\n\n`;
+                    details += `Título: ${eventTitle}\n`;
+                    details += `Cliente: ${usuario}\n`;
+                    details += `Serviço: ${tipo}\n`;
+                    details += `Local: ${unidade} (${empreendimento})\n`;
+                    if (observacoes) {
+                        details += `Observações: ${observacoes}\n`;
+                    }
+                    details += `Data: ${info.event.start.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n`;
+                    details += `Hora: ${info.event.start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n`;
+
+                    alert(details); // Ou use um modal mais amigável
+                }
             }
         });
 
@@ -77,13 +105,25 @@
     .fc-event-details {
         padding: 5px;
     }
+
     .fc-event-title {
         font-weight: bold;
         margin-bottom: 3px;
     }
+
     .fc-event-meta {
         font-size: 0.85em;
         color: #555;
+        margin-bottom: 3px;
+        /* Adicionado para espaçamento */
+    }
+
+    /* NOVO ESTILO PARA OBSERVAÇÕES */
+    .fc-event-notes {
+        font-size: 0.8em;
+        color: #777;
+        white-space: pre-wrap;
+        /* Para preservar quebras de linha no textarea */
     }
 </style>
 {% endblock %}

@@ -29,8 +29,9 @@ login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, realize o login para acessar esta página."
 login_manager.login_message_category = "info"
 
-
 # 🔗 Classe de usuário
+
+
 class Usuario(UserMixin):
     def __init__(self, id, nome, email, senha_hash, is_admin=0):
         self.id = id
@@ -179,36 +180,33 @@ def cadastro():
 
     return render_template('cadastro.html')
 
-# **********************************************************************
-# ROTA /agendar RESTAURADA AQUI
-# **********************************************************************
-
 
 @app.route('/agendar', methods=['GET', 'POST'])
 @login_required
-def agendar():  # O nome da função é 'agendar', então url_for('agendar') deve funcionar
-    conn = get_db_connection()  # Usar a função helper
-    # conn.row_factory = sqlite3.Row # Já definido em get_db_connection()
-
+def agendar():
+    conn = get_db_connection()
     try:
         if request.method == 'POST':
-            # Obter dados do formulário
-            # O campo 'nome' no formulário de agendamento pode ser um 'titulo' ou 'descricao' do evento.
-            # Vamos chamá-lo de 'titulo_evento' para evitar confusão com current_user.nome
-            # Ou o nome que você usa no form de agendar.html
             titulo_evento = request.form.get('nome', '').strip()
             data_str = request.form.get('data')
             hora_str = request.form.get('hora')
             tipo_id_str = request.form.get('tipo_id')
+            empreendimento_id_str = request.form.get(
+                'empreendimento_id')  # Adicionado empreendimento_id
             unidade_id_str = request.form.get('unidade_id')
+            # --- NOVO: Pegar as observações ---
+            # Pega o campo, remove espaços extras
+            observacoes = request.form.get('observacoes', '').strip()
+            # --- FIM NOVO ---
 
             app.logger.debug(
-                f"Agendamento (POST): Título={titulo_evento}, Data={data_str}, Hora={hora_str}, Tipo ID={tipo_id_str}, Unidade ID={unidade_id_str}")
+                f"Agendamento (POST): Título={titulo_evento}, Data={data_str}, Hora={hora_str}, Tipo ID={tipo_id_str}, Empreendimento ID={empreendimento_id_str}, Unidade ID={unidade_id_str}, Observações={observacoes}")
 
             # Validação e conversão de dados
             form_data_for_repopulation = {
                 'nome': titulo_evento, 'data': data_str, 'hora': hora_str,
-                'tipo_id': tipo_id_str, 'unidade_id': unidade_id_str
+                'tipo_id': tipo_id_str, 'empreendimento_id': empreendimento_id_str, 'unidade_id': unidade_id_str,
+                'observacoes': observacoes  # Adicionado para repopular em caso de erro
             }
 
             errors = []
@@ -218,13 +216,15 @@ def agendar():  # O nome da função é 'agendar', então url_for('agendar') dev
                 errors.append("A hora é obrigatória.")
             if not tipo_id_str:
                 errors.append("O tipo de agendamento é obrigatório.")
+            if not empreendimento_id_str:  # Adicionado validação para empreendimento
+                errors.append("O empreendimento é obrigatório.")
             if not unidade_id_str:
                 errors.append("A unidade é obrigatória.")
-            # if not titulo_evento: errors.append("Um título/nome para o evento é obrigatório.") # Descomente se for obrigatório
 
             if errors:
                 for error in errors:
                     flash(error, 'error')
+                # Recarregar dados para o formulário para exibir erros
                 tipos_refresh = conn.execute(
                     'SELECT id, nome FROM tipos_agendamento WHERE ativo = 1 ORDER BY nome').fetchall()
                 empreendimentos_refresh = conn.execute(
@@ -245,6 +245,8 @@ def agendar():  # O nome da função é 'agendar', então url_for('agendar') dev
                 data_para_db = data_agendamento_obj.strftime('%Y-%m-%d')
                 hora_para_db = hora_agendamento_obj.strftime('%H:%M')
                 tipo_id = int(tipo_id_str)
+                empreendimento_id = int(
+                    empreendimento_id_str)  # Converte para int
                 unidade_id = int(unidade_id_str)
                 usuario_id = current_user.id
             except ValueError as ve:
@@ -252,6 +254,7 @@ def agendar():  # O nome da função é 'agendar', então url_for('agendar') dev
                     f'Erro de formato nos dados: {str(ve)}. Verifique a data e a hora.', 'error')
                 app.logger.error(
                     f'Erro de conversão em /agendar (POST): {str(ve)}', exc_info=True)
+                # Recarregar dados para o formulário para exibir erros
                 tipos_refresh = conn.execute(
                     'SELECT id, nome FROM tipos_agendamento WHERE ativo = 1 ORDER BY nome').fetchall()
                 empreendimentos_refresh = conn.execute(
@@ -280,20 +283,19 @@ def agendar():  # O nome da função é 'agendar', então url_for('agendar') dev
             elif not (tipo_selecionado and tipo_selecionado['ativo']):
                 flash('O tipo de agendamento selecionado não está ativo.', 'error')
             else:
-                # Inserir no banco de dados
                 try:
-                    # Se o 'titulo_evento' for para ser salvo, adicione a coluna 'titulo' na tabela 'agendamentos'
-                    # e modifique o INSERT abaixo. Por ora, ele não é salvo.
+                    # --- ALTERAÇÃO AQUI: Adicionar 'observacoes' no INSERT ---
                     conn.execute(
-                        '''INSERT INTO agendamentos (usuario_id, tipo_id, unidade_id, data, hora) 
-                           VALUES (?, ?, ?, ?, ?)''',
+                        '''INSERT INTO agendamentos (usuario_id, tipo_id, unidade_id, data, hora, observacoes) 
+                           VALUES (?, ?, ?, ?, ?, ?)''',
                         (usuario_id, tipo_id, unidade_id,
-                         data_para_db, hora_para_db)
+                         data_para_db, hora_para_db, observacoes)  # Adicionado observacoes
                     )
+                    # --- FIM DA ALTERAÇÃO ---
                     conn.commit()
                     flash('Agendamento realizado com sucesso!', 'success')
                     app.logger.info(
-                        f"Novo agendamento por {current_user.email} (ID: {usuario_id}) para {data_para_db} às {hora_para_db}, tipo '{tipo_selecionado['nome']}', unidade '{unidade_selecionada['unidade_nome']}'.")
+                        f"Novo agendamento por {current_user.email} (ID: {usuario_id}) para {data_para_db} às {hora_para_db}, tipo '{tipo_selecionado['nome']}', unidade '{unidade_selecionada['unidade_nome']}', Obs: '{observacoes}'.")
                     return redirect(url_for('calendario'))
                 except sqlite3.Error as db_error:
                     flash(
@@ -338,9 +340,6 @@ def agendar():  # O nome da função é 'agendar', então url_for('agendar') dev
     finally:
         if conn:
             conn.close()
-# **********************************************************************
-# FIM DA ROTA /agendar
-# **********************************************************************
 
 # 📅 Calendário e eventos
 
@@ -350,8 +349,7 @@ def agendar():  # O nome da função é 'agendar', então url_for('agendar') dev
 def calendario():
     return render_template('calendario.html')
 
-# ... (resto do seu app.py continua aqui, como estava antes) ...
-# A rota /eventos, /debug-user, ROTAS DE ADMINISTRAÇÃO, etc.
+# 🗓️ Eventos para o calendário
 
 
 @app.route('/eventos')
@@ -359,8 +357,8 @@ def calendario():
 def eventos():
     conn = get_db_connection()
     eventos_db = conn.execute('''
-        SELECT a.id, u.nome as usuario_nome, a.data, a.hora, 
-               t.nome AS tipo_nome, un.nome as unidade_nome, e.nome as empreendimento_nome
+        SELECT a.id, u.nome as usuario_nome, a.data, a.hora, a.observacoes, -- Adicionado 'a.observacoes'
+                t.nome AS tipo_nome, un.nome as unidade_nome, e.nome as empreendimento_nome
         FROM agendamentos a
         JOIN usuarios u ON a.usuario_id = u.id
         JOIN tipos_agendamento t ON a.tipo_id = t.id
@@ -383,7 +381,9 @@ def eventos():
                     "usuario": row['usuario_nome'],
                     "tipo": row['tipo_nome'],
                     "unidade": row['unidade_nome'],
-                    "empreendimento": row['empreendimento_nome']
+                    "empreendimento": row['empreendimento_nome'],
+                    # Adicionado observacoes, com fallback para string vazia
+                    "observacoes": row['observacoes'] or ""
                 }
             }
             eventos_lista.append(evento)
@@ -392,6 +392,8 @@ def eventos():
                 f"Formato de data/hora inválido para agendamento ID {row['id']}: data='{row['data']}', hora='{row['hora']}'")
 
     return jsonify(eventos_lista)
+
+# 🛠️ Rota de depuração do usuário
 
 
 @app.route('/debug-user')
@@ -578,8 +580,9 @@ def remover_unidade(unidade_id):
         return redirect(url_for('configuracoes', tab='empreendimentos', active_emp_id=unidade_info_for_redirect['empreendimento_id']))
     return redirect(url_for('configuracoes', tab='empreendimentos'))
 
-
 # ⚙️ Configurações
+
+
 @app.route('/configuracoes')
 @admin_required
 def configuracoes():
@@ -754,8 +757,9 @@ def remover_tipo(tipo_id):
         conn.close()
     return redirect(url_for('configuracoes', tab='tipos'))
 
+# ROTAS PARA GERENCIAMENTO DE ADMINISTRADORES
 
-# NEW: ROTAS PARA GERENCIAMENTO DE ADMINISTRADORES
+
 @app.route('/promover_admin', methods=['POST'])
 @admin_required
 def promover_admin():
@@ -837,8 +841,9 @@ def remover_admin(user_id):
             conn.close()
     return redirect(url_for('configuracoes', tab='seguranca'))
 
-
 # 🧱 Banco de dados
+
+
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -876,6 +881,7 @@ def init_db():
             is_admin INTEGER DEFAULT 0 CHECK(is_admin IN (0, 1)) 
         )
     ''')
+    # --- ALTERAÇÃO AQUI: Adicionar 'observacoes' na tabela agendamentos ---
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS agendamentos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -884,11 +890,26 @@ def init_db():
             unidade_id INTEGER NOT NULL,
             data TEXT NOT NULL,
             hora TEXT NOT NULL,
+            observacoes TEXT, -- NOVA COLUNA: Adicione esta linha
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
             FOREIGN KEY (tipo_id) REFERENCES tipos_agendamento(id) ON DELETE RESTRICT,
             FOREIGN KEY (unidade_id) REFERENCES unidades(id) ON DELETE RESTRICT
         )
     ''')
+    # Adicionar ALTER TABLE para usuários que já possuem o banco de dados
+    # Isso é importante para não perder dados existentes.
+    try:
+        cursor.execute("ALTER TABLE agendamentos ADD COLUMN observacoes TEXT")
+        app.logger.info(
+            "Coluna 'observacoes' adicionada à tabela 'agendamentos'.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            app.logger.info(
+                "Coluna 'observacoes' já existe na tabela 'agendamentos'.")
+        else:
+            app.logger.error(f"Erro ao adicionar coluna 'observacoes': {e}")
+
+    # --- FIM DA ALTERAÇÃO ---
     conn.commit()
     conn.close()
     app.logger.info("Banco de dados inicializado/verificado.")
@@ -899,7 +920,6 @@ def criar_usuario_inicial():
     cursor = conn.cursor()
     admin_email = os.environ.get('SUPER_ADMIN_EMAIL', 'admin@admin.com')
     admin_nome = "Administrador Principal"
-
     admin_user = cursor.execute(
         "SELECT id, is_admin, nome FROM usuarios WHERE email = ?", (admin_email,)).fetchone()
 
