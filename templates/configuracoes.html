@@ -2,39 +2,36 @@
 
 {% block content %}
 <div class="config-page-container">
-    <!-- Menu Lateral -->
     <div class="config-sidebar">
         <ul class="config-menu">
             <li><a href="#" data-target="tipos" class="config-menu-link">Tipos de Agendamento</a></li>
             <li><a href="#" data-target="empreendimentos" class="config-menu-link">Empreendimentos e Unidades</a></li>
-            <li><a href="#" data-target="seguranca" class="config-menu-link">Segurança</a></li>
+            {# NOVO LINK DE MENU: Gerenciamento de Usuários #}
+            <li><a href="#" data-target="usuarios" class="config-menu-link">Gerenciamento de Usuários</a></li>
+            <li><a href="#" data-target="seguranca" class="config-menu-link">Segurança (Administradores)</a></li>
         </ul>
     </div>
 
-    <!-- Área de Conteúdo Principal -->
     <div class="config-main-content">
         <h1>Configurações do Sistema</h1>
 
-        <!-- Mensagens Flash -->
+        {# O script de toast no base.html já lida com isso, esta div é redundante se o JS estiver ativo.
+        Vou manter por enquanto como um fallback visual se o JS falhar, mas idealmente seria removida. #}
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    {# Mapear categoria do Flask para tipo de toast se necessário #}
-                    {% set toast_type = category %}
-                    {% if category == 'danger' %}{% set toast_type = 'error' %}{% endif %}
-                    {# O JS do base.html já deve estar mostrando os toasts #}
-                    {# Esta div é apenas para mostrar as mensagens se o JS falhar ou como fallback #}
-                    <div class="alert alert-{{ toast_type }}" style="display:none;">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
+        {% if messages %}
+        {% for category, message in messages %}
+        {% set toast_type = category %}
+        {% if category == 'danger' %}{% set toast_type = 'error' %}{% endif %}
+        <div class="alert alert-{{ toast_type }}" style="display:none;">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
         {% endwith %}
 
-        <!-- Seção Tipos de Agendamento -->
         <div id="config-tipos" class="config-content-section">
             <h2>Tipos de Agendamento</h2>
             <form method="POST" action="{{ url_for('adicionar_tipo') }}" class="config-form">
                 <input type="text" name="novo_tipo" placeholder="Nome do novo tipo" required>
-                <button type="submit" class="btn btn-primary btn-sm">Adicionar Tipo</button> {# MODIFIED: Classes de botão #}
+                <button type="submit" class="btn btn-primary btn-sm">Adicionar Tipo</button>
             </form>
             <table class="config-table">
                 <thead>
@@ -54,24 +51,26 @@
                             </span>
                         </td>
                         <td>
-                            <form method="POST" action="{{ url_for('remover_tipo', tipo_id=tipo.id) }}" style="display:inline;" class="form-remove">
-                                <button type="submit" class="btn btn-danger btn-sm">Remover</button> {# MODIFIED: Classes de botão #}
+                            <form method="POST" action="{{ url_for('remover_tipo', tipo_id=tipo.id) }}"
+                                style="display:inline;" class="form-remove">
+                                <button type="submit" class="btn btn-danger btn-sm">Remover</button>
                             </form>
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="3">Nenhum tipo de agendamento cadastrado.</td></tr>
+                    <tr>
+                        <td colspan="3">Nenhum tipo de agendamento cadastrado.</td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        <!-- Seção Empreendimentos e Unidades -->
         <div id="config-empreendimentos" class="config-content-section" style="display: none;">
             <h2>Empreendimentos</h2>
             <form method="POST" action="{{ url_for('adicionar_empreendimento') }}" class="config-form">
                 <input type="text" name="nome" placeholder="Nome do novo empreendimento" required>
-                <button type="submit" class="btn btn-primary btn-sm">Adicionar Empreendimento</button> {# MODIFIED: Classes de botão #}
+                <button type="submit" class="btn btn-primary btn-sm">Adicionar Empreendimento</button>
             </form>
             <table class="config-table" id="empreendimentos-table">
                 <thead>
@@ -87,37 +86,45 @@
                     <tr data-empreendimento-id="{{ empreendimento.id }}">
                         <td>{{ empreendimento.nome }}</td>
                         <td>
-                            <span class="status {% if empreendimento.ativo %}status-active{% else %}status-inactive{% endif %}">
+                            <span
+                                class="status {% if empreendimento.ativo %}status-active{% else %}status-inactive{% endif %}">
                                 {% if empreendimento.ativo %}Ativo{% else %}Inativo{% endif %}
                             </span>
                         </td>
                         <td>
                             <form method="POST" action="{{ url_for('toggle_empreendimento') }}" style="display:inline;">
                                 <input type="hidden" name="empreendimento_id" value="{{ empreendimento.id }}">
-                                <button type="submit" class="btn btn-sm {% if empreendimento.ativo %}btn-toggle btn-warning{% else %}btn-toggle btn-success{% endif %}">
+                                <button type="submit"
+                                    class="btn btn-sm {% if empreendimento.ativo %}btn-toggle btn-warning{% else %}btn-toggle btn-success{% endif %}">
                                     {{ 'Desativar' if empreendimento.ativo else 'Ativar' }}
                                 </button>
                             </form>
-                            <form method="POST" action="{{ url_for('remover_empreendimento', emp_id=empreendimento.id) }}" style="display:inline;" class="form-remove">
-                                <button type="submit" class="btn btn-danger btn-sm">Remover</button> {# MODIFIED: Classes de botão #}
+                            <form method="POST"
+                                action="{{ url_for('remover_empreendimento', emp_id=empreendimento.id) }}"
+                                style="display:inline;" class="form-remove">
+                                <button type="submit" class="btn btn-danger btn-sm">Remover</button>
                             </form>
                         </td>
                         <td>
-                            <button class="btn-view-units btn btn-info btn-sm" data-id="{{ empreendimento.id }}">Ver Unidades</button> {# MODIFIED: Classes de botão #}
+                            <button class="btn-view-units btn btn-info btn-sm" data-id="{{ empreendimento.id }}">Ver
+                                Unidades</button>
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="4">Nenhum empreendimento cadastrado.</td></tr>
+                    <tr>
+                        <td colspan="4">Nenhum empreendimento cadastrado.</td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
             <hr>
             <div id="unidades-section" style="display: none;">
                 <h3 id="unidades-title">Unidades do Empreendimento: <span id="selected-empreendimento-nome"></span></h3>
-                <form method="POST" action="{{ url_for('adicionar_unidade') }}" class="config-form" id="form-adicionar-unidade">
+                <form method="POST" action="{{ url_for('adicionar_unidade') }}" class="config-form"
+                    id="form-adicionar-unidade">
                     <input type="hidden" name="empreendimento_id" id="form-unidade-empreendimento-id" value="">
                     <input type="text" name="nome" placeholder="Nome da nova unidade" required>
-                    <button type="submit" class="btn btn-primary btn-sm">Adicionar Unidade</button> {# MODIFIED: Classes de botão #}
+                    <button type="submit" class="btn btn-primary btn-sm">Adicionar Unidade</button>
                 </form>
                 <table class="config-table" id="unidades-table">
                     <thead>
@@ -128,13 +135,77 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td colspan="3" id="no-units-message">Selecione um empreendimento para ver suas unidades.</td></tr>
+                        <tr>
+                            <td colspan="3" id="no-units-message">Selecione um empreendimento para ver suas unidades.
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Seção de Segurança -->
+        {# NOVA SEÇÃO: Gerenciamento de Usuários #}
+        <div id="config-usuarios" class="config-content-section" style="display: none;">
+            <h2>Gerenciamento de Usuários</h2>
+
+            <h3>Agentes Atuais</h3>
+            {# O loop 'agente_users' vem do app.py #}
+            {% if agente_users %}
+            <table class="config-table" id="agente-users-table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Telefone</th> {# Adicionado Telefone #}
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in agente_users %}
+                    <tr>
+                        <td>{{ user.nome if user.nome else 'N/A' }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.telefone if user.telefone else 'Não informado' }}</td> {# Exibir telefone #}
+                        <td>
+                            {# Botão para remover status de Agente (demover para Cliente) #}
+                            <form method="POST" action="{{ url_for('gerenciar_agente') }}" style="display:inline;"
+                                class="form-action-user">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <input type="hidden" name="action" value="demover">
+                                <button type="submit" class="btn btn-warning btn-sm">Remover Status Agente</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>Nenhum Agente cadastrado no momento.</p>
+            {% endif %}
+
+            <hr>
+
+            <h3>Promover Usuário a Agente</h3>
+            {# Iterar sobre todos os usuários que não são admin nem agente #}
+            {% if cliente_users %}
+            <form method="POST" action="{{ url_for('gerenciar_agente') }}" id="form-promover-agente"
+                class="config-form">
+                <input type="hidden" name="action" value="promover">
+                <select name="user_id" required>
+                    <option value="">Selecione um usuário...</option>
+                    {% for user in cliente_users %}
+                    <option value="{{ user.id }}">{{ user.nome if user.nome else user.email }} ({{ user.email }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-success btn-sm">Tornar Agente</button>
+            </form>
+            {% else %}
+            <p>Não há Clientes para promover a Agente no momento.</p>
+            {% endif %}
+        </div>
+
+
         <div id="config-seguranca" class="config-content-section" style="display: none;">
             <h2>Gerenciamento de Administradores</h2>
             <h3>Administradores Atuais</h3>
@@ -144,6 +215,7 @@
                     <tr>
                         <th>Nome</th>
                         <th>Email</th>
+                        <th>Telefone</th> {# Adicionado Telefone #}
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -152,16 +224,20 @@
                     <tr>
                         <td>{{ admin_user.nome if admin_user.nome else 'N/A' }}</td>
                         <td>{{ admin_user.email }}</td>
+                        <td>{{ admin_user.telefone if admin_user.telefone else 'Não informado' }}</td> {# Exibir
+                        telefone #}
                         <td>
-                            {# Regra para não remover o próprio usuário ou o admin principal (ajuste 'admin@admin.com' se necessário) #}
-                            {% if admin_user.id != current_user.id and admin_user.email != 'admin@admin.com' %}
-                            <form method="POST" action="{{ url_for('remover_admin', user_id=admin_user.id) }}" style="display:inline;" class="form-remove">
+                            {# Regra para não remover o próprio usuário ou o admin principal #}
+                            {% if admin_user.id != current_user.id and admin_user.email !=
+                            (os.environ.get('SUPER_ADMIN_EMAIL', 'admin@admin.com')) %}
+                            <form method="POST" action="{{ url_for('remover_admin', user_id=admin_user.id) }}"
+                                style="display:inline;" class="form-remove">
                                 <button type="submit" class="btn btn-danger btn-sm">Remover Status Admin</button>
                             </form>
                             {% elif admin_user.id == current_user.id %}
-                                <span>(Você)</span>
-                            {% else %}
-                                <span>(Admin Principal)</span>
+                            <span>(Você)</span>
+                            {% elif admin_user.email == (os.environ.get('SUPER_ADMIN_EMAIL', 'admin@admin.com')) %}
+                            <span>(Admin Principal)</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -173,111 +249,109 @@
             {% endif %}
             <hr>
             <h3>Promover Usuário a Administrador</h3>
-            {% if normal_users %}
+            {# normal_users não é mais usado, agora usamos cliente_users e agente_users #}
+            {% set users_to_promote_admin = agente_users + cliente_users %} {# Combina agentes e clientes para promover
+            #}
+            {% if users_to_promote_admin %}
             <form method="POST" action="{{ url_for('promover_admin') }}" id="form-promover-admin" class="config-form">
                 <select name="user_to_promote_id" required>
                     <option value="">Selecione um usuário...</option>
-                    {% for user in normal_users %}
-                        <option value="{{ user.id }}">{{ user.nome if user.nome else user.email }} ({{ user.email }})</option>
+                    {% for user in users_to_promote_admin %}
+                    <option value="{{ user.id }}">{{ user.nome if user.nome else user.email }} ({{ user.email }}) [{{
+                        user.tipo_usuario.capitalize() }}]</option>
                     {% endfor %}
                 </select>
-                <button type="submit" class="btn btn-success btn-sm">Tornar Admin</button> {# MODIFIED: Classes de botão #}
+                <button type="submit" class="btn btn-success btn-sm">Tornar Admin</button>
             </form>
             {% else %}
-            <p>Não há usuários normais para promover no momento.</p>
+            <p>Não há usuários (clientes ou agentes) para promover a administrador no momento.</p>
             {% endif %}
         </div>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const menuLinks = document.querySelectorAll('.config-menu-link'); // MODIFIED: Seletor mais específico
-    const contentSections = document.querySelectorAll('.config-content-section');
-    const unidadesSection = document.getElementById('unidades-section');
-    const unidadesTableBody = document.querySelector('#unidades-table tbody');
-    const selectedEmpreendimentoNome = document.getElementById('selected-empreendimento-nome');
-    const formUnidadeEmpreendimentoId = document.getElementById('form-unidade-empreendimento-id');
-    const noUnitsMessageRowOriginal = document.getElementById('no-units-message').parentNode.cloneNode(true); // Clonar para resetar
+    document.addEventListener('DOMContentLoaded', function () {
+        const menuLinks = document.querySelectorAll('.config-menu-link');
+        const contentSections = document.querySelectorAll('.config-content-section');
+        const unidadesSection = document.getElementById('unidades-section');
+        const unidadesTableBody = document.querySelector('#unidades-table tbody');
+        const selectedEmpreendimentoNome = document.getElementById('selected-empreendimento-nome');
+        const formUnidadeEmpreendimentoId = document.getElementById('form-unidade-empreendimento-id');
+        const noUnitsMessageRowOriginal = document.getElementById('no-units-message').parentNode.cloneNode(true);
 
-    function showSection(targetId, keepUnitsVisible = false) {
-        contentSections.forEach(section => {
-            section.style.display = (section.id === 'config-' + targetId) ? 'block' : 'none';
-        });
-        menuLinks.forEach(link => {
-            link.classList.toggle('active', link.dataset.target === targetId);
-        });
-        
-        if (targetId !== 'empreendimentos' && !keepUnitsVisible) {
-            unidadesSection.style.display = 'none';
-        } else if (targetId === 'empreendimentos') {
-            // Se as unidades já foram carregadas para um empreendimento, mantenha visível.
-            // Senão, mostre a mensagem para selecionar um.
-            if (unidadesTableBody.children.length > 0 && unidadesTableBody.firstChild.id !== 'no-units-message') {
-                 unidadesSection.style.display = 'block';
-            } else {
-                resetUnidadesView(); // Isso mostrará a mensagem "Selecione um empreendimento"
-                unidadesSection.style.display = 'block'; // Garante que a seção de unidades (com a msg) é visível
+        function showSection(targetId, keepUnitsVisible = false) {
+            contentSections.forEach(section => {
+                section.style.display = (section.id === 'config-' + targetId) ? 'block' : 'none';
+            });
+            menuLinks.forEach(link => {
+                link.classList.toggle('active', link.dataset.target === targetId);
+            });
+
+            if (targetId !== 'empreendimentos' && !keepUnitsVisible) {
+                unidadesSection.style.display = 'none';
+            } else if (targetId === 'empreendimentos') {
+                if (unidadesTableBody.children.length > 0 && unidadesTableBody.firstChild.id !== 'no-units-message') {
+                    unidadesSection.style.display = 'block';
+                } else {
+                    resetUnidadesView();
+                    unidadesSection.style.display = 'block';
+                }
             }
         }
-    }
 
-    menuLinks.forEach(link => {
-        link.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = this.dataset.target;
-            history.pushState(null, '', `{{ url_for('configuracoes') }}?tab=${target}`); // NEW: Atualiza URL sem recarregar
-            showSection(target);
-            if (target === 'empreendimentos') {
-                 // Não reseta imediatamente, espera clique em "Ver Unidades" ou se active_emp_id for lido
-            }
+        menuLinks.forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = this.dataset.target;
+                history.pushState(null, '', `{{ url_for('configuracoes') }}?tab=${target}`);
+                showSection(target);
+                // Removida a lógica de reset de unidades aqui, pois é tratada dentro de showSection ou loadUnidades
+            });
         });
-    });
 
-    document.querySelectorAll('.btn-view-units').forEach(button => {
-        button.addEventListener('click', function() {
-            const empreendimentoId = this.dataset.id;
-            const empreendimentoNome = this.closest('tr').querySelector('td:first-child').textContent;
-            // Adicionar o ID do empreendimento à URL para persistência, se desejado
-            history.pushState(null, '', `{{ url_for('configuracoes') }}?tab=empreendimentos&active_emp_id=${empreendimentoId}`);
-            loadUnidades(empreendimentoId, empreendimentoNome);
+        document.querySelectorAll('.btn-view-units').forEach(button => {
+            button.addEventListener('click', function () {
+                const empreendimentoId = this.dataset.id;
+                const empreendimentoNome = this.closest('tr').querySelector('td:first-child').textContent;
+                history.pushState(null, '', `{{ url_for('configuracoes') }}?tab=empreendimentos&active_emp_id=${empreendimentoId}`);
+                loadUnidades(empreendimentoId, empreendimentoNome);
+            });
         });
-    });
 
-    function resetUnidadesView() {
-        unidadesTableBody.innerHTML = '';
-        unidadesTableBody.appendChild(noUnitsMessageRowOriginal.cloneNode(true)); // Usar clone para resetar a mensagem
-        selectedEmpreendimentoNome.textContent = '';
-        formUnidadeEmpreendimentoId.value = '';
-        // unidadesSection.style.display = 'none'; // Decidir se esconde ou mostra com a mensagem
-    }
-
-    async function loadUnidades(empreendimentoId, empreendimentoNome) {
-        selectedEmpreendimentoNome.textContent = empreendimentoNome;
-        formUnidadeEmpreendimentoId.value = empreendimentoId;
-        unidadesSection.style.display = 'block';
-        unidadesTableBody.innerHTML = '<tr><td colspan="3">Carregando unidades...</td></tr>';
-
-        try {
-            const response = await fetch(`{{ url_for('api_get_unidades_por_empreendimento', empreendimento_id=0) }}`.replace('0', empreendimentoId)); // Usar url_for
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({detail: "Erro desconhecido ao buscar unidades."}));
-                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-            }
-            const unidades = await response.json();
-            
+        function resetUnidadesView() {
             unidadesTableBody.innerHTML = '';
-            if (unidades.length === 0) {
-                const noUnitsMsg = noUnitsMessageRowOriginal.cloneNode(true);
-                noUnitsMsg.querySelector('td').textContent = 'Nenhuma unidade cadastrada para este empreendimento.';
-                unidadesTableBody.appendChild(noUnitsMsg);
-            } else {
-                unidades.forEach(unidade => {
-                    const row = unidadesTableBody.insertRow();
-                    const toggleUrl = `{{ url_for('toggle_unidade', unidade_id=0) }}`.replace('0', unidade.id);
-                    const removeUrl = `{{ url_for('remover_unidade', unidade_id=0) }}`.replace('0', unidade.id);
-                    
-                    row.innerHTML = `
+            unidadesTableBody.appendChild(noUnitsMessageRowOriginal.cloneNode(true));
+            selectedEmpreendimentoNome.textContent = '';
+            formUnidadeEmpreendimentoId.value = '';
+        }
+
+        async function loadUnidades(empreendimentoId, empreendimentoNome) {
+            selectedEmpreendimentoNome.textContent = empreendimentoNome;
+            formUnidadeEmpreendimentoId.value = empreendimentoId;
+            unidadesSection.style.display = 'block';
+            unidadesTableBody.innerHTML = '<tr><td colspan="3">Carregando unidades...</td></tr>';
+
+            try {
+                const response = await fetch(`{{ url_for('api_get_unidades_por_empreendimento', empreendimento_id=0) }}`.replace('0', empreendimentoId));
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: "Erro desconhecido ao buscar unidades." }));
+                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                }
+                const unidades = await response.json();
+
+                unidadesTableBody.innerHTML = '';
+                if (unidades.length === 0) {
+                    const noUnitsMsg = noUnitsMessageRowOriginal.cloneNode(true);
+                    noUnitsMsg.querySelector('td').textContent = 'Nenhuma unidade cadastrada para este empreendimento.';
+                    unidadesTableBody.appendChild(noUnitsMsg);
+                } else {
+                    unidades.forEach(unidade => {
+                        const row = unidadesTableBody.insertRow();
+                        const toggleUrl = `{{ url_for('toggle_unidade', unidade_id=0) }}`.replace('0', unidade.id);
+                        const removeUrl = `{{ url_for('remover_unidade', unidade_id=0) }}`.replace('0', unidade.id);
+
+                        row.innerHTML = `
                         <td>${unidade.nome}</td>
                         <td>
                             <span class="status ${unidade.ativo ? 'status-active' : 'status-inactive'}">
@@ -287,57 +361,79 @@ document.addEventListener('DOMContentLoaded', function () {
                         <td>
                             <form method="POST" action="${toggleUrl}" style="display:inline;">
                                 <input type="hidden" name="unidade_id" value="${unidade.id}">
-                                 {# Adicionar campo hidden para empreendimento_id se precisar no redirect do toggle_unidade #}
                                 <input type="hidden" name="source_empreendimento_id" value="${empreendimentoId}">
                                 <button type="submit" class="btn btn-sm ${unidade.ativo ? 'btn-toggle btn-warning' : 'btn-toggle btn-success'}">
                                     ${unidade.ativo ? 'Desativar' : 'Ativar'}
                                 </button>
                             </form>
                             <form method="POST" action="${removeUrl}" style="display:inline;" class="form-remove">
-                                 {# Adicionar campo hidden para empreendimento_id se precisar no redirect do remover_unidade #}
                                 <input type="hidden" name="source_empreendimento_id" value="${empreendimentoId}">
                                 <button type="submit" class="btn btn-danger btn-sm">Remover</button>
                             </form>
                         </td>
                     `;
-                    const removeForm = row.querySelector('.form-remove');
-                    if(removeForm) { addConfirmationToForm(removeForm); }
-                });
+                        const removeForm = row.querySelector('.form-remove');
+                        if (removeForm) { addConfirmationToForm(removeForm); }
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar unidades:', error);
+                unidadesTableBody.innerHTML = `<tr><td colspan="3" class="text-danger">Erro ao carregar unidades: ${error.message}</td></tr>`;
             }
-        } catch (error) {
-            console.error('Erro ao carregar unidades:', error);
-            unidadesTableBody.innerHTML = `<tr><td colspan="3" class="text-danger">Erro ao carregar unidades: ${error.message}</td></tr>`;
         }
-    }
-    
-    function addConfirmationToForm(form) {
-        form.addEventListener('submit', function (e) {
-            if (!confirm('Tem certeza que deseja remover este item? Esta ação não pode ser desfeita.')) {
-                e.preventDefault();
-            }
+
+        function addConfirmationToForm(form) {
+            form.addEventListener('submit', function (e) {
+                if (!confirm('Tem certeza que deseja remover este item? Esta ação não pode ser desfeita.')) {
+                    e.preventDefault();
+                }
+            });
+        }
+        // Adicionar confirmação para formulários de remoção já existentes na carga inicial da página
+        document.querySelectorAll('form.form-remove').forEach(form => {
+            addConfirmationToForm(form);
         });
-    }
-    document.querySelectorAll('form.form-remove').forEach(form => {
-        addConfirmationToForm(form);
-    });
 
-    // Lógica para carregar a aba correta com base no parâmetro da URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const activeTabFromUrl = urlParams.get('tab');
-    const activeEmpIdFromUrl = urlParams.get('active_emp_id');
+        // NOVO: Adicionar confirmação para formulários de ação de usuário (promover/demover)
+        document.querySelectorAll('form.form-action-user').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                const actionType = this.querySelector('input[name="action"]').value;
+                let message = '';
+                if (actionType === 'promover') {
+                    message = 'Tem certeza que deseja promover este usuário a Agente?';
+                } else if (actionType === 'demover') {
+                    message = 'Tem certeza que deseja remover o status de Agente deste usuário? Ele se tornará um Cliente.';
+                } else {
+                    message = 'Tem certeza que deseja realizar esta ação?';
+                }
+                if (!confirm(message)) {
+                    e.preventDefault();
+                }
+            });
+        });
 
-    if (activeTabFromUrl) {
-        showSection(activeTabFromUrl, activeTabFromUrl === 'empreendimentos' && activeEmpIdFromUrl);
-        if (activeTabFromUrl === 'empreendimentos' && activeEmpIdFromUrl) {
-            const empRow = document.querySelector(`#empreendimentos-table tr[data-empreendimento-id="${activeEmpIdFromUrl}"]`);
-            if (empRow) {
-                const empName = empRow.querySelector('td:first-child').textContent;
-                loadUnidades(activeEmpIdFromUrl, empName);
+        // Lógica para carregar a aba correta com base no parâmetro da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTabFromUrl = urlParams.get('tab');
+        const activeEmpIdFromUrl = urlParams.get('active_emp_id');
+        const activeUserIdFromUrl = urlParams.get('active_user_id'); // Para futuros detalhes de usuário, se precisar
+
+        if (activeTabFromUrl) {
+            showSection(activeTabFromUrl, activeTabFromUrl === 'empreendimentos' && activeEmpIdFromUrl);
+            if (activeTabFromUrl === 'empreendimentos' && activeEmpIdFromUrl) {
+                const empRow = document.querySelector(`#empreendimentos-table tr[data-empreendimento-id="${activeEmpIdFromUrl}"]`);
+                if (empRow) {
+                    const empName = empRow.querySelector('td:first-child').textContent;
+                    loadUnidades(activeEmpIdFromUrl, empName);
+                }
             }
+            // Se a aba 'usuarios' for ativada por URL, não precisa de lógica extra aqui, só mostrar a seção
+            if (activeTabFromUrl === 'usuarios' && activeUserIdFromUrl) {
+                // Lógica futura para talvez expandir detalhes de um usuário específico, se necessário
+            }
+        } else {
+            showSection('tipos'); // Aba padrão
         }
-    } else {
-        showSection('tipos'); // Aba padrão
-    }
-});
+    });
 </script>
 {% endblock %}

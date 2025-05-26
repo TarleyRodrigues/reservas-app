@@ -1,26 +1,26 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Meu App{% endblock %}</title>
+    <title>{% block title %}Reservas App{% endblock %}</title>
 
-    <!-- Estilos externos -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-
-    <!-- Estilo com imagem de fundo (usando Jinja corretamente) -->
-    <style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}"> {# <--- ESSA É A LINHA QUE PRECISA
+        MUDAR! #} <style>
         body {
-            background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
-            background-size: cover;
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
+        background-size: cover;
+        color: var(--text);
+        margin: 0;
+        padding: 20px;
+        min-height: 100vh;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-    </style>
+        </style>
+        {% block head_extra %}{% endblock %}
 </head>
+
 <body>
 
     <main>
@@ -28,4 +28,5 @@
     </main>
 
 </body>
+
 </html>

@@ -1,10 +1,11 @@
-/* static/styles.css */
+/* static/css/styles.css */
 
-@import url('css/base.css');
-@import url('css/layout.css');
-@import url('css/header.css');
-@import url('css/footer.css'); /* Pode deixar vazio, mas importa para a estrutura */
-@import url('css/buttons.css');
-@import url('css/forms.css');
-@import url('css/calendar.css'); /* Pode deixar vazio, mas importa para a estrutura */
-@import url('css/reservas.css');
+/* CORREÇÃO AQUI: Remova 'css/' de todos os @import */
+@import url('base.css');
+@import url('layout.css');
+@import url('header.css');
+@import url('footer.css'); /* Pode deixar vazio, mas importa para a estrutura */
+@import url('buttons.css');
+@import url('forms.css');
+@import url('calendar.css'); /* Pode deixar vazio, mas importa para a estrutura */
+@import url('reservas.css');

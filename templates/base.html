@@ -1,114 +1,113 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
-    <meta charset="UTF-8">
-    <title>{% block title %}Reservas App{% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    {% block head_extra %}{% endblock %} {# Bloco para CSS ou JS específico da página no head #}
+  <meta charset="UTF-8">
+  <title>{% block title %}Reservas App{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {# AQUI ESTÁ O ERRO! MUDE 'styles.css' para 'css/styles.css' #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  {% block head_extra %}{% endblock %}
 </head>
+
 <body>
 
-    <header class="header">
-        <div class="logo">
-            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo Reservas.app">
-        </div>
+  <header class="header">
+    <div class="logo">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo Reservas.app">
+    </div>
 
-          <nav class="nav">
-          {% if current_user.is_authenticated %}
-          <a href="{{ url_for('index') }}" class="nav-link">Início</a>
-          <a href="{{ url_for('calendario') }}" class="nav-link">Calendário</a>
-          <a href="{{ url_for('agendar') }}" class="nav-link">Agendar</a>
+    <nav class="nav">
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('index') }}" class="nav-link">Início</a>
+      <a href="{{ url_for('calendario') }}" class="nav-link">Calendário</a>
 
-          {# CORREÇÃO APLICADA AQUI #}
-          {% if current_user.is_admin %} 
-          <a href="{{ url_for('configuracoes') }}" class="nav-link admin-link">Configurações</a>
-          {% endif %}
+      {# Clientes e Agentes podem agendar, mas Admins também podem #}
+      {% if current_user.is_cliente or current_user.is_agente or current_user.is_admin_user %}
+      <a href="{{ url_for('agendar') }}" class="nav-link">Agendar</a>
+      {% endif %}
 
-          <a href="{{ url_for('logout') }}" class="nav-link logout">Sair</a>
-          <span class="user-info">Olá, {{ current_user.nome if current_user.nome else current_user.email }}</span>
-          {% else %}
-          <a href="{{ url_for('login') }}" class="nav-link">Login</a>
-          <a href="{{ url_for('cadastro') }}" class="nav-link">Cadastre-se</a>
-          {% endif %}
-      </nav>
-    </header>
+      {# Apenas Administradores têm acesso às Configurações #}
+      {% if current_user.is_admin_user %}
+      <a href="{{ url_for('configuracoes') }}" class="nav-link admin-link">Configurações</a>
+      {% endif %}
 
-    <main>
-        <!-- Contêiner para Toasts -->
-        <div id="toast-container"></div>
-        {% block content %}{% endblock %}
-    </main>
+      <a href="{{ url_for('logout') }}" class="nav-link logout">Sair</a>
+      <span class="user-info">Olá, {{ current_user.nome if current_user.nome else current_user.email }} ({{
+        current_user.tipo_usuario.capitalize() }})</span> {# Exibir o tipo de usuário #}
+      {% else %}
+      <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+      <a href="{{ url_for('cadastro') }}" class="nav-link">Cadastre-se</a>
+      {% endif %}
+    </nav>
+  </header>
 
-    {# 
-    <footer>
-        <p>© {% now 'Y' %} Reservas App. Todos os direitos reservados.</p> {# Exemplo de como pegar o ano atual com Jinja #}
-    </footer>
-    #}
+  <main>
+    <div id="toast-container"></div>
+    {% block content %}{% endblock %}
+  </main>
 
-    <script>
-        function showToast(message, type) {
-            const container = document.getElementById('toast-container');
-            if (!container) {
-                console.error('Toast container not found!');
-                return;
-            }
+  {#
+  <footer>
+    <p>© {% now 'Y' %} Reservas App. Todos os direitos reservados.</p> {# Exemplo de como pegar o ano atual com Jinja #}
+  </footer>
+  #}
 
-            const toast = document.createElement('div');
-            toast.textContent = message;
-            
-            // Mapeia categorias do Flask (como 'danger') para classes CSS (como 'error') se necessário
-            let toastTypeClass = type;
-            if (type === 'danger') { // Flask usa 'danger' para erros por padrão em algumas extensões
-                toastTypeClass = 'error';
-            } else if (type === 'message') { // Flask pode usar 'message' para info genérica
-                 toastTypeClass = 'info'; // Supondo que você tem uma classe .toast.info
-            }
-            // Garante que apenas classes válidas (success, error, warning, info) sejam usadas
-            // ou use um tipo padrão se a categoria não for reconhecida.
-            const validTypes = ['success', 'error', 'warning', 'info'];
-            if (!validTypes.includes(toastTypeClass)) {
-                toastTypeClass = 'info'; // Default para info se a categoria não for mapeada
-            }
+  <script>
+    function showToast(message, type) {
+      const container = document.getElementById('toast-container');
+      if (!container) {
+        console.error('Toast container not found!');
+        return;
+      }
 
-            toast.className = 'toast ' + toastTypeClass;
-            container.appendChild(toast);
+      const toast = document.createElement('div');
+      toast.textContent = message;
 
-            // Força um reflow para que o navegador aplique os estilos iniciais (opacity: 0, transform: translateX(100%))
-            // antes de adicionar a classe .show que inicia a transição.
-            void toast.offsetWidth;
+      let toastTypeClass = type;
+      if (type === 'danger') {
+        toastTypeClass = 'error';
+      } else if (type === 'message') {
+        toastTypeClass = 'info';
+      }
+      const validTypes = ['success', 'error', 'warning', 'info'];
+      if (!validTypes.includes(toastTypeClass)) {
+        toastTypeClass = 'info';
+      }
 
-            // Adiciona a classe 'show' para animar a entrada do toast
-            toast.classList.add('show');
+      toast.className = 'toast ' + toastTypeClass;
+      container.appendChild(toast);
 
-            // Define um temporizador para remover o toast
-            const duration = 3500; // Tempo que o toast fica visível antes de começar a desaparecer
-            const fadeOutDuration = 400; // Duração da animação de fade-out (deve corresponder ao CSS transition-duration)
+      void toast.offsetWidth;
 
-            setTimeout(() => {
-                toast.classList.remove('show'); // Inicia a animação de saída (opacity: 0, transform: translateX(100%))
-                
-                // Remove o elemento do DOM após a transição de saída terminar
-                setTimeout(() => {
-                    if (toast.parentNode === container) { // Verifica se o toast ainda está no container
-                        container.removeChild(toast);
-                    }
-                }, fadeOutDuration);
+      toast.classList.add('show');
 
-            }, duration);
-        }
+      const duration = 3500;
+      const fadeOutDuration = 400;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // As mensagens são renderizadas pelo Jinja como chamadas JS válidas
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        showToast({{ message|tojson|safe }}, {{ category|tojson|safe }});
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
+      setTimeout(() => {
+        toast.classList.remove('show');
+
+        setTimeout(() => {
+          if (toast.parentNode === container) {
+            container.removeChild(toast);
+          }
+        }, fadeOutDuration);
+
+      }, duration);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      {% with messages = get_flashed_messages(with_categories = true) %}
+      {% if messages %}
+      {% for category, message in messages %}
+      showToast({{ message| tojson | safe }}, {{ category| tojson | safe }});
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
         });
-    </script>
-    {% block scripts_extra %}{% endblock %}
+  </script>
+  {% block scripts_extra %}{% endblock %}
 </body>
+
 </html>
