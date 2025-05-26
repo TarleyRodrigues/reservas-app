@@ -13,44 +13,53 @@
     </a>
 
     <form method="POST" action="{{ url_for('agendar') }}">
-        <label for="nome">Nome</label>
-        <input id="nome" type="text" name="nome" placeholder="Digite seu nome" required>
-
-        <label for="data">Data</label>
-        <input id="data" type="date" name="data" required>
-
-        <label for="hora">Hora</label>
-        <input id="hora" type="time" name="hora" required>
-
+        {# NOVA ORDEM: Tipo de Agendamento primeiro #}
         <label for="tipo">Tipo de agendamento</label>
         <select id="tipo" name="tipo_id" required>
             <option value="" disabled selected>Selecione o tipo</option>
             {% for tipo in tipos %}
-            <option value="{{ tipo.id }}">{{ tipo.nome }}</option>
+            <option value="{{ tipo.id }}" {% if form_data.tipo_id==tipo.id|string %}selected{% endif %}>{{ tipo.nome }}
+            </option>
             {% endfor %}
         </select>
 
+        {# Empreendimento antes de Data/Hora #}
         <label for="empreendimento">Empreendimento</label>
         <select id="empreendimento" name="empreendimento_id" required>
             <option value="" disabled selected>Selecione o empreendimento</option>
             {% for emp in empreendimentos %}
-            <option value="{{ emp.id }}">{{ emp.nome }}</option>
+            <option value="{{ emp.id }}" {% if form_data.empreendimento_id==emp.id|string %}selected{% endif %}>{{
+                emp.nome }}</option>
             {% endfor %}
         </select>
 
+        {# Unidade, que já é dinâmica #}
         <label for="unidade">Unidade</label>
         <select id="unidade" name="unidade_id" required>
             <option value="" disabled selected>Selecione a unidade</option>
             {% for unidade in unidades %}
-            <option value="{{ unidade.id }}" data-emp="{{ unidade.empreendimento_id }}">
+            <option value="{{ unidade.id }}" data-emp="{{ unidade.empreendimento_id }}" {% if
+                form_data.unidade_id==unidade.id|string %}selected{% endif %}>
                 {{ unidade.nome }} ({{ unidade.nome_empreendimento }})
             </option>
             {% endfor %}
         </select>
 
+        {# Nome do Cliente (se o agendamento for para outro) #}
+        <label for="nome">Nome do Agendamento</label>
+        <input id="nome" type="text" name="nome" placeholder="Digite o nome para o agendamento (Ex: Nome do Cliente)"
+            required value="{{ form_data.nome if form_data.nome else '' }}">
+
+        {# Data e Hora agora depois do Empreendimento/Unidade #}
+        <label for="data">Data</label>
+        <input id="data" type="date" name="data" required value="{{ form_data.data if form_data.data else '' }}">
+
+        <label for="hora">Hora</label>
+        <input id="hora" type="time" name="hora" required value="{{ form_data.hora if form_data.hora else '' }}">
+
         <label for="observacoes">Observações (opcional)</label>
         <textarea id="observacoes" name="observacoes"
-            placeholder="Adicione observações sobre o agendamento (ex: informações adicionais sobre a entrega)"></textarea>
+            placeholder="Adicione observações sobre o agendamento (ex: informações adicionais sobre a entrega)">{{ form_data.observacoes if form_data.observacoes else '' }}</textarea>
 
         <button type="submit" class="btn-agendar">Agendar</button>
     </form>
@@ -66,22 +75,45 @@
         toggleBtn.textContent = body.classList.contains('dark') ? '☀️' : '🌙';
     });
 
-    // Filtro de unidades por empreendimento
-    document.getElementById('empreendimento').addEventListener('change', function () {
-        const empId = this.value;
-        const unidadesSelect = document.getElementById('unidade');
+    // Filtro de unidades por empreendimento (manter e adaptar)
+    const empreendimentoSelect = document.getElementById('empreendimento');
+    const unidadeSelect = document.getElementById('unidade');
+    const allUnidadeOptions = Array.from(unidadeSelect.querySelectorAll('option:not([value=""])')); // Todas as opções, exceto a primeira "Selecione a unidade"
 
-        // Resetar seleção
-        unidadesSelect.value = '';
+    function filterUnidades() {
+        const empId = empreendimentoSelect.value;
 
-        // Mostrar apenas unidades do empreendimento selecionado
-        unidadesSelect.querySelectorAll('option').forEach(opt => {
-            if (!opt.value || opt.dataset.emp === empId) {
-                opt.style.display = 'block';
-            } else {
-                opt.style.display = 'none';
-            }
+        // Esconder todas as unidades primeiro
+        allUnidadeOptions.forEach(opt => {
+            opt.style.display = 'none';
         });
-    });
+
+        // Mostrar apenas as unidades do empreendimento selecionado
+        if (empId) {
+            const relevantUnidades = allUnidadeOptions.filter(opt => opt.dataset.emp === empId);
+            relevantUnidades.forEach(opt => {
+                opt.style.display = 'block';
+            });
+        }
+
+        // Se a unidade selecionada não pertence mais ao empreendimento atual, resetar
+        const currentSelectedUnidade = unidadeSelect.value;
+        const selectedOption = unidadeSelect.querySelector(`option[value="${currentSelectedUnidade}"]`);
+
+        if (selectedOption && selectedOption.dataset.emp !== empId) {
+            unidadeSelect.value = ''; // Resetar se a unidade selecionada não for do novo empreendimento
+        } else if (!selectedOption && currentSelectedUnidade) {
+            // Se a unidade selecionada não existe mais (ex: após um erro de validação que removeu uma opção inválida)
+            unidadeSelect.value = '';
+        }
+    }
+
+    // Chamar a função de filtro ao carregar a página e quando o empreendimento muda
+    empreendimentoSelect.addEventListener('change', filterUnidades);
+
+    // Chamar filterUnidades uma vez na carga inicial para garantir que as unidades corretas já estejam visíveis
+    // (especialmente se o formulário for repopulado após um erro)
+    filterUnidades();
+
 </script>
 {% endblock %}
