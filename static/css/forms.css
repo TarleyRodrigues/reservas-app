@@ -131,3 +131,88 @@ input:focus {
     border-color: #4fc3f7;
     outline: none;
 }
+
+/* static/css/forms.css (ou o arquivo CSS de sua escolha) */
+
+.checkbox-group {
+    display: flex;
+    flex-wrap: wrap; /* Permite que os itens quebrem para a próxima linha se não houver espaço */
+    gap: 15px; /* Espaço entre os itens */
+    margin-bottom: 20px;
+    padding: 10px;
+    border: 1px solid var(--input-border);
+    border-radius: 5px;
+    background-color: var(--input-bg);
+}
+
+.checkbox-item {
+    display: flex; /* Faz com que o checkbox e o texto fiquem na mesma linha */
+    align-items: center; /* Alinha verticalmente no centro */
+}
+
+.checkbox-item label {
+    display: flex; /* Para que o input e o texto dentro do label fiquem lado a lado */
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.95em;
+    color: var(--text);
+}
+
+.checkbox-item input[type="checkbox"] {
+    margin-right: 8px; /* Espaço entre o checkbox e o texto */
+    /* Estilos básicos para o checkbox */
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--input-border);
+    border-radius: 3px;
+    cursor: pointer;
+    appearance: none; /* Remove o estilo padrão do navegador */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: var(--input-bg);
+    position: relative; /* Para customização do checkmark */
+}
+
+/* Estilo para o checkbox quando marcado */
+.checkbox-item input[type="checkbox"]:checked {
+    background-color: var(--button-bg);
+    border-color: var(--button-bg);
+}
+
+/* Adiciona um "checkmark" visual para o checkbox marcado */
+.checkbox-item input[type="checkbox"]:checked::before {
+    content: '✔';
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    color: var(--button-text);
+}
+
+.checkbox-item input[type="checkbox"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--input-focus-border);
+}
+
+/* Container específico para o formulário de serviços do agente */
+.servicos-form-container {
+    background-color: var(--form-bg);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px var(--shadow);
+    margin-top: 10px; /* Espaçamento da tabela */
+    border: 1px solid var(--input-border); /* Uma borda sutil para destacá-lo */
+}
+
+.servicos-form-container h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--text);
+}
+
+.servicos-form-container .btn {
+    margin-right: 10px;
+    margin-top: 15px;
+}

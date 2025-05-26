@@ -6,7 +6,6 @@
         <ul class="config-menu">
             <li><a href="#" data-target="tipos" class="config-menu-link">Tipos de Agendamento</a></li>
             <li><a href="#" data-target="empreendimentos" class="config-menu-link">Empreendimentos e Unidades</a></li>
-            {# NOVO LINK DE MENU: Gerenciamento de Usuários #}
             <li><a href="#" data-target="usuarios" class="config-menu-link">Gerenciamento de Usuários</a></li>
             <li><a href="#" data-target="seguranca" class="config-menu-link">Segurança (Administradores)</a></li>
         </ul>
@@ -15,8 +14,7 @@
     <div class="config-main-content">
         <h1>Configurações do Sistema</h1>
 
-        {# O script de toast no base.html já lida com isso, esta div é redundante se o JS estiver ativo.
-        Vou manter por enquanto como um fallback visual se o JS falhar, mas idealmente seria removida. #}
+        {# Mensagens Flash (mantido o fallback, o JS já lida com os toasts) #}
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
@@ -149,33 +147,71 @@
             <h2>Gerenciamento de Usuários</h2>
 
             <h3>Agentes Atuais</h3>
-            {# O loop 'agente_users' vem do app.py #}
             {% if agente_users %}
             <table class="config-table" id="agente-users-table">
                 <thead>
                     <tr>
                         <th>Nome</th>
                         <th>Email</th>
-                        <th>Telefone</th> {# Adicionado Telefone #}
+                        <th>Telefone</th>
+                        <th>Tipos de Serviço Vinculados</th> {# NOVA COLUNA #}
                         <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for user in agente_users %}
-                    <tr>
+                    <tr data-user-id="{{ user.id }}" data-user-name="{{ user.nome }}">
                         <td>{{ user.nome if user.nome else 'N/A' }}</td>
                         <td>{{ user.email }}</td>
-                        <td>{{ user.telefone if user.telefone else 'Não informado' }}</td> {# Exibir telefone #}
+                        <td>{{ user.telefone if user.telefone else 'Não informado' }}</td>
                         <td>
-                            {# Botão para remover status de Agente (demover para Cliente) #}
+                            {# Exibir tipos de serviço vinculados ao agente #}
+                            <span id="agente-servicos-{{ user.id }}">
+                                {# Isso será preenchido via JavaScript #}
+                                Carregando...
+                            </span>
+                        </td>
+                        <td>
                             <form method="POST" action="{{ url_for('gerenciar_agente') }}" style="display:inline;"
                                 class="form-action-user">
                                 <input type="hidden" name="user_id" value="{{ user.id }}">
                                 <input type="hidden" name="action" value="demover">
                                 <button type="submit" class="btn btn-warning btn-sm">Remover Status Agente</button>
                             </form>
+                            {# NOVO BOTÃO: Gerenciar Serviços #}
+                            <button class="btn btn-info btn-sm btn-gerenciar-servicos" data-user-id="{{ user.id }}"
+                                data-user-name="{{ user.nome }}">Gerenciar Serviços</button>
                         </td>
                     </tr>
+                    {# Div oculta para o modal de serviços #}
+                    ...
+                    <tr class="agente-servicos-details" id="agente-servicos-row-{{ user.id }}" style="display: none;">
+                        <td colspan="5">
+                            <div class="servicos-form-container">
+                                <h4>Vincular Tipos de Serviço para {{ user.nome if user.nome else user.email }}</h4>
+                                <form method="POST" action="{{ url_for('vincular_servicos_agente') }}"
+                                    class="form-vincular-servicos">
+                                    <input type="hidden" name="agente_id" value="{{ user.id }}">
+                                    <div class="checkbox-group">
+                                        {% for tipo in tipos %}
+                                        {# ALTERADO AQUI: Envolver input e label em uma div e adicionar class
+                                        "checkbox-item" #}
+                                        <div class="checkbox-item">
+                                            <label>
+                                                <input type="checkbox" name="tipos_servico[]" value="{{ tipo.id }}">
+                                                {{ tipo.nome }}
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm">Salvar Vinculação</button>
+                                    <button type="button"
+                                        class="btn btn-secondary btn-sm btn-cancelar-servicos">Cancelar</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    ...
                     {% endfor %}
                 </tbody>
             </table>
@@ -186,7 +222,6 @@
             <hr>
 
             <h3>Promover Usuário a Agente</h3>
-            {# Iterar sobre todos os usuários que não são admin nem agente #}
             {% if cliente_users %}
             <form method="POST" action="{{ url_for('gerenciar_agente') }}" id="form-promover-agente"
                 class="config-form">
@@ -215,7 +250,7 @@
                     <tr>
                         <th>Nome</th>
                         <th>Email</th>
-                        <th>Telefone</th> {# Adicionado Telefone #}
+                        <th>Telefone</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -224,10 +259,8 @@
                     <tr>
                         <td>{{ admin_user.nome if admin_user.nome else 'N/A' }}</td>
                         <td>{{ admin_user.email }}</td>
-                        <td>{{ admin_user.telefone if admin_user.telefone else 'Não informado' }}</td> {# Exibir
-                        telefone #}
+                        <td>{{ admin_user.telefone if admin_user.telefone else 'Não informado' }}</td>
                         <td>
-                            {# Regra para não remover o próprio usuário ou o admin principal #}
                             {% if admin_user.id != current_user.id and admin_user.email !=
                             (os.environ.get('SUPER_ADMIN_EMAIL', 'admin@admin.com')) %}
                             <form method="POST" action="{{ url_for('remover_admin', user_id=admin_user.id) }}"
@@ -249,9 +282,7 @@
             {% endif %}
             <hr>
             <h3>Promover Usuário a Administrador</h3>
-            {# normal_users não é mais usado, agora usamos cliente_users e agente_users #}
-            {% set users_to_promote_admin = agente_users + cliente_users %} {# Combina agentes e clientes para promover
-            #}
+            {% set users_to_promote_admin = agente_users + cliente_users %}
             {% if users_to_promote_admin %}
             <form method="POST" action="{{ url_for('promover_admin') }}" id="form-promover-admin" class="config-form">
                 <select name="user_to_promote_id" required>
@@ -298,6 +329,10 @@
                     unidadesSection.style.display = 'block';
                 }
             }
+            // NOVO: Quando a seção de usuários é mostrada, carregar os serviços dos agentes
+            if (targetId === 'usuarios') {
+                loadAgenteServicos();
+            }
         }
 
         menuLinks.forEach(link => {
@@ -306,7 +341,6 @@
                 const target = this.dataset.target;
                 history.pushState(null, '', `{{ url_for('configuracoes') }}?tab=${target}`);
                 showSection(target);
-                // Removida a lógica de reset de unidades aqui, pois é tratada dentro de showSection ou loadUnidades
             });
         });
 
@@ -352,26 +386,26 @@
                         const removeUrl = `{{ url_for('remover_unidade', unidade_id=0) }}`.replace('0', unidade.id);
 
                         row.innerHTML = `
-                        <td>${unidade.nome}</td>
-                        <td>
-                            <span class="status ${unidade.ativo ? 'status-active' : 'status-inactive'}">
-                                ${unidade.ativo ? 'Ativa' : 'Inativa'}
-                            </span>
-                        </td>
-                        <td>
-                            <form method="POST" action="${toggleUrl}" style="display:inline;">
-                                <input type="hidden" name="unidade_id" value="${unidade.id}">
-                                <input type="hidden" name="source_empreendimento_id" value="${empreendimentoId}">
-                                <button type="submit" class="btn btn-sm ${unidade.ativo ? 'btn-toggle btn-warning' : 'btn-toggle btn-success'}">
-                                    ${unidade.ativo ? 'Desativar' : 'Ativar'}
-                                </button>
-                            </form>
-                            <form method="POST" action="${removeUrl}" style="display:inline;" class="form-remove">
-                                <input type="hidden" name="source_empreendimento_id" value="${empreendimentoId}">
-                                <button type="submit" class="btn btn-danger btn-sm">Remover</button>
-                            </form>
-                        </td>
-                    `;
+                            <td>${unidade.nome}</td>
+                            <td>
+                                <span class="status ${unidade.ativo ? 'status-active' : 'status-inactive'}">
+                                    ${unidade.ativo ? 'Ativa' : 'Inativa'}
+                                </span>
+                            </td>
+                            <td>
+                                <form method="POST" action="${toggleUrl}" style="display:inline;">
+                                    <input type="hidden" name="unidade_id" value="${unidade.id}">
+                                    <input type="hidden" name="source_empreendimento_id" value="${empreendimentoId}">
+                                    <button type="submit" class="btn btn-sm ${unidade.ativo ? 'btn-toggle btn-warning' : 'btn-toggle btn-success'}">
+                                        ${unidade.ativo ? 'Desativar' : 'Ativar'}
+                                    </button>
+                                </form>
+                                <form method="POST" action="${removeUrl}" style="display:inline;" class="form-remove">
+                                    <input type="hidden" name="source_empreendimento_id" value="${empreendimentoId}">
+                                    <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+                                </form>
+                            </td>
+                        `;
                         const removeForm = row.querySelector('.form-remove');
                         if (removeForm) { addConfirmationToForm(removeForm); }
                     });
@@ -389,12 +423,10 @@
                 }
             });
         }
-        // Adicionar confirmação para formulários de remoção já existentes na carga inicial da página
         document.querySelectorAll('form.form-remove').forEach(form => {
             addConfirmationToForm(form);
         });
 
-        // NOVO: Adicionar confirmação para formulários de ação de usuário (promover/demover)
         document.querySelectorAll('form.form-action-user').forEach(form => {
             form.addEventListener('submit', function (e) {
                 const actionType = this.querySelector('input[name="action"]').value;
@@ -412,11 +444,97 @@
             });
         });
 
+        // NOVO: Lógica para Gerenciamento de Serviços do Agente
+        const agenteServicosDetails = document.querySelectorAll('.agente-servicos-details');
+
+        document.querySelectorAll('.btn-gerenciar-servicos').forEach(button => {
+            button.addEventListener('click', function () {
+                const userId = this.dataset.userId;
+                const userName = this.dataset.userName;
+                const detailRow = document.getElementById(`agente-servicos-row-${userId}`);
+
+                // Esconde todas as outras seções de detalhes de serviço
+                agenteServicosDetails.forEach(row => {
+                    if (row.id !== `agente-servicos-row-${userId}`) {
+                        row.style.display = 'none';
+                    }
+                });
+
+                if (detailRow.style.display === 'none') {
+                    detailRow.style.display = 'table-row'; // Para mostrar como uma linha de tabela
+                    // Carregar os tipos de serviço vinculados a este agente
+                    loadAgenteTiposServico(userId, detailRow.querySelector('.form-vincular-servicos'));
+                } else {
+                    detailRow.style.display = 'none';
+                }
+            });
+        });
+
+        document.querySelectorAll('.btn-cancelar-servicos').forEach(button => {
+            button.addEventListener('click', function () {
+                this.closest('.agente-servicos-details').style.display = 'none';
+            });
+        });
+
+        async function loadAgenteServicos() {
+            // Esta função será chamada quando a aba de usuários for ativada
+            // Ela busca os tipos de serviço vinculados a CADA agente
+            const agenteRows = document.querySelectorAll('#agente-users-table tbody tr[data-user-id]');
+            for (const row of agenteRows) {
+                const userId = row.dataset.userId;
+                const servicosSpan = document.getElementById(`agente-servicos-${userId}`);
+
+                try {
+                    // Crie uma nova rota no app.py para isso, ex: /api/agente/<id>/servicos
+                    const response = await fetch(`/api/agente/${userId}/servicos`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json(); // Espera algo como { tipos_vinculados: ["Tipo 1", "Tipo 2"] }
+
+                    if (data.tipos_vinculados && data.tipos_vinculados.length > 0) {
+                        servicosSpan.textContent = data.tipos_vinculados.join(', ');
+                    } else {
+                        servicosSpan.textContent = 'Nenhum serviço vinculado.';
+                    }
+                } catch (error) {
+                    console.error(`Erro ao carregar serviços para o agente ${userId}:`, error);
+                    servicosSpan.textContent = 'Erro ao carregar.';
+                }
+            }
+        }
+
+        async function loadAgenteTiposServico(agenteId, formElement) {
+            // Esta função preenche os checkboxes no modal quando "Gerenciar Serviços" é clicado
+            const checkboxes = formElement.querySelectorAll('input[type="checkbox"][name="tipos_servico[]"]');
+            checkboxes.forEach(cb => cb.checked = false); // Desmarcar todos primeiro
+
+            try {
+                // Rota para buscar os IDs dos tipos de serviço vinculados ao agente
+                const response = await fetch(`/api/agente/${agenteId}/servicos_ids`); // Nova rota: devolve apenas IDs
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json(); // Espera algo como { vinculados_ids: [1, 5, 8] }
+
+                if (data.vinculados_ids) {
+                    checkboxes.forEach(checkbox => {
+                        if (data.vinculados_ids.includes(parseInt(checkbox.value))) {
+                            checkbox.checked = true;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error(`Erro ao carregar tipos de serviço vinculados para o agente ${agenteId}:`, error);
+                // Opcional: mostrar uma mensagem de erro no formulário
+            }
+        }
+
         // Lógica para carregar a aba correta com base no parâmetro da URL
         const urlParams = new URLSearchParams(window.location.search);
         const activeTabFromUrl = urlParams.get('tab');
         const activeEmpIdFromUrl = urlParams.get('active_emp_id');
-        const activeUserIdFromUrl = urlParams.get('active_user_id'); // Para futuros detalhes de usuário, se precisar
+        const activeUserIdFromUrl = urlParams.get('active_user_id');
 
         if (activeTabFromUrl) {
             showSection(activeTabFromUrl, activeTabFromUrl === 'empreendimentos' && activeEmpIdFromUrl);
@@ -426,10 +544,6 @@
                     const empName = empRow.querySelector('td:first-child').textContent;
                     loadUnidades(activeEmpIdFromUrl, empName);
                 }
-            }
-            // Se a aba 'usuarios' for ativada por URL, não precisa de lógica extra aqui, só mostrar a seção
-            if (activeTabFromUrl === 'usuarios' && activeUserIdFromUrl) {
-                // Lógica futura para talvez expandir detalhes de um usuário específico, se necessário
             }
         } else {
             showSection('tipos'); // Aba padrão

@@ -33,18 +33,15 @@ login_manager.login_message_category = "info"
 
 
 class Usuario(UserMixin):
-    # ATUALIZADO: Adicionado 'tipo_usuario' ao construtor
-    # Adicionado 'telefone' ao construtor para futuras implementações da Fase 1
     def __init__(self, id, nome, email, senha_hash, is_admin=0, tipo_usuario='cliente', telefone=None):
         self.id = id
         self.nome = nome
         self.email = email
         self.senha_hash = senha_hash
         self.is_admin = is_admin
-        self.tipo_usuario = tipo_usuario  # Novo campo
-        self.telefone = telefone  # Novo campo para futuras implementações
+        self.tipo_usuario = tipo_usuario
+        self.telefone = telefone
 
-    # NOVAS PROPRIEDADES: Para facilitar a verificação de tipo de usuário
     @property
     def is_cliente(self):
         return self.tipo_usuario == 'cliente'
@@ -54,8 +51,7 @@ class Usuario(UserMixin):
         return self.tipo_usuario == 'agente'
 
     @property
-    def is_admin_user(self):  # Nome mais claro para evitar confusão com 'is_admin' do DB
-        # Um usuário é admin se o tipo_usuario for 'admin' OU se is_admin for 1 (para compatibilidade/migração)
+    def is_admin_user(self):
         return self.tipo_usuario == 'admin' or self.is_admin == 1
 
 # 🔍 Funções auxiliares
@@ -63,23 +59,18 @@ class Usuario(UserMixin):
 
 def get_db_connection():
     conn = sqlite3.connect('database.db')
-    # IMPORTANTE: Isso faz com que as linhas se comportem como dicionários
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def buscar_usuario_por_email(email):
     conn = get_db_connection()
-    # ATUALIZADO: Selecionar 'tipo_usuario' e 'telefone'
     row = conn.execute(
         "SELECT id, nome, email, senha, is_admin, tipo_usuario, telefone FROM usuarios WHERE email = ?", (
             email,)
     ).fetchone()
     conn.close()
     if row:
-        # CORREÇÃO: Acessar tipo_usuario e telefone diretamente, pois row_factory já faz a linha ser dict-like
-        # A verificação 'in row' é para compatibilidade, caso a coluna ainda não exista por alguma razão
-        # (mas o init_db tenta garantir que existam)
         return Usuario(row["id"], row["nome"], row["email"], row["senha"],
                        row["is_admin"],
                        row['tipo_usuario'] if 'tipo_usuario' in row else 'cliente',
@@ -90,14 +81,12 @@ def buscar_usuario_por_email(email):
 @login_manager.user_loader
 def load_user(user_id):
     conn = get_db_connection()
-    # ATUALIZADO: Selecionar 'tipo_usuario' e 'telefone'
     row = conn.execute(
         "SELECT id, nome, email, senha, is_admin, tipo_usuario, telefone FROM usuarios WHERE id = ?", (
             user_id,)
     ).fetchone()
     conn.close()
     if row:
-        # CORREÇÃO: Acessar tipo_usuario e telefone diretamente
         return Usuario(row["id"], row["nome"], row["email"], row["senha"],
                        row["is_admin"],
                        row['tipo_usuario'] if 'tipo_usuario' in row else 'cliente',
@@ -163,7 +152,6 @@ def cadastro():
         email = request.form.get('email', '').strip()
         senha = request.form.get('senha', '')
         confirmar_senha = request.form.get('confirmar_senha', '')
-        # NOVO: Capturar telefone
         telefone = request.form.get('telefone', '').strip()
 
         errors = []
@@ -187,16 +175,13 @@ def cadastro():
         if errors:
             for error_msg in errors:
                 flash(error_msg, 'error')
-            # ATUALIZADO: Passar telefone para render_template para repopular
             return render_template('cadastro.html', nome=nome, email=email, telefone=telefone)
 
         try:
             senha_hash = generate_password_hash(senha)
             conn = get_db_connection()
-            # ATUALIZADO: Adicionado 'tipo_usuario' e 'telefone' ao INSERT
             conn.execute(
                 'INSERT INTO usuarios (nome, email, senha, is_admin, tipo_usuario, telefone) VALUES (?, ?, ?, ?, ?, ?)',
-                # tipo_usuario padrão 'cliente', telefone
                 (nome, email, senha_hash, 0, 'cliente', telefone)
             )
             conn.commit()
@@ -214,7 +199,6 @@ def cadastro():
                 'Ocorreu um erro inesperado durante o cadastro. Por favor, tente mais tarde.', 'error')
             app.logger.error(
                 f'Erro inesperado no cadastro: {e}', exc_info=True)
-        # ATUALIZADO: Passar telefone para render_template em caso de erro inesperado
         return render_template('cadastro.html', nome=nome, email=email, telefone=telefone)
 
     return render_template('cadastro.html')
@@ -371,13 +355,11 @@ def agendar():
             conn.close()
 
 # 📅 Calendário e eventos
-# ATUALIZADO: Aplicar restrições de visualização ao calendário
 
 
 @app.route('/calendario')
 @login_required
 def calendario():
-    # Clientes só veem seus próprios agendamentos. Agentes/Admins veem todos.
     if current_user.is_cliente:
         flash('Você está vendo apenas seus agendamentos. Agentes e Administradores podem ver todos.', 'info')
     return render_template('calendario.html')
@@ -389,7 +371,6 @@ def calendario():
 @login_required
 def eventos():
     conn = get_db_connection()
-    # ATUALIZADO: Modificar a consulta SQL para filtrar por usuário se for cliente
     query = '''
         SELECT a.id, u.nome as usuario_nome, u.email as usuario_email, a.data, a.hora, a.observacoes, 
                 t.nome AS tipo_nome, un.nome as unidade_nome, e.nome as empreendimento_nome
@@ -406,7 +387,7 @@ def eventos():
         query += " AND a.usuario_id = ?"
         params.append(current_user.id)
 
-    query += " ORDER BY a.data, a.hora"  # Adicionando ordenação padrão
+    query += " ORDER BY a.data, a.hora"
 
     eventos_db = conn.execute(query, params).fetchall()
     conn.close()
@@ -421,9 +402,7 @@ def eventos():
                 "title": f"{row['tipo_nome']} - {row['unidade_nome']} ({row['empreendimento_nome']})",
                 "start": start_datetime_str,
                 "extendedProps": {
-                    # Mudado de 'usuario' para 'usuario_nome'
                     "usuario_nome": row['usuario_nome'],
-                    # Adicionado email do usuário
                     "usuario_email": row['usuario_email'],
                     "tipo": row['tipo_nome'],
                     "unidade": row['unidade_nome'],
@@ -453,27 +432,24 @@ def debug_user():
         'email': current_user.email,
         'is_authenticated': current_user.is_authenticated,
         'is_admin': current_user.is_admin,
-        'tipo_usuario': current_user.tipo_usuario,  # NOVO: Mostrar tipo_usuario
-        'telefone': current_user.telefone  # NOVO: Mostrar telefone
+        'tipo_usuario': current_user.tipo_usuario,
+        'telefone': current_user.telefone
     })
 
 # --- DECORATORS PARA PERMISSÃO ---
-# (Manter admin_required e adicionar agente_required e permissoes_required)
 
 
 def admin_required(f):
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin_user:  # Usar a nova propriedade
+        if not current_user.is_authenticated or not current_user.is_admin_user:
             flash('Acesso restrito a administradores.', 'error')
             app.logger.warning(
                 f"Tentativa de acesso não autorizado à rota admin por: {current_user.email} (Tipo: {current_user.tipo_usuario})")
             return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
-
-# NOVO: Decorador para rotas que agentes podem acessar
 
 
 def agente_required(f):
@@ -488,8 +464,6 @@ def agente_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# NOVO: Decorador genérico para permissões
-
 
 def permissoes_required(roles):
     def decorator(f):
@@ -500,7 +474,6 @@ def permissoes_required(roles):
                 flash('Por favor, faça login para acessar esta página.', 'info')
                 return redirect(url_for('login', next=request.url))
 
-            # Verificar se o tipo de usuário atual está entre os papéis permitidos
             if current_user.tipo_usuario not in roles and not current_user.is_admin_user:
                 flash('Você não tem permissão para acessar esta página.', 'error')
                 app.logger.warning(
@@ -512,7 +485,7 @@ def permissoes_required(roles):
     return decorator
 
 
-# --- ROTAS DE ADMINISTRAÇÃO (manter admin_required) ---
+# --- ROTAS DE ADMINISTRAÇÃO ---
 @app.route('/toggle_empreendimento', methods=['POST'])
 @admin_required
 def toggle_empreendimento():
@@ -637,14 +610,14 @@ def toggle_unidade(unidade_id):
 def remover_unidade(unidade_id):
     source_emp_id = request.form.get('source_empreendimento_id')
     conn = get_db_connection()
-    unidade_info_for_redirect = None  # Para guardar o empreendimento_id
+    unidade_info_for_redirect = None
     try:
         unidade = conn.execute(
             'SELECT nome, empreendimento_id FROM unidades WHERE id = ?', (unidade_id,)).fetchone()
         if not unidade:
             flash('Unidade não encontrada.', 'error')
         else:
-            unidade_info_for_redirect = unidade  # Guardar antes de deletar
+            unidade_info_for_redirect = unidade
             agendamentos_count = conn.execute(
                 "SELECT COUNT(id) as count FROM agendamentos WHERE unidade_id = ?", (unidade_id,)).fetchone()
             if agendamentos_count and agendamentos_count['count'] > 0:
@@ -674,21 +647,21 @@ def remover_unidade(unidade_id):
 
 
 @app.route('/configuracoes')
-@admin_required  # Garante que apenas administradores acessem
+@admin_required
 def configuracoes():
     conn = get_db_connection()
     tipos_data = []
     empreendimentos_data = []
     admin_users_data = []
-    agente_users_data = []  # Clientes e Agentes (não-admin)
+    agente_users_data = []
     cliente_users_data = []
     try:
         tipos_data = conn.execute(
-            'SELECT * FROM tipos_agendamento ORDER BY nome').fetchall()
+            # Alterado para pegar apenas tipos ativos
+            'SELECT * FROM tipos_agendamento WHERE ativo = 1 ORDER BY nome').fetchall()
         empreendimentos_data = conn.execute(
             'SELECT * FROM empreendimentos ORDER BY nome').fetchall()
 
-        # ATUALIZADO: Separar usuários por tipo_usuario para a interface de configurações
         admin_users_data = conn.execute(
             "SELECT id, nome, email, telefone, tipo_usuario FROM usuarios WHERE tipo_usuario = 'admin' ORDER BY nome").fetchall()
         agente_users_data = conn.execute(
@@ -707,13 +680,13 @@ def configuracoes():
                            tipos=tipos_data,
                            empreendimentos=empreendimentos_data,
                            admin_users=admin_users_data,
-                           agente_users=agente_users_data,  # NOVO: Agentes
-                           cliente_users=cliente_users_data  # NOVO: Clientes
+                           agente_users=agente_users_data,
+                           cliente_users=cliente_users_data
                            )
 
 
 @app.route('/api/empreendimento/<int:empreendimento_id>/unidades')
-@admin_required  # API para unidades, geralmente acessada por admins
+@admin_required
 def api_get_unidades_por_empreendimento(empreendimento_id):
     conn = get_db_connection()
     empreendimento = conn.execute(
@@ -729,9 +702,115 @@ def api_get_unidades_por_empreendimento(empreendimento_id):
     conn.close()
     return jsonify([dict(unidade) for unidade in unidades])
 
+# --- NOVO: ROTAS PARA VINCULAÇÃO DE SERVIÇOS DO AGENTE ---
+
+
+@app.route('/api/agente/<int:agente_id>/servicos')
+@admin_required  # Apenas admins podem ver os serviços vinculados
+def api_agente_servicos(agente_id):
+    conn = get_db_connection()
+
+    # Verifica se o usuário é realmente um agente ou admin
+    agente = conn.execute(
+        "SELECT id, tipo_usuario FROM usuarios WHERE id = ?", (agente_id,)).fetchone()
+    if not agente or (agente['tipo_usuario'] != 'agente' and agente['tipo_usuario'] != 'admin'):
+        conn.close()
+        return jsonify({"error": "Agente não encontrado ou sem permissão."}), 404
+
+    servicos_vinculados = conn.execute('''
+        SELECT ta.nome FROM agente_tipos_servico ats
+        JOIN tipos_agendamento ta ON ats.tipo_id = ta.id
+        WHERE ats.agente_id = ? AND ta.ativo = 1
+        ORDER BY ta.nome
+    ''', (agente_id,)).fetchall()
+    conn.close()
+
+    return jsonify({"tipos_vinculados": [s['nome'] for s in servicos_vinculados]})
+
+
+@app.route('/api/agente/<int:agente_id>/servicos_ids')
+@admin_required  # Apenas admins podem ver os serviços vinculados por ID
+def api_agente_servicos_ids(agente_id):
+    conn = get_db_connection()
+
+    # Verifica se o usuário é realmente um agente ou admin
+    agente = conn.execute(
+        "SELECT id, tipo_usuario FROM usuarios WHERE id = ?", (agente_id,)).fetchone()
+    if not agente or (agente['tipo_usuario'] != 'agente' and agente['tipo_usuario'] != 'admin'):
+        conn.close()
+        return jsonify({"error": "Agente não encontrado ou sem permissão."}), 404
+
+    servicos_vinculados_ids = conn.execute('''
+        SELECT ats.tipo_id FROM agente_tipos_servico ats
+        JOIN tipos_agendamento ta ON ats.tipo_id = ta.id
+        WHERE ats.agente_id = ? AND ta.ativo = 1
+    ''', (agente_id,)).fetchall()
+    conn.close()
+
+    return jsonify({"vinculados_ids": [s['tipo_id'] for s in servicos_vinculados_ids]})
+
+
+@app.route('/vincular_servicos_agente', methods=['POST'])
+@admin_required  # Apenas admins podem vincular serviços
+def vincular_servicos_agente():
+    agente_id = request.form.get('agente_id')
+    tipos_servico_ids = request.form.getlist(
+        'tipos_servico[]')  # Recebe uma lista de IDs
+
+    if not agente_id:
+        flash('ID do agente não fornecido.', 'error')
+        return redirect(url_for('configuracoes', tab='usuarios'))
+
+    conn = get_db_connection()
+    try:
+        # 1. Verifica se o usuário é realmente um agente (ou admin, para permitir gerenciamento próprio)
+        agente = conn.execute(
+            "SELECT id, nome, tipo_usuario FROM usuarios WHERE id = ?", (agente_id,)).fetchone()
+        if not agente or (agente['tipo_usuario'] != 'agente' and agente['tipo_usuario'] != 'admin'):
+            flash('Agente não encontrado ou sem permissão para vinculação.', 'error')
+            return redirect(url_for('configuracoes', tab='usuarios'))
+
+        # 2. Remove todas as vinculações existentes para este agente
+        conn.execute(
+            'DELETE FROM agente_tipos_servico WHERE agente_id = ?', (agente_id,))
+
+        # 3. Adiciona as novas vinculações
+        for tipo_id_str in tipos_servico_ids:
+            try:
+                tipo_id = int(tipo_id_str)
+                # Opcional: Verificar se tipo_id existe e está ativo na tabela tipos_agendamento
+                # conn.execute("SELECT id FROM tipos_agendamento WHERE id = ? AND ativo = 1", (tipo_id,)).fetchone()
+                conn.execute(
+                    'INSERT INTO agente_tipos_servico (agente_id, tipo_id) VALUES (?, ?)',
+                    (agente_id, tipo_id)
+                )
+            except ValueError:
+                app.logger.warning(
+                    f"Tipo de serviço ID inválido recebido: {tipo_id_str}")
+            except sqlite3.IntegrityError:
+                # Isso não deve acontecer após o DELETE, mas é uma segurança
+                app.logger.warning(
+                    f"Tentativa de duplicar vinculação para agente {agente_id} e tipo {tipo_id_str}")
+
+        conn.commit()
+        flash(
+            f'Tipos de serviço vinculados ao agente "{agente["nome"]}" com sucesso!', 'success')
+        app.logger.info(
+            f"Serviços vinculados para agente ID {agente_id} por {current_user.email}")
+
+    except sqlite3.Error as e:
+        flash(
+            f'Erro no banco de dados ao vincular serviços: {str(e)}', 'error')
+        app.logger.error(
+            f'Erro DB em vincular_servicos_agente: {str(e)}', exc_info=True)
+        conn.rollback()  # Garante que as operações são desfeitas em caso de erro
+    finally:
+        conn.close()
+
+    return redirect(url_for('configuracoes', tab='usuarios'))
+
+
 # Adicionar itens
-
-
 @app.route('/adicionar_empreendimento', methods=['POST'])
 @admin_required
 def adicionar_empreendimento():
@@ -833,6 +912,14 @@ def remover_tipo(tipo_id):
         if not tipo:
             flash("Tipo de agendamento não encontrado.", "error")
         else:
+            # NOVO: Verificar se o tipo está vinculado a algum agente
+            agente_vinculado_count = conn.execute(
+                "SELECT COUNT(agente_id) FROM agente_tipos_servico WHERE tipo_id = ?", (tipo_id,)).fetchone()[0]
+            if agente_vinculado_count > 0:
+                flash(
+                    f"Erro: O tipo '{tipo['nome']}' não pode ser removido pois está vinculado a {agente_vinculado_count} agente(s).", 'error')
+                return redirect(url_for('configuracoes', tab='tipos'))
+
             agendamentos_count = conn.execute(
                 "SELECT COUNT(id) as count FROM agendamentos WHERE tipo_id = ?", (tipo_id,)).fetchone()
             if agendamentos_count and agendamentos_count['count'] > 0:
@@ -865,17 +952,14 @@ def promover_admin():
 
     conn = get_db_connection()
     try:
-        # ATUALIZADO: Selecionar tipo_usuario
         user = conn.execute(
             "SELECT id, nome, is_admin, tipo_usuario FROM usuarios WHERE id = ?", (user_id_to_promote,)).fetchone()
         if not user:
             flash('Usuário não encontrado.', 'error')
-        # ATUALIZADO: Verificar se já é admin pelo tipo_usuario
         elif user['tipo_usuario'] == 'admin':
             flash(
                 f"O usuário '{user['nome'] if user['nome'] else 'ID '+str(user['id'])}' já é um administrador.", 'warning')
         else:
-            # ATUALIZADO: Setar is_admin=1 e tipo_usuario='admin'
             conn.execute(
                 "UPDATE usuarios SET is_admin = 1, tipo_usuario = 'admin' WHERE id = ?", (user_id_to_promote,))
             conn.commit()
@@ -890,19 +974,17 @@ def promover_admin():
         conn.close()
     return redirect(url_for('configuracoes', tab='seguranca'))
 
-# NOVO: Rota para promover/demover Agente (seja admin)
-
 
 @app.route('/gerenciar_agente', methods=['POST'])
 @admin_required
 def gerenciar_agente():
     user_id = request.form.get('user_id')
-    action = request.form.get('action')  # 'promover' ou 'demover'
+    action = request.form.get('action')
 
     if not user_id or not action:
         flash('Requisição inválida.', 'error')
-        # ou uma nova aba de gestão de usuários
-        return redirect(url_for('configuracoes', tab='seguranca'))
+        # Redirecionar para a aba de usuários
+        return redirect(url_for('configuracoes', tab='usuarios'))
 
     conn = get_db_connection()
     try:
@@ -911,13 +993,14 @@ def gerenciar_agente():
 
         if not user:
             flash('Usuário não encontrado.', 'error')
-            return redirect(url_for('configuracoes', tab='seguranca'))
+            # Redirecionar para a aba de usuários
+            return redirect(url_for('configuracoes', tab='usuarios'))
 
-        # Um admin não pode ser promovido/demovido como agente diretamente
         if user['tipo_usuario'] == 'admin':
             flash(
                 f"O usuário '{user['nome']}' é um administrador e não pode ser gerenciado como agente por aqui.", 'warning')
-            return redirect(url_for('configuracoes', tab='seguranca'))
+            # Redirecionar para a aba de usuários
+            return redirect(url_for('configuracoes', tab='usuarios'))
 
         if action == 'promover':
             if user['tipo_usuario'] == 'agente':
@@ -935,13 +1018,16 @@ def gerenciar_agente():
                 flash(
                     f"O usuário '{user['nome']}' já é um cliente (não é agente).", 'warning')
             else:
+                # Ao demovê-lo para cliente, remover também suas vinculações de serviço
+                conn.execute(
+                    'DELETE FROM agente_tipos_servico WHERE agente_id = ?', (user_id,))
                 conn.execute(
                     "UPDATE usuarios SET tipo_usuario = 'cliente' WHERE id = ?", (user_id,))
                 conn.commit()
                 flash(
-                    f"Status de Agente removido do usuário '{user['nome']}' com sucesso!", 'success')
+                    f"Status de Agente removido do usuário '{user['nome']}' com sucesso! Vinculações de serviço removidas.", 'success')
                 app.logger.info(
-                    f"Status agente removido do usuário ID {user_id} por {current_user.email}.")
+                    f"Status agente removido do usuário ID {user_id} por {current_user.email}. Vinculações de serviço também removidas.")
         else:
             flash('Ação inválida.', 'error')
 
@@ -950,8 +1036,8 @@ def gerenciar_agente():
         app.logger.error(f"Erro DB em gerenciar_agente: {e}", exc_info=True)
     finally:
         conn.close()
-    # Pode ser uma nova aba de gestão de usuários
-    return redirect(url_for('configuracoes', tab='seguranca'))
+    # Redirecionar para a aba de usuários
+    return redirect(url_for('configuracoes', tab='usuarios'))
 
 
 @app.route('/remover_admin/<int:user_id>', methods=['POST'])
@@ -963,7 +1049,6 @@ def remover_admin(user_id):
 
     conn = get_db_connection()
     try:
-        # ATUALIZADO: Selecionar tipo_usuario
         target_user = conn.execute(
             "SELECT id, nome, email, is_admin, tipo_usuario FROM usuarios WHERE id = ?", (user_id,)).fetchone()
         if not target_user:
@@ -974,19 +1059,16 @@ def remover_admin(user_id):
             flash('O administrador principal não pode ter seu status de admin removido por esta interface.', 'error')
             return redirect(url_for('configuracoes', tab='seguranca'))
 
-        # ATUALIZADO: Verificar se não é admin pelo tipo_usuario
         if target_user['tipo_usuario'] != 'admin':
             flash(
                 f"O usuário '{target_user['nome'] if target_user['nome'] else target_user['email']}' não é um administrador.", 'warning')
         else:
             admin_count_row = conn.execute(
-                # Contar administradores pelo tipo_usuario
                 "SELECT COUNT(id) as count FROM usuarios WHERE tipo_usuario = 'admin'").fetchone()
             if admin_count_row and admin_count_row['count'] <= 1:
                 flash(
                     'Não é possível remover o status do último administrador do sistema.', 'error')
             else:
-                # ATUALIZADO: Setar is_admin=0 e tipo_usuario='cliente' (ou agente, se houver essa lógica)
                 conn.execute(
                     "UPDATE usuarios SET is_admin = 0, tipo_usuario = 'cliente' WHERE id = ?", (user_id,))
                 conn.commit()
@@ -1034,7 +1116,6 @@ def init_db():
             UNIQUE(nome, empreendimento_id)
         )
     ''')
-    # ATUALIZADO: Adicionar 'tipo_usuario' e 'telefone' na tabela 'usuarios'
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1042,45 +1123,36 @@ def init_db():
             email TEXT UNIQUE NOT NULL,
             senha TEXT NOT NULL,
             is_admin INTEGER DEFAULT 0 CHECK(is_admin IN (0, 1)),
-            tipo_usuario TEXT DEFAULT 'cliente' NOT NULL, -- NOVA COLUNA
-            telefone TEXT -- NOVA COLUNA
+            tipo_usuario TEXT DEFAULT 'cliente' NOT NULL,
+            telefone TEXT
         )
     ''')
-    # Adicionar ALTER TABLE para a coluna 'tipo_usuario'
     try:
         cursor.execute(
             "ALTER TABLE usuarios ADD COLUMN tipo_usuario TEXT DEFAULT 'cliente'")
         app.logger.info(
             "Coluna 'tipo_usuario' adicionada à tabela 'usuarios'.")
     except sqlite3.OperationalError as e:
-        # Ajuste para erro mais específico
         if "duplicate column name" in str(e) or "duplicate column: tipo_usuario" in str(e):
             app.logger.info(
                 "Coluna 'tipo_usuario' já existe na tabela 'usuarios'.")
         else:
             app.logger.error(f"Erro ao adicionar coluna 'tipo_usuario': {e}")
 
-    # Adicionar ALTER TABLE para a coluna 'telefone'
     try:
         cursor.execute("ALTER TABLE usuarios ADD COLUMN telefone TEXT")
         app.logger.info("Coluna 'telefone' adicionada à tabela 'usuarios'.")
     except sqlite3.OperationalError as e:
-        # Ajuste para erro mais específico
         if "duplicate column name" in str(e) or "duplicate column: telefone" in str(e):
             app.logger.info(
                 "Coluna 'telefone' já existe na tabela 'usuarios'.")
         else:
             app.logger.error(f"Erro ao adicionar coluna 'telefone': {e}")
 
-    # Garantir que usuários existentes sem tipo_usuario sejam definidos como 'cliente' por padrão
     cursor.execute(
         "UPDATE usuarios SET tipo_usuario = 'cliente' WHERE tipo_usuario IS NULL")
-
-    # Garantir que administradores antigos (is_admin=1) tenham tipo_usuario como 'admin'
     cursor.execute(
         "UPDATE usuarios SET tipo_usuario = 'admin' WHERE is_admin = 1 AND (tipo_usuario IS NULL OR tipo_usuario != 'admin')")
-
-    # Garantir que usuários com is_admin=0 e tipo_usuario nulo/diferente de cliente sejam cliente
     cursor.execute(
         "UPDATE usuarios SET tipo_usuario = 'cliente' WHERE is_admin = 0 AND (tipo_usuario IS NULL OR tipo_usuario NOT IN ('cliente', 'agente'))")
 
@@ -1098,7 +1170,6 @@ def init_db():
             FOREIGN KEY (unidade_id) REFERENCES unidades(id) ON DELETE RESTRICT
         )
     ''')
-    # Adicionar ALTER TABLE para a coluna 'observacoes' em agendamentos
     try:
         cursor.execute("ALTER TABLE agendamentos ADD COLUMN observacoes TEXT")
         app.logger.info(
@@ -1109,6 +1180,19 @@ def init_db():
                 "Coluna 'observacoes' já existe na tabela 'agendamentos'.")
         else:
             app.logger.error(f"Erro ao adicionar coluna 'observacoes': {e}")
+
+    # --- NOVO: Tabela para vincular Agentes a Tipos de Serviço ---
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS agente_tipos_servico (
+            agente_id INTEGER NOT NULL,
+            tipo_id INTEGER NOT NULL,
+            PRIMARY KEY (agente_id, tipo_id),
+            FOREIGN KEY (agente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+            FOREIGN KEY (tipo_id) REFERENCES tipos_agendamento(id) ON DELETE CASCADE
+        )
+    ''')
+    app.logger.info("Tabela 'agente_tipos_servico' inicializada/verificada.")
+    # --- FIM DO NOVO ---
 
     conn.commit()
     conn.close()
@@ -1121,7 +1205,6 @@ def criar_usuario_inicial():
     admin_email = os.environ.get('SUPER_ADMIN_EMAIL', 'admin@admin.com')
     admin_nome = "Administrador Principal"
 
-    # ATUALIZADO: Selecionar 'tipo_usuario' e 'telefone' também
     admin_user = cursor.execute(
         "SELECT id, is_admin, nome, tipo_usuario, telefone FROM usuarios WHERE email = ?", (admin_email,)).fetchone()
 
@@ -1134,10 +1217,8 @@ def criar_usuario_inicial():
 
         senha_hash = generate_password_hash(default_password)
         try:
-            # ATUALIZADO: Inserir 'tipo_usuario' e 'telefone'
             cursor.execute(
                 'INSERT INTO usuarios (nome, email, senha, is_admin, tipo_usuario, telefone) VALUES (?, ?, ?, ?, ?, ?)',
-                # Telefone pode ser None inicialmente
                 (admin_nome, admin_email, senha_hash, 1, 'admin', None)
             )
             conn.commit()
@@ -1146,7 +1227,6 @@ def criar_usuario_inicial():
         except sqlite3.IntegrityError:
             app.logger.warning(
                 f"Usuário administrador inicial '{admin_email}' já existe (concorrência).")
-    # CORREÇÃO: Usar 'in admin_user' para verificar a existência da chave antes de acessar
     elif not admin_user['is_admin'] or admin_user['nome'] != admin_nome or ('tipo_usuario' in admin_user and admin_user['tipo_usuario'] != 'admin'):
         update_fields = ["is_admin = 1", "tipo_usuario = 'admin'"]
         params = []
