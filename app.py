@@ -656,9 +656,10 @@ def configuracoes():
     agente_users_data = []
     cliente_users_data = []
     try:
+        # ATUALIZADO: pegar todos os tipos de agendamento (ativos e inativos) para a lista de checkboxes
+        # E TAMBÉM PEGAR A DURAÇÃO_MINUTOS
         tipos_data = conn.execute(
-            # Alterado para pegar apenas tipos ativos
-            'SELECT * FROM tipos_agendamento WHERE ativo = 1 ORDER BY nome').fetchall()
+            'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
         empreendimentos_data = conn.execute(
             'SELECT * FROM empreendimentos ORDER BY nome').fetchall()
 
@@ -702,15 +703,14 @@ def api_get_unidades_por_empreendimento(empreendimento_id):
     conn.close()
     return jsonify([dict(unidade) for unidade in unidades])
 
-# --- NOVO: ROTAS PARA VINCULAÇÃO DE SERVIÇOS DO AGENTE ---
+# --- ROTAS PARA VINCULAÇÃO DE SERVIÇOS DO AGENTE ---
 
 
 @app.route('/api/agente/<int:agente_id>/servicos')
-@admin_required  # Apenas admins podem ver os serviços vinculados
+@admin_required
 def api_agente_servicos(agente_id):
     conn = get_db_connection()
 
-    # Verifica se o usuário é realmente um agente ou admin
     agente = conn.execute(
         "SELECT id, tipo_usuario FROM usuarios WHERE id = ?", (agente_id,)).fetchone()
     if not agente or (agente['tipo_usuario'] != 'agente' and agente['tipo_usuario'] != 'admin'):
@@ -729,11 +729,10 @@ def api_agente_servicos(agente_id):
 
 
 @app.route('/api/agente/<int:agente_id>/servicos_ids')
-@admin_required  # Apenas admins podem ver os serviços vinculados por ID
+@admin_required
 def api_agente_servicos_ids(agente_id):
     conn = get_db_connection()
 
-    # Verifica se o usuário é realmente um agente ou admin
     agente = conn.execute(
         "SELECT id, tipo_usuario FROM usuarios WHERE id = ?", (agente_id,)).fetchone()
     if not agente or (agente['tipo_usuario'] != 'agente' and agente['tipo_usuario'] != 'admin'):
@@ -751,11 +750,10 @@ def api_agente_servicos_ids(agente_id):
 
 
 @app.route('/vincular_servicos_agente', methods=['POST'])
-@admin_required  # Apenas admins podem vincular serviços
+@admin_required
 def vincular_servicos_agente():
     agente_id = request.form.get('agente_id')
-    tipos_servico_ids = request.form.getlist(
-        'tipos_servico[]')  # Recebe uma lista de IDs
+    tipos_servico_ids = request.form.getlist('tipos_servico[]')
 
     if not agente_id:
         flash('ID do agente não fornecido.', 'error')
@@ -763,23 +761,18 @@ def vincular_servicos_agente():
 
     conn = get_db_connection()
     try:
-        # 1. Verifica se o usuário é realmente um agente (ou admin, para permitir gerenciamento próprio)
         agente = conn.execute(
             "SELECT id, nome, tipo_usuario FROM usuarios WHERE id = ?", (agente_id,)).fetchone()
         if not agente or (agente['tipo_usuario'] != 'agente' and agente['tipo_usuario'] != 'admin'):
             flash('Agente não encontrado ou sem permissão para vinculação.', 'error')
             return redirect(url_for('configuracoes', tab='usuarios'))
 
-        # 2. Remove todas as vinculações existentes para este agente
         conn.execute(
             'DELETE FROM agente_tipos_servico WHERE agente_id = ?', (agente_id,))
 
-        # 3. Adiciona as novas vinculações
         for tipo_id_str in tipos_servico_ids:
             try:
                 tipo_id = int(tipo_id_str)
-                # Opcional: Verificar se tipo_id existe e está ativo na tabela tipos_agendamento
-                # conn.execute("SELECT id FROM tipos_agendamento WHERE id = ? AND ativo = 1", (tipo_id,)).fetchone()
                 conn.execute(
                     'INSERT INTO agente_tipos_servico (agente_id, tipo_id) VALUES (?, ?)',
                     (agente_id, tipo_id)
@@ -788,7 +781,6 @@ def vincular_servicos_agente():
                 app.logger.warning(
                     f"Tipo de serviço ID inválido recebido: {tipo_id_str}")
             except sqlite3.IntegrityError:
-                # Isso não deve acontecer após o DELETE, mas é uma segurança
                 app.logger.warning(
                     f"Tentativa de duplicar vinculação para agente {agente_id} e tipo {tipo_id_str}")
 
@@ -803,7 +795,7 @@ def vincular_servicos_agente():
             f'Erro no banco de dados ao vincular serviços: {str(e)}', 'error')
         app.logger.error(
             f'Erro DB em vincular_servicos_agente: {str(e)}', exc_info=True)
-        conn.rollback()  # Garante que as operações são desfeitas em caso de erro
+        conn.rollback()
     finally:
         conn.close()
 
@@ -881,24 +873,88 @@ def adicionar_unidade():
 @admin_required
 def adicionar_tipo():
     novo_tipo = request.form.get('novo_tipo', '').strip()
+    duracao_str = request.form.get('duracao')  # NOVO: Capturar a duração
+
+    errors = []
     if not novo_tipo:
-        flash('Nome do tipo de agendamento é obrigatório.', 'error')
+        errors.append('Nome do tipo de agendamento é obrigatório.')
+    if not duracao_str:
+        errors.append('A duração do tipo de agendamento é obrigatória.')
     else:
-        conn = get_db_connection()
         try:
-            conn.execute(
-                'INSERT INTO tipos_agendamento (nome) VALUES (?)', (novo_tipo,))
-            conn.commit()
-            flash('Tipo de agendamento adicionado com sucesso!', 'success')
-            app.logger.info(
-                f"Tipo '{novo_tipo}' adicionado por {current_user.email}")
-        except sqlite3.IntegrityError:
-            flash('Este tipo de agendamento já existe!', 'error')
-        except sqlite3.Error as e:
-            flash('Erro ao adicionar tipo de agendamento.', 'error')
-            app.logger.error(f"Erro DB ao adicionar tipo: {e}", exc_info=True)
-        finally:
-            conn.close()
+            duracao = int(duracao_str)
+            if duracao <= 0:
+                errors.append('A duração deve ser um número positivo.')
+        except ValueError:
+            errors.append('Duração inválida. Deve ser um número inteiro.')
+
+    if errors:
+        for error_msg in errors:
+            flash(error_msg, 'error')
+        # Redireciona e mostra os erros
+        return redirect(url_for('configuracoes', tab='tipos'))
+
+    conn = get_db_connection()
+    try:
+        # ATUALIZADO: Incluir duracao_minutos no INSERT
+        conn.execute(
+            'INSERT INTO tipos_agendamento (nome, duracao_minutos) VALUES (?, ?)', (novo_tipo, duracao))
+        conn.commit()
+        flash('Tipo de agendamento adicionado com sucesso!', 'success')
+        app.logger.info(
+            f"Tipo '{novo_tipo}' adicionado com duração {duracao}min por {current_user.email}")
+    except sqlite3.IntegrityError:
+        flash('Este tipo de agendamento já existe!', 'error')
+    except sqlite3.Error as e:
+        flash('Erro ao adicionar tipo de agendamento.', 'error')
+        app.logger.error(f"Erro DB ao adicionar tipo: {e}", exc_info=True)
+    finally:
+        conn.close()
+    return redirect(url_for('configuracoes', tab='tipos'))
+
+# NOVO: Rota para editar a duração de um tipo de agendamento
+
+
+@app.route('/editar_duracao_tipo', methods=['POST'])
+@admin_required
+def editar_duracao_tipo():
+    tipo_id = request.form.get('tipo_id')
+    duracao_str = request.form.get('duracao')
+
+    if not tipo_id or not duracao_str:
+        flash('Dados inválidos para edição da duração do tipo.', 'error')
+        return redirect(url_for('configuracoes', tab='tipos'))
+
+    try:
+        tipo_id = int(tipo_id)
+        duracao = int(duracao_str)
+        if duracao <= 0:
+            flash('A duração deve ser um número positivo.', 'error')
+            return redirect(url_for('configuracoes', tab='tipos'))
+    except ValueError:
+        flash('Duração inválida. Deve ser um número inteiro.', 'error')
+        return redirect(url_for('configuracoes', tab='tipos'))
+
+    conn = get_db_connection()
+    try:
+        tipo_existente = conn.execute(
+            "SELECT nome FROM tipos_agendamento WHERE id = ?", (tipo_id,)).fetchone()
+        if not tipo_existente:
+            flash('Tipo de agendamento não encontrado.', 'error')
+            return redirect(url_for('configuracoes', tab='tipos'))
+
+        conn.execute(
+            'UPDATE tipos_agendamento SET duracao_minutos = ? WHERE id = ?', (duracao, tipo_id))
+        conn.commit()
+        flash(
+            f"Duração do tipo '{tipo_existente['nome']}' atualizada para {duracao} minutos!", 'success')
+        app.logger.info(
+            f"Duração tipo ID {tipo_id} atualizada para {duracao}min por {current_user.email}")
+    except sqlite3.Error as e:
+        flash(f'Erro no banco de dados ao editar duração: {str(e)}', 'error')
+        app.logger.error(f"Erro DB em editar_duracao_tipo: {e}", exc_info=True)
+    finally:
+        conn.close()
     return redirect(url_for('configuracoes', tab='tipos'))
 
 
@@ -912,7 +968,6 @@ def remover_tipo(tipo_id):
         if not tipo:
             flash("Tipo de agendamento não encontrado.", "error")
         else:
-            # NOVO: Verificar se o tipo está vinculado a algum agente
             agente_vinculado_count = conn.execute(
                 "SELECT COUNT(agente_id) FROM agente_tipos_servico WHERE tipo_id = ?", (tipo_id,)).fetchone()[0]
             if agente_vinculado_count > 0:
@@ -983,7 +1038,6 @@ def gerenciar_agente():
 
     if not user_id or not action:
         flash('Requisição inválida.', 'error')
-        # Redirecionar para a aba de usuários
         return redirect(url_for('configuracoes', tab='usuarios'))
 
     conn = get_db_connection()
@@ -993,13 +1047,11 @@ def gerenciar_agente():
 
         if not user:
             flash('Usuário não encontrado.', 'error')
-            # Redirecionar para a aba de usuários
             return redirect(url_for('configuracoes', tab='usuarios'))
 
         if user['tipo_usuario'] == 'admin':
             flash(
                 f"O usuário '{user['nome']}' é um administrador e não pode ser gerenciado como agente por aqui.", 'warning')
-            # Redirecionar para a aba de usuários
             return redirect(url_for('configuracoes', tab='usuarios'))
 
         if action == 'promover':
@@ -1018,7 +1070,6 @@ def gerenciar_agente():
                 flash(
                     f"O usuário '{user['nome']}' já é um cliente (não é agente).", 'warning')
             else:
-                # Ao demovê-lo para cliente, remover também suas vinculações de serviço
                 conn.execute(
                     'DELETE FROM agente_tipos_servico WHERE agente_id = ?', (user_id,))
                 conn.execute(
@@ -1036,7 +1087,6 @@ def gerenciar_agente():
         app.logger.error(f"Erro DB em gerenciar_agente: {e}", exc_info=True)
     finally:
         conn.close()
-    # Redirecionar para a aba de usuários
     return redirect(url_for('configuracoes', tab='usuarios'))
 
 
@@ -1085,6 +1135,120 @@ def remover_admin(user_id):
             conn.close()
     return redirect(url_for('configuracoes', tab='seguranca'))
 
+# --- ROTAS PARA HORÁRIOS DE FUNCIONAMENTO ---
+
+
+@app.route('/adicionar_horario_funcionamento', methods=['POST'])
+@admin_required
+def adicionar_horario_funcionamento():
+    empreendimento_id = request.form.get('empreendimento_id')
+    dia_semana = request.form.get('dia_semana')
+    hora_inicio = request.form.get('hora_inicio')
+    hora_fim = request.form.get('hora_fim')
+
+    if not all([empreendimento_id, dia_semana, hora_inicio, hora_fim]):
+        flash('Todos os campos de horário são obrigatórios.', 'error')
+        return redirect(url_for('configuracoes', tab='horarios'))
+
+    try:
+        datetime.strptime(hora_inicio, '%H:%M')
+        datetime.strptime(hora_fim, '%H:%M')
+        if hora_inicio >= hora_fim:
+            flash('Hora de início deve ser anterior à hora de fim.', 'error')
+            return redirect(url_for('configuracoes', tab='horarios'))
+    except ValueError:
+        flash('Formato de hora inválido. Use HH:MM.', 'error')
+        return redirect(url_for('configuracoes', tab='horarios'))
+
+    conn = get_db_connection()
+    try:
+        emp = conn.execute(
+            "SELECT id, nome, ativo FROM empreendimentos WHERE id = ?", (empreendimento_id,)).fetchone()
+        if not emp or not emp['ativo']:
+            flash('Empreendimento selecionado não encontrado ou inativo.', 'error')
+            return redirect(url_for('configuracoes', tab='horarios'))
+
+        conn.execute(
+            'INSERT INTO horarios_funcionamento (empreendimento_id, dia_semana, hora_inicio, hora_fim) VALUES (?, ?, ?, ?)',
+            (empreendimento_id, dia_semana, hora_inicio, hora_fim)
+        )
+        conn.commit()
+        flash(
+            f'Horário de funcionamento adicionado com sucesso para {emp["nome"]}!', 'success')
+        app.logger.info(
+            f"Horário ({dia_semana}, {hora_inicio}-{hora_fim}) adicionado para emp ID {empreendimento_id} por {current_user.email}")
+    except sqlite3.IntegrityError:
+        flash('Este horário já está cadastrado para este empreendimento e dia.', 'error')
+    except sqlite3.Error as e:
+        flash(
+            f'Erro no banco de dados ao adicionar horário: {str(e)}', 'error')
+        app.logger.error(
+            f'Erro DB em adicionar_horario_funcionamento: {str(e)}', exc_info=True)
+    finally:
+        conn.close()
+    return redirect(url_for('configuracoes', tab='horarios'))
+
+
+@app.route('/api/empreendimento/<int:empreendimento_id>/horarios')
+@admin_required
+def api_empreendimento_horarios(empreendimento_id):
+    conn = get_db_connection()
+
+    emp = conn.execute(
+        "SELECT id, nome FROM empreendimentos WHERE id = ?", (empreendimento_id,)).fetchone()
+    if not emp:
+        conn.close()
+        return jsonify({"error": "Empreendimento não encontrado."}), 404
+
+    horarios_db = conn.execute('''
+        SELECT hf.id, hf.dia_semana, hf.hora_inicio, hf.hora_fim, e.nome as empreendimento_nome
+        FROM horarios_funcionamento hf
+        JOIN empreendimentos e ON hf.empreendimento_id = e.id
+        WHERE hf.empreendimento_id = ?
+        ORDER BY hf.dia_semana, hf.hora_inicio
+    ''', (empreendimento_id,)).fetchall()
+    conn.close()
+
+    horarios_list = []
+    for h in horarios_db:
+        horarios_list.append({
+            "id": h['id'],
+            "empreendimento_nome": h['empreendimento_nome'],
+            "dia_semana": h['dia_semana'],
+            "hora_inicio": h['hora_inicio'],
+            "hora_fim": h['hora_fim']
+        })
+    return jsonify(horarios_list)
+
+
+@app.route('/remover_horario_funcionamento/<int:horario_id>', methods=['POST'])
+@admin_required
+def remover_horario_funcionamento(horario_id):
+    conn = get_db_connection()
+    try:
+        horario = conn.execute(
+            "SELECT empreendimento_id FROM horarios_funcionamento WHERE id = ?", (horario_id,)).fetchone()
+        if not horario:
+            flash("Horário de funcionamento não encontrado.", "error")
+            return redirect(url_for('configuracoes', tab='horarios'))
+
+        # TO-DO: Futuramente, verificar se há agendamentos que dependam deste horário antes de remover
+        # (ex: se o agendamento já foi criado e está dentro deste slot de horário)
+
+        conn.execute(
+            'DELETE FROM horarios_funcionamento WHERE id = ?', (horario_id,))
+        conn.commit()
+        flash('Horário de funcionamento removido com sucesso!', 'success')
+        app.logger.info(
+            f"Horário de funcionamento ID {horario_id} removido por {current_user.email}")
+    except sqlite3.Error as e:
+        flash(f'Erro no banco de dados ao remover horário: {str(e)}', 'error')
+        app.logger.error(
+            f'Erro DB em remover_horario_funcionamento: {str(e)}', exc_info=True)
+    finally:
+        conn.close()
+    return redirect(url_for('configuracoes', tab='horarios'))
+
 # 🧱 Banco de dados
 
 
@@ -1096,9 +1260,23 @@ def init_db():
         CREATE TABLE IF NOT EXISTS tipos_agendamento (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT UNIQUE NOT NULL,
-            ativo INTEGER DEFAULT 1 CHECK(ativo IN (0, 1))
+            ativo INTEGER DEFAULT 1 CHECK(ativo IN (0, 1)),
+            duracao_minutos INTEGER DEFAULT 60 NOT NULL
         )
     ''')
+    try:
+        cursor.execute(
+            "ALTER TABLE tipos_agendamento ADD COLUMN duracao_minutos INTEGER DEFAULT 60")
+        app.logger.info(
+            "Coluna 'duracao_minutos' adicionada à tabela 'tipos_agendamento'.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e) or "duplicate column: duracao_minutos" in str(e):
+            app.logger.info(
+                "Coluna 'duracao_minutos' já existe na tabela 'tipos_agendamento'.")
+        else:
+            app.logger.error(
+                f"Erro ao adicionar coluna 'duracao_minutos': {e}")
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS empreendimentos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1181,7 +1359,6 @@ def init_db():
         else:
             app.logger.error(f"Erro ao adicionar coluna 'observacoes': {e}")
 
-    # --- NOVO: Tabela para vincular Agentes a Tipos de Serviço ---
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS agente_tipos_servico (
             agente_id INTEGER NOT NULL,
@@ -1192,7 +1369,19 @@ def init_db():
         )
     ''')
     app.logger.info("Tabela 'agente_tipos_servico' inicializada/verificada.")
-    # --- FIM DO NOVO ---
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS horarios_funcionamento (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            empreendimento_id INTEGER NOT NULL,
+            dia_semana INTEGER NOT NULL, -- 0=Segunda, 1=Terça, ..., 6=Domingo
+            hora_inicio TEXT NOT NULL,  -- Formato "HH:MM"
+            hora_fim TEXT NOT NULL,     -- Formato "HH:MM"
+            FOREIGN KEY (empreendimento_id) REFERENCES empreendimentos(id) ON DELETE CASCADE,
+            UNIQUE (empreendimento_id, dia_semana, hora_inicio, hora_fim)
+        )
+    ''')
+    app.logger.info("Tabela 'horarios_funcionamento' inicializada/verificada.")
 
     conn.commit()
     conn.close()

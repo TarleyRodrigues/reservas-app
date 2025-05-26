@@ -7,6 +7,7 @@
             <li><a href="#" data-target="tipos" class="config-menu-link">Tipos de Agendamento</a></li>
             <li><a href="#" data-target="empreendimentos" class="config-menu-link">Empreendimentos e Unidades</a></li>
             <li><a href="#" data-target="usuarios" class="config-menu-link">Gerenciamento de Usuários</a></li>
+            <li><a href="#" data-target="horarios" class="config-menu-link">Horários de Funcionamento</a></li>
             <li><a href="#" data-target="seguranca" class="config-menu-link">Segurança (Administradores)</a></li>
         </ul>
     </div>
@@ -14,7 +15,6 @@
     <div class="config-main-content">
         <h1>Configurações do Sistema</h1>
 
-        {# Mensagens Flash (mantido o fallback, o JS já lida com os toasts) #}
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
@@ -29,6 +29,8 @@
             <h2>Tipos de Agendamento</h2>
             <form method="POST" action="{{ url_for('adicionar_tipo') }}" class="config-form">
                 <input type="text" name="novo_tipo" placeholder="Nome do novo tipo" required>
+                {# NOVO CAMPO: Duração Padrão ao Adicionar Tipo #}
+                <input type="number" name="duracao" placeholder="Duração padrão (minutos)" value="60" min="1" required>
                 <button type="submit" class="btn btn-primary btn-sm">Adicionar Tipo</button>
             </form>
             <table class="config-table">
@@ -36,6 +38,7 @@
                     <tr>
                         <th>Nome</th>
                         <th>Status</th>
+                        <th>Duração Padrão (min)</th> {# NOVA COLUNA #}
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -48,6 +51,16 @@
                                 {% if tipo.ativo %}Ativo{% else %}Inativo{% endif %}
                             </span>
                         </td>
+                        {# Célula para Duração e Botão de Edição #}
+                        <td>
+                            <form method="POST" action="{{ url_for('editar_duracao_tipo') }}" style="display:inline;"
+                                class="form-edit-duracao">
+                                <input type="hidden" name="tipo_id" value="{{ tipo.id }}">
+                                <input type="number" name="duracao" value="{{ tipo.duracao_minutos }}" min="1" required
+                                    style="width: 70px;">
+                                <button type="submit" class="btn btn-success btn-sm">Salvar</button>
+                            </form>
+                        </td>
                         <td>
                             <form method="POST" action="{{ url_for('remover_tipo', tipo_id=tipo.id) }}"
                                 style="display:inline;" class="form-remove">
@@ -57,7 +70,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="3">Nenhum tipo de agendamento cadastrado.</td>
+                        <td colspan="4">Nenhum tipo de agendamento cadastrado.</td> {# colspan ajustado para 4 #}
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -142,7 +155,6 @@
             </div>
         </div>
 
-        {# NOVA SEÇÃO: Gerenciamento de Usuários #}
         <div id="config-usuarios" class="config-content-section" style="display: none;">
             <h2>Gerenciamento de Usuários</h2>
 
@@ -154,7 +166,7 @@
                         <th>Nome</th>
                         <th>Email</th>
                         <th>Telefone</th>
-                        <th>Tipos de Serviço Vinculados</th> {# NOVA COLUNA #}
+                        <th>Tipos de Serviço Vinculados</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -165,9 +177,7 @@
                         <td>{{ user.email }}</td>
                         <td>{{ user.telefone if user.telefone else 'Não informado' }}</td>
                         <td>
-                            {# Exibir tipos de serviço vinculados ao agente #}
                             <span id="agente-servicos-{{ user.id }}">
-                                {# Isso será preenchido via JavaScript #}
                                 Carregando...
                             </span>
                         </td>
@@ -178,13 +188,10 @@
                                 <input type="hidden" name="action" value="demover">
                                 <button type="submit" class="btn btn-warning btn-sm">Remover Status Agente</button>
                             </form>
-                            {# NOVO BOTÃO: Gerenciar Serviços #}
                             <button class="btn btn-info btn-sm btn-gerenciar-servicos" data-user-id="{{ user.id }}"
                                 data-user-name="{{ user.nome }}">Gerenciar Serviços</button>
                         </td>
                     </tr>
-                    {# Div oculta para o modal de serviços #}
-                    ...
                     <tr class="agente-servicos-details" id="agente-servicos-row-{{ user.id }}" style="display: none;">
                         <td colspan="5">
                             <div class="servicos-form-container">
@@ -194,8 +201,6 @@
                                     <input type="hidden" name="agente_id" value="{{ user.id }}">
                                     <div class="checkbox-group">
                                         {% for tipo in tipos %}
-                                        {# ALTERADO AQUI: Envolver input e label em uma div e adicionar class
-                                        "checkbox-item" #}
                                         <div class="checkbox-item">
                                             <label>
                                                 <input type="checkbox" name="tipos_servico[]" value="{{ tipo.id }}">
@@ -211,7 +216,6 @@
                             </div>
                         </td>
                     </tr>
-                    ...
                     {% endfor %}
                 </tbody>
             </table>
@@ -238,6 +242,63 @@
             {% else %}
             <p>Não há Clientes para promover a Agente no momento.</p>
             {% endif %}
+        </div>
+
+        {# SEÇÃO PARA HORÁRIOS DE FUNCIONAMENTO (existente) #}
+        <div id="config-horarios" class="config-content-section" style="display: none;">
+            <h2>Gerenciar Horários de Funcionamento dos Empreendimentos</h2>
+
+            <h3>Adicionar Horário de Funcionamento</h3>
+            <form method="POST" action="{{ url_for('adicionar_horario_funcionamento') }}" class="config-form">
+                <label for="horario_empreendimento_id">Empreendimento:</label>
+                <select id="horario_empreendimento_id" name="empreendimento_id" required>
+                    <option value="" disabled selected>Selecione um empreendimento</option>
+                    {% for emp in empreendimentos %}
+                    <option value="{{ emp.id }}">{{ emp.nome }}</option>
+                    {% endfor %}
+                </select>
+
+                <label for="dia_semana">Dia da Semana:</label>
+                <select id="dia_semana" name="dia_semana" required>
+                    <option value="" disabled selected>Selecione o dia</option>
+                    <option value="0">Segunda-feira</option>
+                    <option value="1">Terça-feira</option>
+                    <option value="2">Quarta-feira</option>
+                    <option value="3">Quinta-feira</option>
+                    <option value="4">Sexta-feira</option>
+                    <option value="5">Sábado</option>
+                    <option value="6">Domingo</option>
+                </select>
+
+                <label for="hora_inicio">Hora Início:</label>
+                <input type="time" id="hora_inicio" name="hora_inicio" required>
+
+                <label for="hora_fim">Hora Fim:</label>
+                <input type="time" id="hora_fim" name="hora_fim" required>
+
+                <button type="submit" class="btn btn-primary btn-sm">Adicionar Horário</button>
+            </form>
+
+            <hr>
+
+            <h3>Horários Cadastrados</h3>
+            <table class="config-table" id="horarios-table">
+                <thead>
+                    <tr>
+                        <th>Empreendimento</th>
+                        <th>Dia da Semana</th>
+                        <th>Início</th>
+                        <th>Fim</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="5">Nenhum horário cadastrado. Selecione um empreendimento acima para ver seus
+                            horários ou adicione um novo.</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
 
@@ -311,6 +372,19 @@
         const formUnidadeEmpreendimentoId = document.getElementById('form-unidade-empreendimento-id');
         const noUnitsMessageRowOriginal = document.getElementById('no-units-message').parentNode.cloneNode(true);
 
+        const horariosTableBody = document.querySelector('#horarios-table tbody');
+        const horarioEmpreendimentoSelect = document.getElementById('horario_empreendimento_id');
+
+        const diasSemanaMap = {
+            '0': 'Segunda-feira',
+            '1': 'Terça-feira',
+            '2': 'Quarta-feira',
+            '3': 'Quinta-feira',
+            '4': 'Sexta-feira',
+            '5': 'Sábado',
+            '6': 'Domingo'
+        };
+
         function showSection(targetId, keepUnitsVisible = false) {
             contentSections.forEach(section => {
                 section.style.display = (section.id === 'config-' + targetId) ? 'block' : 'none';
@@ -329,9 +403,16 @@
                     unidadesSection.style.display = 'block';
                 }
             }
-            // NOVO: Quando a seção de usuários é mostrada, carregar os serviços dos agentes
             if (targetId === 'usuarios') {
                 loadAgenteServicos();
+            }
+            if (targetId === 'horarios') {
+                const selectedEmpId = horarioEmpreendimentoSelect.value;
+                if (selectedEmpId) {
+                    loadHorariosEmpreendimento(selectedEmpId);
+                } else {
+                    horariosTableBody.innerHTML = '<tr><td colspan="5">Selecione um empreendimento para ver seus horários ou adicione um novo.</td></tr>';
+                }
             }
         }
 
@@ -444,7 +525,6 @@
             });
         });
 
-        // NOVO: Lógica para Gerenciamento de Serviços do Agente
         const agenteServicosDetails = document.querySelectorAll('.agente-servicos-details');
 
         document.querySelectorAll('.btn-gerenciar-servicos').forEach(button => {
@@ -453,7 +533,6 @@
                 const userName = this.dataset.userName;
                 const detailRow = document.getElementById(`agente-servicos-row-${userId}`);
 
-                // Esconde todas as outras seções de detalhes de serviço
                 agenteServicosDetails.forEach(row => {
                     if (row.id !== `agente-servicos-row-${userId}`) {
                         row.style.display = 'none';
@@ -461,8 +540,7 @@
                 });
 
                 if (detailRow.style.display === 'none') {
-                    detailRow.style.display = 'table-row'; // Para mostrar como uma linha de tabela
-                    // Carregar os tipos de serviço vinculados a este agente
+                    detailRow.style.display = 'table-row';
                     loadAgenteTiposServico(userId, detailRow.querySelector('.form-vincular-servicos'));
                 } else {
                     detailRow.style.display = 'none';
@@ -477,20 +555,17 @@
         });
 
         async function loadAgenteServicos() {
-            // Esta função será chamada quando a aba de usuários for ativada
-            // Ela busca os tipos de serviço vinculados a CADA agente
             const agenteRows = document.querySelectorAll('#agente-users-table tbody tr[data-user-id]');
             for (const row of agenteRows) {
                 const userId = row.dataset.userId;
                 const servicosSpan = document.getElementById(`agente-servicos-${userId}`);
 
                 try {
-                    // Crie uma nova rota no app.py para isso, ex: /api/agente/<id>/servicos
                     const response = await fetch(`/api/agente/${userId}/servicos`);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
-                    const data = await response.json(); // Espera algo como { tipos_vinculados: ["Tipo 1", "Tipo 2"] }
+                    const data = await response.json();
 
                     if (data.tipos_vinculados && data.tipos_vinculados.length > 0) {
                         servicosSpan.textContent = data.tipos_vinculados.join(', ');
@@ -505,17 +580,15 @@
         }
 
         async function loadAgenteTiposServico(agenteId, formElement) {
-            // Esta função preenche os checkboxes no modal quando "Gerenciar Serviços" é clicado
             const checkboxes = formElement.querySelectorAll('input[type="checkbox"][name="tipos_servico[]"]');
-            checkboxes.forEach(cb => cb.checked = false); // Desmarcar todos primeiro
+            checkboxes.forEach(cb => cb.checked = false);
 
             try {
-                // Rota para buscar os IDs dos tipos de serviço vinculados ao agente
-                const response = await fetch(`/api/agente/${agenteId}/servicos_ids`); // Nova rota: devolve apenas IDs
+                const response = await fetch(`/api/agente/${agenteId}/servicos_ids`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                const data = await response.json(); // Espera algo como { vinculados_ids: [1, 5, 8] }
+                const data = await response.json();
 
                 if (data.vinculados_ids) {
                     checkboxes.forEach(checkbox => {
@@ -526,7 +599,54 @@
                 }
             } catch (error) {
                 console.error(`Erro ao carregar tipos de serviço vinculados para o agente ${agenteId}:`, error);
-                // Opcional: mostrar uma mensagem de erro no formulário
+            }
+        }
+
+        horarioEmpreendimentoSelect.addEventListener('change', function () {
+            const empreendimentoId = this.value;
+            if (empreendimentoId) {
+                loadHorariosEmpreendimento(empreendimentoId);
+            } else {
+                horariosTableBody.innerHTML = '<tr><td colspan="5">Selecione um empreendimento para ver seus horários.</td></tr>';
+            }
+        });
+
+        async function loadHorariosEmpreendimento(empreendimentoId) {
+            horariosTableBody.innerHTML = '<tr><td colspan="5">Carregando horários...</td></tr>';
+            try {
+                const response = await fetch(`/api/empreendimento/${empreendimentoId}/horarios`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const horarios = await response.json();
+
+                horariosTableBody.innerHTML = '';
+                if (horarios.length === 0) {
+                    horariosTableBody.innerHTML = '<tr><td colspan="5">Nenhum horário cadastrado para este empreendimento.</td></tr>';
+                } else {
+                    horarios.forEach(horario => {
+                        const row = horariosTableBody.insertRow();
+                        const removeUrl = `{{ url_for('remover_horario_funcionamento', horario_id=0) }}`.replace('0', horario.id);
+
+                        row.innerHTML = `
+                            <td>${horario.empreendimento_nome}</td>
+                            <td>${diasSemanaMap[horario.dia_semana]}</td>
+                            <td>${horario.hora_inicio}</td>
+                            <td>${horario.hora_fim}</td>
+                            <td>
+                                <form method="POST" action="${removeUrl}" style="display:inline;" class="form-remove">
+                                    <input type="hidden" name="empreendimento_id" value="${horario.empreendimento_id}">
+                                    <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+                                </form>
+                            </td>
+                        `;
+                        const removeForm = row.querySelector('.form-remove');
+                        if (removeForm) { addConfirmationToForm(removeForm); }
+                    });
+                }
+            } catch (error) {
+                console.error(`Erro ao carregar horários para o empreendimento ${empreendimentoId}:`, error);
+                horariosTableBody.innerHTML = `<tr><td colspan="5" class="text-danger">Erro ao carregar horários: ${error.message}</td></tr>`;
             }
         }
 
@@ -543,6 +663,12 @@
                 if (empRow) {
                     const empName = empRow.querySelector('td:first-child').textContent;
                     loadUnidades(activeEmpIdFromUrl, empName);
+                }
+            }
+            if (activeTabFromUrl === 'horarios') {
+                const selectedEmpId = horarioEmpreendimentoSelect.value;
+                if (selectedEmpId) {
+                    loadHorariosEmpreendimento(selectedEmpId);
                 }
             }
         } else {
