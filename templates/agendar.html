@@ -13,7 +13,6 @@
     </a>
 
     <form method="POST" action="{{ url_for('agendar') }}">
-        {# NOVA ORDEM: Tipo de Agendamento primeiro #}
         <label for="tipo">Tipo de agendamento</label>
         <select id="tipo" name="tipo_id" required>
             <option value="" disabled selected>Selecione o tipo</option>
@@ -23,7 +22,6 @@
             {% endfor %}
         </select>
 
-        {# Empreendimento antes de Data/Hora #}
         <label for="empreendimento">Empreendimento</label>
         <select id="empreendimento" name="empreendimento_id" required>
             <option value="" disabled selected>Selecione o empreendimento</option>
@@ -33,7 +31,6 @@
             {% endfor %}
         </select>
 
-        {# Unidade, que já é dinâmica #}
         <label for="unidade">Unidade</label>
         <select id="unidade" name="unidade_id" required>
             <option value="" disabled selected>Selecione a unidade</option>
@@ -45,18 +42,20 @@
             {% endfor %}
         </select>
 
-        {# ALTERADO AQUI: Nome do Agendamento para Contato #}
-        <label for="contato">Contato (telefone, opcional)</label>
+        <label for="contato">Contato (telefone)</label>
         <input id="contato" type="text" name="contato" placeholder="Ex: (XX) XXXX-XXXX ou (XX) 9XXXX-XXXX"
-            value="{{ form_data.contato if form_data.contato else '' }}">
-        {# Removido 'required' para tornar o campo opcional. Se quiser obrigatório, adicione required aqui. #}
+            value="{{ form_data.contato if form_data.contato else '' }}" required>
 
-        {# Data e Hora agora depois do Empreendimento/Unidade #}
         <label for="data">Data</label>
         <input id="data" type="date" name="data" required value="{{ form_data.data if form_data.data else '' }}">
 
+        {# ALTERADO AQUI: input type="time" para select #}
         <label for="hora">Hora</label>
-        <input id="hora" type="time" name="hora" required value="{{ form_data.hora if form_data.hora else '' }}">
+        <select id="hora" name="hora" required>
+            <option value="" disabled selected>Selecione a hora</option>
+            {# Opções serão populadas dinamicamente pelo JavaScript #}
+        </select>
+        {# FIM DA ALTERAÇÃO #}
 
         <label for="observacoes">Observações (opcional)</label>
         <textarea id="observacoes" name="observacoes"
@@ -76,9 +75,14 @@
         toggleBtn.textContent = body.classList.contains('dark') ? '☀️' : '🌙';
     });
 
-    // Filtro de unidades por empreendimento (manter e adaptar)
+    // Elementos do formulário
+    const tipoSelect = document.getElementById('tipo');
     const empreendimentoSelect = document.getElementById('empreendimento');
     const unidadeSelect = document.getElementById('unidade');
+    const dataInput = document.getElementById('data');
+    const horaSelect = document.getElementById('hora'); // Novo: para o select da hora
+
+    // Opções de unidade para filtragem
     const allUnidadeOptions = Array.from(unidadeSelect.querySelectorAll('option:not([value=""])'));
 
     function filterUnidades() {
@@ -103,10 +107,83 @@
         } else if (!selectedOption && currentSelectedUnidade) {
             unidadeSelect.value = '';
         }
+        // Sempre que empreendimento ou unidade muda, os slots de hora podem mudar
+        loadAvailableTimeSlots();
     }
 
-    empreendimentoSelect.addEventListener('change', filterUnidades);
-    filterUnidades(); // Chamar na carga inicial
+    // Função para carregar e popular os slots de hora
+    async function loadAvailableTimeSlots() {
+        const selectedTipoId = tipoSelect.value;
+        const selectedEmpreendimentoId = empreendimentoSelect.value;
+        const selectedUnidadeId = unidadeSelect.value;
+        const selectedDate = dataInput.value;
 
+        // Limpar slots existentes e adicionar mensagem de carregamento
+        horaSelect.innerHTML = '<option value="" disabled selected>Carregando horários...</option>';
+        horaSelect.disabled = true; // Desabilitar enquanto carrega
+
+        // Só faz a requisição se todos os campos necessários estiverem preenchidos
+        if (selectedTipoId && selectedEmpreendimentoId && selectedUnidadeId && selectedDate) {
+            try {
+                const response = await fetch(`/api/slots_disponiveis?tipo_id=${selectedTipoId}&empreendimento_id=${selectedEmpreendimentoId}&unidade_id=${selectedUnidadeId}&data=${selectedDate}`);
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Erro ao carregar slots:', errorData.error);
+                    horaSelect.innerHTML = '<option value="" disabled selected>Erro ao carregar horários</option>';
+                    alert(`Não foi possível carregar os horários disponíveis: ${errorData.error || response.statusText}`);
+                } else {
+                    const data = await response.json();
+                    const slots = data.slots_disponiveis;
+
+                    horaSelect.innerHTML = '<option value="" disabled selected>Selecione a hora</option>';
+                    if (slots.length > 0) {
+                        slots.forEach(slot => {
+                            const option = document.createElement('option');
+                            option.value = slot;
+                            option.textContent = slot;
+                            // Se o form_data tem uma hora pré-selecionada (após um erro de validação)
+                            if ('{{ form_data.hora|e }}' === slot) { // Usar Jinja para pré-selecionar
+                                option.selected = true;
+                            }
+                            horaSelect.appendChild(option);
+                        });
+                        horaSelect.disabled = false; // Habilitar o select
+                    } else {
+                        horaSelect.innerHTML = '<option value="" disabled selected>Nenhum horário disponível</option>';
+                    }
+                }
+            } catch (error) {
+                console.error('Erro na requisição da API de slots:', error);
+                horaSelect.innerHTML = '<option value="" disabled selected>Erro de conexão</option>';
+                alert('Erro de conexão ao buscar horários disponíveis.');
+            }
+        } else {
+            horaSelect.innerHTML = '<option value="" disabled selected>Preencha Tipo, Empreendimento, Unidade e Data</option>';
+        }
+    }
+
+    // Adicionar listeners para quando os campos relevantes mudarem
+    tipoSelect.addEventListener('change', loadAvailableTimeSlots);
+    empreendimentoSelect.addEventListener('change', filterUnidades); // filterUnidades já chama loadAvailableTimeSlots
+    unidadeSelect.addEventListener('change', loadAvailableTimeSlots);
+    dataInput.addEventListener('change', loadAvailableTimeSlots);
+
+    // Chamar as funções na carga inicial da página
+    filterUnidades(); // Garante que as unidades corretas estejam visíveis
+    loadAvailableTimeSlots(); // Carrega os slots iniciais se os campos estiverem preenchidos (repopulação)
+
+    // Ajuste para pré-seleção inicial de empreendimento e unidade se houver form_data
+    // Isso é importante se a página for repopulada após um erro e o empreendimento já estava selecionado
+    const initialEmpId = '{{ form_data.empreendimento_id | e }}';
+    const initialUnidadeId = '{{ form_data.unidade_id | e }}';
+    if (initialEmpId) {
+        empreendimentoSelect.value = initialEmpId;
+        // Chamar filterUnidades novamente para garantir que as opções da unidade estejam visíveis
+        filterUnidades();
+    }
+    if (initialUnidadeId) {
+        unidadeSelect.value = initialUnidadeId;
+    }
 </script>
 {% endblock %}

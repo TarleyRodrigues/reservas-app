@@ -780,6 +780,190 @@ def agendar():
         if conn:
             conn.close()
 
+# --- NOVA ROTA: API de Slots de Horários Disponíveis ---
+
+
+@app.route('/api/slots_disponiveis', methods=['GET'])
+@login_required  # Pode ser acessada por qualquer usuário logado que possa agendar
+def api_slots_disponiveis():
+    empreendimento_id_str = request.args.get('empreendimento_id')
+    unidade_id_str = request.args.get('unidade_id')
+    data_str = request.args.get('data')
+    # Necessário para a duração e agentes
+    tipo_id_str = request.args.get('tipo_id')
+
+    if not all([empreendimento_id_str, unidade_id_str, data_str, tipo_id_str]):
+        return jsonify({"error": "Parâmetros empreendimento_id, unidade_id, data e tipo_id são obrigatórios."}), 400
+
+    conn = get_db_connection()
+    try:
+        empreendimento_id = int(empreendimento_id_str)
+        unidade_id = int(unidade_id_str)
+        tipo_id = int(tipo_id_str)
+        data_agendamento_obj = datetime.strptime(data_str, '%Y-%m-%d').date()
+
+        # 1. Obter detalhes do Tipo de Agendamento (principalmente a duração)
+        tipo_selecionado = conn.execute(
+            'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento WHERE id = ?', (tipo_id,)).fetchone()
+        if not tipo_selecionado or not tipo_selecionado['ativo']:
+            return jsonify({"error": "Tipo de agendamento não encontrado ou inativo."}), 404
+        duracao_agendamento = tipo_selecionado['duracao_minutos']
+
+        # 2. Obter horários de funcionamento do Empreendimento para o dia
+        dia_semana_agendamento = data_agendamento_obj.weekday()  # 0=Segunda, 6=Domingo
+        horarios_operacao = conn.execute('''
+            SELECT hora_inicio, hora_fim FROM horarios_funcionamento
+            WHERE empreendimento_id = ? AND dia_semana = ?
+            ORDER BY hora_inicio
+        ''', (empreendimento_id, dia_semana_agendamento)).fetchall()
+
+        if not horarios_operacao:
+            return jsonify({"slots_disponiveis": [], "message": "Empreendimento não possui horários de funcionamento configurados para este dia."})
+
+        # 3. Obter agendamentos existentes para a UNIDADE na data selecionada
+        agendamentos_unidade = conn.execute('''
+            SELECT a.hora, ta.duracao_minutos 
+            FROM agendamentos a
+            JOIN tipos_agendamento ta ON a.tipo_id = ta.id
+            WHERE a.unidade_id = ? AND a.data = ?
+        ''', (unidade_id, data_str)).fetchall()
+
+        # 4. Obter agendamentos existentes para AGENTES vinculados ao tipo de serviço na data selecionada
+        # Primeiro, quais agentes podem fazer este tipo de serviço
+        agentes_para_tipo = conn.execute('''
+            SELECT u.id
+            FROM usuarios u
+            JOIN agente_tipos_servico ats ON u.id = ats.agente_id
+            WHERE ats.tipo_id = ? AND u.tipo_usuario = 'agente'
+        ''', (tipo_id,)).fetchall()
+
+        agendamentos_agentes = []
+        for agente in agentes_para_tipo:
+            agendamentos_agente_db = conn.execute('''
+                SELECT a.hora, ta.duracao_minutos
+                FROM agendamentos a
+                JOIN tipos_agendamento ta ON a.tipo_id = ta.id
+                WHERE a.usuario_id = ? AND a.data = ?
+            ''', (agente['id'], data_str)).fetchall()
+            agendamentos_agentes.extend(agendamentos_agente_db)
+
+        # --- Lógica para gerar slots disponíveis ---
+        slots_disponiveis = []
+        now = datetime.now()
+        today = datetime.now().date()
+
+        for h_op in horarios_operacao:
+            # Converter horas de operação para datetime para cálculos
+            start_op_time = datetime.strptime(
+                h_op['hora_inicio'], '%H:%M').time()
+            end_op_time = datetime.strptime(h_op['hora_fim'], '%H:%M').time()
+
+            current_slot_start_dt = datetime.combine(
+                data_agendamento_obj, start_op_time)
+
+            # Ajustar o início do slot se for para o dia de hoje e o horário já passou
+            if data_agendamento_obj == today and current_slot_start_dt < now:
+                # Se o slot começa no passado, move para o próximo slot válido a partir de agora
+                current_slot_start_dt = now.replace(second=0, microsecond=0)
+                # Arredondar para o próximo slot de 30 minutos (ou a granularidade desejada)
+                if current_slot_start_dt.minute % 30 != 0:
+                    current_slot_start_dt = current_slot_start_dt + \
+                        timedelta(
+                            minutes=(30 - current_slot_start_dt.minute % 30))
+
+            # Gerar slots dentro desta faixa de operação
+            while current_slot_start_dt.time() < end_op_time:
+                slot_end_dt = current_slot_start_dt + \
+                    timedelta(minutes=duracao_agendamento)
+
+                # O slot deve terminar dentro da faixa de operação
+                if slot_end_dt.time() > end_op_time:
+                    break  # Este slot excede o horário de funcionamento, não é válido
+
+                is_slot_available = True
+
+                # 5. Validação: Checar colisão com agendamentos da UNIDADE
+                for existing_a in agendamentos_unidade:
+                    existing_start_time = datetime.strptime(
+                        existing_a['hora'], '%H:%M').time()
+                    existing_start_dt = datetime.combine(
+                        data_agendamento_obj, existing_start_time)
+                    existing_end_dt = existing_start_dt + \
+                        timedelta(minutes=existing_a['duracao_minutos'])
+
+                    if (current_slot_start_dt < existing_end_dt) and \
+                       (slot_end_dt > existing_start_dt):
+                        is_slot_available = False
+                        break  # Unidade ocupada neste slot
+
+                if not is_slot_available:
+                    # Pula para o fim do agendamento que causou a colisão
+                    current_slot_start_dt = existing_end_dt
+                    continue  # Próxima iteração do while, verificando a partir do novo current_slot_start_dt
+
+                # 6. Validação: Checar colisão com agendamentos dos AGENTES disponíveis
+                # Se não há agentes para este tipo de serviço, todos os slots são inválidos.
+                if not agentes_para_tipo:
+                    is_slot_available = False  # Nenhum agente disponível para este tipo
+                else:
+                    # Tentar encontrar pelo menos UM agente disponível para este slot
+                    found_available_agente_for_slot = False
+                    for agente_id_dict in agentes_para_tipo:
+                        agente_id = agente_id_dict['id']
+                        is_agente_available_for_this_slot = True
+
+                        # Verificar agendamentos do agente específico
+                        agendamentos_agente_especifico = conn.execute('''
+                            SELECT a.hora, ta.duracao_minutos
+                            FROM agendamentos a
+                            JOIN tipos_agendamento ta ON a.tipo_id = ta.id
+                            WHERE a.usuario_id = ? AND a.data = ?
+                        ''', (agente_id, data_str)).fetchall()
+
+                        for existing_a_agente in agendamentos_agente_especifico:
+                            existing_start_time_agente = datetime.strptime(
+                                existing_a_agente['hora'], '%H:%M').time()
+                            existing_start_dt_agente = datetime.combine(
+                                data_agendamento_obj, existing_start_time_agente)
+                            existing_end_dt_agente = existing_start_dt_agente + \
+                                timedelta(
+                                    minutes=existing_a_agente['duracao_minutos'])
+
+                            if (current_slot_start_dt < existing_end_dt_agente) and \
+                               (slot_end_dt > existing_start_dt_agente):
+                                is_agente_available_for_this_slot = False
+                                break  # Agente ocupado neste slot
+
+                        if is_agente_available_for_this_slot:
+                            found_available_agente_for_slot = True
+                            break  # Encontrou um agente, o slot é válido em relação a agentes
+
+                    if not found_available_agente_for_slot:
+                        is_slot_available = False  # Nenhum agente disponível para este slot
+
+                if is_slot_available:
+                    slots_disponiveis.append(
+                        current_slot_start_dt.strftime('%H:%M'))
+
+                # Avança para o próximo slot. Você pode definir a granularidade aqui (ex: 30 minutos)
+                # Granularidade de 30 em 30 minutos
+                current_slot_start_dt += timedelta(minutes=30)
+
+        return jsonify({"slots_disponiveis": slots_disponiveis}), 200
+
+    except ValueError as ve:
+        app.logger.error(
+            f"Erro de valor em api_slots_disponiveis: {ve}", exc_info=True)
+        return jsonify({"error": f"Formato de dado inválido: {ve}"}), 400
+    except Exception as e:
+        app.logger.error(
+            f"Erro inesperado em api_slots_disponiveis: {e}", exc_info=True)
+        return jsonify({"error": f"Erro interno ao buscar slots: {e}"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 # 📅 Calendário e eventos
 
 
