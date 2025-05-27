@@ -1,4 +1,5 @@
 # app.py
+from datetime import datetime, timedelta  # Importar timedelta
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import (
@@ -207,20 +208,6 @@ def cadastro():
 
 
 # app.py
-from functools import wraps
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import (
-    LoginManager, UserMixin, login_user,
-    login_required, logout_user, current_user
-)
-from flask import (
-    Flask, abort, jsonify, render_template, request,
-    redirect, url_for, flash
-)
-import logging
-import sqlite3
-import os
-from datetime import datetime, timedelta # Importar timedelta
 
 # 📋 Configuração de logs
 logging.basicConfig(level=logging.INFO,
@@ -238,6 +225,8 @@ login_manager.login_message = "Por favor, realize o login para acessar esta pág
 login_manager.login_message_category = "info"
 
 # 🔗 Classe de usuário
+
+
 class Usuario(UserMixin):
     def __init__(self, id, nome, email, senha_hash, is_admin=0, tipo_usuario='cliente', telefone=None):
         self.id = id
@@ -255,16 +244,19 @@ class Usuario(UserMixin):
     @property
     def is_agente(self):
         return self.tipo_usuario == 'agente'
-    
+
     @property
     def is_admin_user(self):
-        return self.tipo_usuario == 'admin' or self.is_admin == 1 
+        return self.tipo_usuario == 'admin' or self.is_admin == 1
 
 # 🔍 Funções auxiliares
+
+
 def get_db_connection():
     conn = sqlite3.connect('database.db')
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def buscar_usuario_por_email(email):
     conn = get_db_connection()
@@ -274,11 +266,12 @@ def buscar_usuario_por_email(email):
     ).fetchone()
     conn.close()
     if row:
-        return Usuario(row["id"], row["nome"], row["email"], row["senha"], 
-                       row["is_admin"], 
-                       row['tipo_usuario'] if 'tipo_usuario' in row else 'cliente', 
+        return Usuario(row["id"], row["nome"], row["email"], row["senha"],
+                       row["is_admin"],
+                       row['tipo_usuario'] if 'tipo_usuario' in row else 'cliente',
                        row['telefone'] if 'telefone' in row else None)
     return None
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -289,18 +282,22 @@ def load_user(user_id):
     ).fetchone()
     conn.close()
     if row:
-        return Usuario(row["id"], row["nome"], row["email"], row["senha"], 
-                       row["is_admin"], 
-                       row['tipo_usuario'] if 'tipo_usuario' in row else 'cliente', 
+        return Usuario(row["id"], row["nome"], row["email"], row["senha"],
+                       row["is_admin"],
+                       row['tipo_usuario'] if 'tipo_usuario' in row else 'cliente',
                        row['telefone'] if 'telefone' in row else None)
     return None
 
 # 🏠 Página inicial
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 # 🔐 Login
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -319,7 +316,8 @@ def login():
             login_user(user)
             flash('Login realizado com sucesso!', 'success')
             next_page = request.args.get('next')
-            app.logger.info(f"Usuário {user.email} logado com sucesso (Tipo: {user.tipo_usuario}).")
+            app.logger.info(
+                f"Usuário {user.email} logado com sucesso (Tipo: {user.tipo_usuario}).")
             return redirect(next_page or url_for('index'))
         else:
             flash('Email ou senha incorretos.', 'error')
@@ -327,6 +325,7 @@ def login():
             return render_template('login.html', email=email)
 
     return render_template('login.html')
+
 
 @app.route('/logout')
 @login_required
@@ -337,6 +336,8 @@ def logout():
     return redirect(url_for('login'))
 
 # 👤 Cadastro
+
+
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
     if current_user.is_authenticated:
@@ -381,7 +382,8 @@ def cadastro():
             conn.commit()
             conn.close()
             flash('Cadastro realizado com sucesso! Faça login.', 'success')
-            app.logger.info(f"Novo usuário cadastrado: {email} como 'cliente'.")
+            app.logger.info(
+                f"Novo usuário cadastrado: {email} como 'cliente'.")
             return redirect(url_for('login'))
         except sqlite3.Error as e:
             flash(
@@ -397,13 +399,15 @@ def cadastro():
     return render_template('cadastro.html')
 
 # ATUALIZADO: Lógica de validação de agendamento
+
+
 @app.route('/agendar', methods=['GET', 'POST'])
 @login_required
 def agendar():
     conn = get_db_connection()
     try:
         if request.method == 'POST':
-            nome_cliente_evento = request.form.get('nome', '').strip() # Nome dado pelo cliente no agendamento
+            nome_cliente_evento = request.form.get('nome', '').strip()
             data_str = request.form.get('data')
             hora_str = request.form.get('hora')
             tipo_id_str = request.form.get('tipo_id')
@@ -429,10 +433,10 @@ def agendar():
             if not unidade_id_str:
                 errors.append("A unidade é obrigatória.")
 
+            # Verifica erros iniciais de campos vazios
             if errors:
                 for error in errors:
                     flash(error, 'error')
-                # Recarregar dados para o formulário para exibir erros
                 tipos_refresh = conn.execute('SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
                 empreendimentos_refresh = conn.execute('SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
                 unidades_refresh = conn.execute('''
@@ -443,28 +447,34 @@ def agendar():
                 return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
                                        form_data=form_data_for_repopulation)
 
+            # Mover a conversão de data/hora e atribuição de IDs para antes da validação de erros
+            # Assim, data_hora_agendamento, tipo_id, etc. estarão sempre definidos se a conversão for bem-sucedida
             try:
                 data_agendamento_obj = datetime.strptime(data_str, '%Y-%m-%d').date()
                 hora_agendamento_obj = datetime.strptime(hora_str, '%H:%M').time()
-                
-                # Combinar data e hora para um objeto datetime completo
                 data_hora_agendamento = datetime.combine(data_agendamento_obj, hora_agendamento_obj)
+                
+                # Definir data_para_db e hora_para_db aqui também
+                data_para_db = data_agendamento_obj.strftime('%Y-%m-%d')
+                hora_para_db = hora_agendamento_obj.strftime('%H:%M')
 
                 tipo_id = int(tipo_id_str)
                 empreendimento_id = int(empreendimento_id_str)
                 unidade_id = int(unidade_id_str)
                 usuario_id = current_user.id
-
+                
                 # 1. Validação de Data e Hora no Passado
                 if data_hora_agendamento < datetime.now():
                     errors.append("Não é possível agendar em datas e horários passados.")
+
             except ValueError as ve:
                 errors.append(f'Erro de formato nos dados: {str(ve)}. Verifique a data e a hora (HH:MM).')
+                app.logger.error(f'Erro de conversão em /agendar (POST): {str(ve)}', exc_info=True)
             except Exception as e:
                 errors.append(f'Ocorreu um erro inesperado ao processar a data/hora: {str(e)}.')
                 app.logger.error(f'Erro inesperado em /agendar (POST) ao processar data/hora: {str(e)}', exc_info=True)
 
-
+            # Verifica erros após a tentativa de conversão e validação inicial de data/hora
             if errors:
                 for error in errors:
                     flash(error, 'error')
@@ -477,6 +487,9 @@ def agendar():
                 ''').fetchall()
                 return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
                                        form_data=form_data_for_repopulation)
+
+            # O restante da lógica de validação continua aqui, pois data_para_db, data_hora_agendamento, etc.
+            # já estão garantidas como definidas se não houve erros até aqui.
 
             # Re-fetch the selected data with full details needed for validation
             unidade_selecionada = conn.execute('''
@@ -517,13 +530,10 @@ def agendar():
 
             is_within_operating_hours = False
             for h in horarios_disponiveis:
-                # Converter horas de string para objetos time para comparação
                 inicio_op = datetime.strptime(h['hora_inicio'], '%H:%M').time()
                 fim_op = datetime.strptime(h['hora_fim'], '%H:%M').time()
                 
-                # Se a data do agendamento for hoje, a hora de início do agendamento deve ser maior que a hora atual
-                # Mas para a validação de horários de funcionamento, só precisamos ver se está dentro da faixa
-                if inicio_op <= hora_agendamento_obj < fim_op: # Agendamento começa dentro da faixa de operação
+                if inicio_op <= hora_agendamento_obj < fim_op:
                     is_within_operating_hours = True
                     break
             
@@ -548,22 +558,11 @@ def agendar():
             duracao_agendamento = tipo_selecionado['duracao_minutos']
             data_hora_fim_agendamento = data_hora_agendamento + timedelta(minutes=duracao_agendamento)
 
-            # Validação de Término (para não terminar fora do horário de funcionamento)
-            # É uma validação extra, opcional dependendo da regra de negócio:
-            # Se a data_hora_fim_agendamento estiver fora da última faixa de horário disponível, então erro.
-            # Essa lógica pode ser complexa se houver várias faixas de horário no mesmo dia.
-            # Por simplicidade, vamos verificar se o horário de término está na mesma faixa inicial
-            # ou se a faixa de término é válida.
-            # Para uma validação mais robusta, é preciso considerar todas as faixas de horário do dia.
-            # Por enquanto, se a hora de início está ok, e a duração o leva para fora, vamos sinalizar.
-            
-            # Hora de término do agendamento deve estar dentro de ALGUMA faixa de horário de funcionamento.
             is_end_within_operating_hours = False
             for h in horarios_disponiveis:
                 inicio_op_dt = datetime.combine(data_agendamento_obj, datetime.strptime(h['hora_inicio'], '%H:%M').time())
                 fim_op_dt = datetime.combine(data_agendamento_obj, datetime.strptime(h['hora_fim'], '%H:%M').time())
                 
-                # Se o agendamento inteiro (início e fim) estiver dentro de uma única faixa
                 if inicio_op_dt <= data_hora_agendamento and data_hora_fim_agendamento <= fim_op_dt:
                     is_end_within_operating_hours = True
                     break
@@ -600,12 +599,10 @@ def agendar():
                 existing_start_datetime = datetime.combine(data_agendamento_obj, existing_start_time)
                 existing_end_datetime = existing_start_datetime + timedelta(minutes=existing_a['duracao_minutos'])
 
-                # Verificar sobreposição:
-                # (StartA < EndB) AND (EndA > StartB)
                 if (data_hora_agendamento < existing_end_datetime) and \
                    (data_hora_fim_agendamento > existing_start_datetime):
                     errors.append(f"A unidade já possui um agendamento conflitante das {existing_start_time.strftime('%H:%M')} às {existing_end_datetime.strftime('%H:%M')} no mesmo dia.")
-                    break # Saia do loop, já encontrou uma colisão
+                    break
 
             if errors: # Re-check errors after unit collision
                 for error in errors:
@@ -626,7 +623,7 @@ def agendar():
                 SELECT u.id, u.nome
                 FROM usuarios u
                 JOIN agente_tipos_servico ats ON u.id = ats.agente_id
-                WHERE ats.tipo_id = ? AND u.tipo_usuario = 'agente' -- Apenas agentes 'agente'
+                WHERE ats.tipo_id = ? AND u.tipo_usuario = 'agente'
             ''', (tipo_id,)).fetchall()
 
             if not agentes_para_tipo:
@@ -648,7 +645,6 @@ def agendar():
             # Lógica para encontrar um agente disponível
             agente_disponivel_id = None
             for agente in agentes_para_tipo:
-                # Verificar se o agente já tem um agendamento conflitante no mesmo período
                 agendamentos_agente = conn.execute('''
                     SELECT a.hora, ta.duracao_minutos
                     FROM agendamentos a
