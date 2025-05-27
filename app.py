@@ -407,7 +407,8 @@ def agendar():
     conn = get_db_connection()
     try:
         if request.method == 'POST':
-            nome_cliente_evento = request.form.get('nome', '').strip()
+            # CORRIGIDO: Capturar 'contato' em vez de 'nome_cliente_evento'
+            contato_agendamento_form = request.form.get('contato', '').strip()
             data_str = request.form.get('data')
             hora_str = request.form.get('hora')
             tipo_id_str = request.form.get('tipo_id')
@@ -415,13 +416,18 @@ def agendar():
             unidade_id_str = request.form.get('unidade_id')
             observacoes = request.form.get('observacoes', '').strip()
 
+            # CORRIGIDO: Usar 'contato' no dicionário form_data_for_repopulation
             form_data_for_repopulation = {
-                'nome': nome_cliente_evento, 'data': data_str, 'hora': hora_str,
+                'contato': contato_agendamento_form,  # Usar 'contato' aqui
+                'data': data_str, 'hora': hora_str,
                 'tipo_id': tipo_id_str, 'empreendimento_id': empreendimento_id_str, 'unidade_id': unidade_id_str,
                 'observacoes': observacoes
             }
 
             errors = []
+            # NOVO: Validação para o campo 'contato'
+            if not contato_agendamento_form:
+                errors.append("O campo 'Contato' é obrigatório.")
             if not data_str:
                 errors.append("A data é obrigatória.")
             if not hora_str:
@@ -437,8 +443,10 @@ def agendar():
             if errors:
                 for error in errors:
                     flash(error, 'error')
-                tipos_refresh = conn.execute('SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute('SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
+                tipos_refresh = conn.execute(
+                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
+                empreendimentos_refresh = conn.execute(
+                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
                 unidades_refresh = conn.execute('''
                     SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
                     FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
@@ -450,10 +458,13 @@ def agendar():
             # Mover a conversão de data/hora e atribuição de IDs para antes da validação de erros
             # Assim, data_hora_agendamento, tipo_id, etc. estarão sempre definidos se a conversão for bem-sucedida
             try:
-                data_agendamento_obj = datetime.strptime(data_str, '%Y-%m-%d').date()
-                hora_agendamento_obj = datetime.strptime(hora_str, '%H:%M').time()
-                data_hora_agendamento = datetime.combine(data_agendamento_obj, hora_agendamento_obj)
-                
+                data_agendamento_obj = datetime.strptime(
+                    data_str, '%Y-%m-%d').date()
+                hora_agendamento_obj = datetime.strptime(
+                    hora_str, '%H:%M').time()
+                data_hora_agendamento = datetime.combine(
+                    data_agendamento_obj, hora_agendamento_obj)
+
                 # Definir data_para_db e hora_para_db aqui também
                 data_para_db = data_agendamento_obj.strftime('%Y-%m-%d')
                 hora_para_db = hora_agendamento_obj.strftime('%H:%M')
@@ -462,24 +473,31 @@ def agendar():
                 empreendimento_id = int(empreendimento_id_str)
                 unidade_id = int(unidade_id_str)
                 usuario_id = current_user.id
-                
+
                 # 1. Validação de Data e Hora no Passado
                 if data_hora_agendamento < datetime.now():
-                    errors.append("Não é possível agendar em datas e horários passados.")
+                    errors.append(
+                        "Não é possível agendar em datas e horários passados.")
 
             except ValueError as ve:
-                errors.append(f'Erro de formato nos dados: {str(ve)}. Verifique a data e a hora (HH:MM).')
-                app.logger.error(f'Erro de conversão em /agendar (POST): {str(ve)}', exc_info=True)
+                errors.append(
+                    f'Erro de formato nos dados: {str(ve)}. Verifique a data e a hora (HH:MM).')
+                app.logger.error(
+                    f'Erro de conversão em /agendar (POST): {str(ve)}', exc_info=True)
             except Exception as e:
-                errors.append(f'Ocorreu um erro inesperado ao processar a data/hora: {str(e)}.')
-                app.logger.error(f'Erro inesperado em /agendar (POST) ao processar data/hora: {str(e)}', exc_info=True)
+                errors.append(
+                    f'Ocorreu um erro inesperado ao processar a data/hora: {str(e)}.')
+                app.logger.error(
+                    f'Erro inesperado em /agendar (POST) ao processar data/hora: {str(e)}', exc_info=True)
 
             # Verifica erros após a tentativa de conversão e validação inicial de data/hora
             if errors:
                 for error in errors:
                     flash(error, 'error')
-                tipos_refresh = conn.execute('SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute('SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
+                tipos_refresh = conn.execute(
+                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
+                empreendimentos_refresh = conn.execute(
+                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
                 unidades_refresh = conn.execute('''
                     SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
                     FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
@@ -502,15 +520,19 @@ def agendar():
                 'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento WHERE id = ?', (tipo_id,)).fetchone()
 
             if not (unidade_selecionada and unidade_selecionada['unidade_ativa'] and unidade_selecionada['empreendimento_ativo']):
-                errors.append('A unidade selecionada ou seu empreendimento não estão ativos.')
+                errors.append(
+                    'A unidade selecionada ou seu empreendimento não estão ativos.')
             elif not (tipo_selecionado and tipo_selecionado['ativo']):
-                errors.append('O tipo de agendamento selecionado não está ativo.')
-            
-            if errors: # Re-check errors after fetching more details
+                errors.append(
+                    'O tipo de agendamento selecionado não está ativo.')
+
+            if errors:  # Re-check errors after fetching more details
                 for error in errors:
                     flash(error, 'error')
-                tipos_refresh = conn.execute('SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute('SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
+                tipos_refresh = conn.execute(
+                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
+                empreendimentos_refresh = conn.execute(
+                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
                 unidades_refresh = conn.execute('''
                     SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
                     FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
@@ -520,8 +542,8 @@ def agendar():
                                        form_data=form_data_for_repopulation)
 
             # 2. Validação de Horário de Funcionamento do Empreendimento
-            dia_semana_agendamento = data_hora_agendamento.weekday() # 0=Segunda, 6=Domingo
-            
+            dia_semana_agendamento = data_hora_agendamento.weekday()  # 0=Segunda, 6=Domingo
+
             horarios_disponiveis = conn.execute('''
                 SELECT hora_inicio, hora_fim FROM horarios_funcionamento
                 WHERE empreendimento_id = ? AND dia_semana = ?
@@ -532,19 +554,22 @@ def agendar():
             for h in horarios_disponiveis:
                 inicio_op = datetime.strptime(h['hora_inicio'], '%H:%M').time()
                 fim_op = datetime.strptime(h['hora_fim'], '%H:%M').time()
-                
+
                 if inicio_op <= hora_agendamento_obj < fim_op:
                     is_within_operating_hours = True
                     break
-            
+
             if not is_within_operating_hours:
-                errors.append("O empreendimento não está aberto ou disponível neste horário no dia selecionado.")
-            
-            if errors: # Re-check errors after validating operating hours
+                errors.append(
+                    "O empreendimento não está aberto ou disponível neste horário no dia selecionado.")
+
+            if errors:  # Re-check errors after validating operating hours
                 for error in errors:
                     flash(error, 'error')
-                tipos_refresh = conn.execute('SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute('SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
+                tipos_refresh = conn.execute(
+                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
+                empreendimentos_refresh = conn.execute(
+                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
                 unidades_refresh = conn.execute('''
                     SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
                     FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
@@ -552,30 +577,34 @@ def agendar():
                 ''').fetchall()
                 return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
                                        form_data=form_data_for_repopulation)
-
 
             # 3. Calcular Horário de Término
             duracao_agendamento = tipo_selecionado['duracao_minutos']
-            data_hora_fim_agendamento = data_hora_agendamento + timedelta(minutes=duracao_agendamento)
+            data_hora_fim_agendamento = data_hora_agendamento + \
+                timedelta(minutes=duracao_agendamento)
 
             is_end_within_operating_hours = False
             for h in horarios_disponiveis:
-                inicio_op_dt = datetime.combine(data_agendamento_obj, datetime.strptime(h['hora_inicio'], '%H:%M').time())
-                fim_op_dt = datetime.combine(data_agendamento_obj, datetime.strptime(h['hora_fim'], '%H:%M').time())
-                
+                inicio_op_dt = datetime.combine(
+                    data_agendamento_obj, datetime.strptime(h['hora_inicio'], '%H:%M').time())
+                fim_op_dt = datetime.combine(
+                    data_agendamento_obj, datetime.strptime(h['hora_fim'], '%H:%M').time())
+
                 if inicio_op_dt <= data_hora_agendamento and data_hora_fim_agendamento <= fim_op_dt:
                     is_end_within_operating_hours = True
                     break
-            
+
             if not is_end_within_operating_hours:
-                 errors.append(f"O agendamento de {duracao_agendamento} minutos excede o horário de funcionamento do empreendimento ou não se encaixa em uma faixa contínua de horário disponível. Fim previsto: {data_hora_fim_agendamento.strftime('%H:%M')}.")
+                errors.append(
+                    f"O agendamento de {duracao_agendamento} minutos excede o horário de funcionamento do empreendimento ou não se encaixa em uma faixa contínua de horário disponível. Fim previsto: {data_hora_fim_agendamento.strftime('%H:%M')}.")
 
-
-            if errors: # Re-check errors after duration validation
+            if errors:  # Re-check errors after duration validation
                 for error in errors:
                     flash(error, 'error')
-                tipos_refresh = conn.execute('SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute('SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
+                tipos_refresh = conn.execute(
+                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
+                empreendimentos_refresh = conn.execute(
+                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
                 unidades_refresh = conn.execute('''
                     SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
                     FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
@@ -584,9 +613,7 @@ def agendar():
                 return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
                                        form_data=form_data_for_repopulation)
 
-
             # 4. Validação de Colisão de Horários (para a Unidade)
-            # Buscar agendamentos existentes para a mesma unidade na mesma data
             existing_agendamentos_unidade = conn.execute('''
                 SELECT a.hora, ta.duracao_minutos 
                 FROM agendamentos a
@@ -595,20 +622,26 @@ def agendar():
             ''', (unidade_id, data_para_db)).fetchall()
 
             for existing_a in existing_agendamentos_unidade:
-                existing_start_time = datetime.strptime(existing_a['hora'], '%H:%M').time()
-                existing_start_datetime = datetime.combine(data_agendamento_obj, existing_start_time)
-                existing_end_datetime = existing_start_datetime + timedelta(minutes=existing_a['duracao_minutos'])
+                existing_start_time = datetime.strptime(
+                    existing_a['hora'], '%H:%M').time()
+                existing_start_datetime = datetime.combine(
+                    data_agendamento_obj, existing_start_time)
+                existing_end_datetime = existing_start_datetime + \
+                    timedelta(minutes=existing_a['duracao_minutos'])
 
                 if (data_hora_agendamento < existing_end_datetime) and \
                    (data_hora_fim_agendamento > existing_start_datetime):
-                    errors.append(f"A unidade já possui um agendamento conflitante das {existing_start_time.strftime('%H:%M')} às {existing_end_datetime.strftime('%H:%M')} no mesmo dia.")
+                    errors.append(
+                        f"A unidade já possui um agendamento conflitante das {existing_start_time.strftime('%H:%M')} às {existing_end_datetime.strftime('%H:%M')} no mesmo dia.")
                     break
 
-            if errors: # Re-check errors after unit collision
+            if errors:  # Re-check errors after unit collision
                 for error in errors:
                     flash(error, 'error')
-                tipos_refresh = conn.execute('SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute('SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
+                tipos_refresh = conn.execute(
+                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
+                empreendimentos_refresh = conn.execute(
+                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
                 unidades_refresh = conn.execute('''
                     SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
                     FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
@@ -616,7 +649,7 @@ def agendar():
                 ''').fetchall()
                 return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
                                        form_data=form_data_for_repopulation)
-            
+
             # 5. Validação de Vinculação de Agente (e Colisão de Agente)
             # Buscar agentes vinculados ao tipo de serviço selecionado
             agentes_para_tipo = conn.execute('''
@@ -627,13 +660,16 @@ def agendar():
             ''', (tipo_id,)).fetchall()
 
             if not agentes_para_tipo:
-                errors.append("Não há agentes vinculados ou disponíveis para este tipo de serviço.")
-            
-            if errors: # Re-check errors after agent availability
+                errors.append(
+                    "Não há agentes vinculados ou disponíveis para este tipo de serviço.")
+
+            if errors:  # Re-check errors after agent availability
                 for error in errors:
                     flash(error, 'error')
-                tipos_refresh = conn.execute('SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute('SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
+                tipos_refresh = conn.execute(
+                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
+                empreendimentos_refresh = conn.execute(
+                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
                 unidades_refresh = conn.execute('''
                     SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
                     FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
@@ -654,27 +690,33 @@ def agendar():
 
                 is_agente_available = True
                 for existing_a_agente in agendamentos_agente:
-                    existing_start_time_agente = datetime.strptime(existing_a_agente['hora'], '%H:%M').time()
-                    existing_start_datetime_agente = datetime.combine(data_agendamento_obj, existing_start_time_agente)
-                    existing_end_datetime_agente = existing_start_datetime_agente + timedelta(minutes=existing_a_agente['duracao_minutos'])
+                    existing_start_time_agente = datetime.strptime(
+                        existing_a_agente['hora'], '%H:%M').time()
+                    existing_start_datetime_agente = datetime.combine(
+                        data_agendamento_obj, existing_start_time_agente)
+                    existing_end_datetime_agente = existing_start_datetime_agente + \
+                        timedelta(minutes=existing_a_agente['duracao_minutos'])
 
                     if (data_hora_agendamento < existing_end_datetime_agente) and \
                        (data_hora_fim_agendamento > existing_start_datetime_agente):
                         is_agente_available = False
                         break
-                
+
                 if is_agente_available:
                     agente_disponivel_id = agente['id']
                     break
-            
-            if not agente_disponivel_id:
-                errors.append("Não há agentes disponíveis para este tipo de serviço no horário selecionado.")
 
-            if errors: # Final check before insertion
+            if not agente_disponivel_id:
+                errors.append(
+                    "Não há agentes disponíveis para este tipo de serviço no horário selecionado.")
+
+            if errors:  # Final check before insertion
                 for error in errors:
                     flash(error, 'error')
-                tipos_refresh = conn.execute('SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute('SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
+                tipos_refresh = conn.execute(
+                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
+                empreendimentos_refresh = conn.execute(
+                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
                 unidades_refresh = conn.execute('''
                     SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
                     FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
@@ -696,8 +738,8 @@ def agendar():
                     '''INSERT INTO agendamentos (usuario_id, tipo_id, unidade_id, data, hora, observacoes) 
                        VALUES (?, ?, ?, ?, ?, ?)''',
                     (usuario_id, tipo_id, unidade_id,
-                     data_hora_agendamento.strftime('%Y-%m-%d'), 
-                     data_hora_agendamento.strftime('%H:%M'), 
+                     data_hora_agendamento.strftime('%Y-%m-%d'),
+                     data_hora_agendamento.strftime('%H:%M'),
                      observacoes)
                 )
                 conn.commit()
@@ -737,8 +779,6 @@ def agendar():
     finally:
         if conn:
             conn.close()
-
-# ... (restante do código) ...
 
 # 📅 Calendário e eventos
 
@@ -1642,26 +1682,50 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    # ... (outras tabelas e alter table existentes) ...
+
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS tipos_agendamento (
+        CREATE TABLE IF NOT EXISTS agendamentos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT UNIQUE NOT NULL,
-            ativo INTEGER DEFAULT 1 CHECK(ativo IN (0, 1)),
-            duracao_minutos INTEGER DEFAULT 60 NOT NULL
+            usuario_id INTEGER, 
+            tipo_id INTEGER NOT NULL,
+            unidade_id INTEGER NOT NULL,
+            data TEXT NOT NULL,
+            hora TEXT NOT NULL,
+            observacoes TEXT,
+            contato_agendamento TEXT, -- NOVA COLUNA: Adicione esta linha
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+            FOREIGN KEY (tipo_id) REFERENCES tipos_agendamento(id) ON DELETE RESTRICT,
+            FOREIGN KEY (unidade_id) REFERENCES unidades(id) ON DELETE RESTRICT
         )
     ''')
+    # Adicionar ALTER TABLE para a coluna 'observacoes' em agendamentos
+    try:
+        cursor.execute("ALTER TABLE agendamentos ADD COLUMN observacoes TEXT")
+        app.logger.info(
+            "Coluna 'observacoes' adicionada à tabela 'agendamentos'.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e) or "duplicate column: observacoes" in str(e):
+            app.logger.info(
+                "Coluna 'observacoes' já existe na tabela 'agendamentos'.")
+        else:
+            app.logger.error(f"Erro ao adicionar coluna 'observacoes': {e}")
+
+    # Adicionar ALTER TABLE para a nova coluna 'contato_agendamento'
     try:
         cursor.execute(
-            "ALTER TABLE tipos_agendamento ADD COLUMN duracao_minutos INTEGER DEFAULT 60")
+            "ALTER TABLE agendamentos ADD COLUMN contato_agendamento TEXT")
         app.logger.info(
-            "Coluna 'duracao_minutos' adicionada à tabela 'tipos_agendamento'.")
+            "Coluna 'contato_agendamento' adicionada à tabela 'agendamentos'.")
     except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e) or "duplicate column: duracao_minutos" in str(e):
+        if "duplicate column name" in str(e) or "duplicate column: contato_agendamento" in str(e):
             app.logger.info(
-                "Coluna 'duracao_minutos' já existe na tabela 'tipos_agendamento'.")
+                "Coluna 'contato_agendamento' já existe na tabela 'agendamentos'.")
         else:
             app.logger.error(
-                f"Erro ao adicionar coluna 'duracao_minutos': {e}")
+                f"Erro ao adicionar coluna 'contato_agendamento': {e}")
+
+    # ... (restante do init_db) ...
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS empreendimentos (

@@ -45,10 +45,11 @@
             {% endfor %}
         </select>
 
-        {# Nome do Cliente (se o agendamento for para outro) #}
-        <label for="nome">Nome do Agendamento</label>
-        <input id="nome" type="text" name="nome" placeholder="Digite o nome para o agendamento (Ex: Nome do Cliente)"
-            required value="{{ form_data.nome if form_data.nome else '' }}">
+        {# ALTERADO AQUI: Nome do Agendamento para Contato #}
+        <label for="contato">Contato (telefone, opcional)</label>
+        <input id="contato" type="text" name="contato" placeholder="Ex: (XX) XXXX-XXXX ou (XX) 9XXXX-XXXX"
+            value="{{ form_data.contato if form_data.contato else '' }}">
+        {# Removido 'required' para tornar o campo opcional. Se quiser obrigatório, adicione required aqui. #}
 
         {# Data e Hora agora depois do Empreendimento/Unidade #}
         <label for="data">Data</label>
@@ -78,17 +79,15 @@
     // Filtro de unidades por empreendimento (manter e adaptar)
     const empreendimentoSelect = document.getElementById('empreendimento');
     const unidadeSelect = document.getElementById('unidade');
-    const allUnidadeOptions = Array.from(unidadeSelect.querySelectorAll('option:not([value=""])')); // Todas as opções, exceto a primeira "Selecione a unidade"
+    const allUnidadeOptions = Array.from(unidadeSelect.querySelectorAll('option:not([value=""])'));
 
     function filterUnidades() {
         const empId = empreendimentoSelect.value;
 
-        // Esconder todas as unidades primeiro
         allUnidadeOptions.forEach(opt => {
             opt.style.display = 'none';
         });
 
-        // Mostrar apenas as unidades do empreendimento selecionado
         if (empId) {
             const relevantUnidades = allUnidadeOptions.filter(opt => opt.dataset.emp === empId);
             relevantUnidades.forEach(opt => {
@@ -96,24 +95,18 @@
             });
         }
 
-        // Se a unidade selecionada não pertence mais ao empreendimento atual, resetar
         const currentSelectedUnidade = unidadeSelect.value;
         const selectedOption = unidadeSelect.querySelector(`option[value="${currentSelectedUnidade}"]`);
 
         if (selectedOption && selectedOption.dataset.emp !== empId) {
-            unidadeSelect.value = ''; // Resetar se a unidade selecionada não for do novo empreendimento
+            unidadeSelect.value = '';
         } else if (!selectedOption && currentSelectedUnidade) {
-            // Se a unidade selecionada não existe mais (ex: após um erro de validação que removeu uma opção inválida)
             unidadeSelect.value = '';
         }
     }
 
-    // Chamar a função de filtro ao carregar a página e quando o empreendimento muda
     empreendimentoSelect.addEventListener('change', filterUnidades);
-
-    // Chamar filterUnidades uma vez na carga inicial para garantir que as unidades corretas já estejam visíveis
-    // (especialmente se o formulário for repopulado após um erro)
-    filterUnidades();
+    filterUnidades(); // Chamar na carga inicial
 
 </script>
 {% endblock %}
