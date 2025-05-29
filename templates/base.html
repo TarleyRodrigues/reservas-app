@@ -27,6 +27,11 @@
       <a href="{{ url_for('agendar') }}" class="nav-link">Agendar</a>
       {% endif %}
 
+      {# NOVO LINK: Painel do Agente (visível para Agentes e Admins) #}
+      {% if current_user.is_agente or current_user.is_admin_user %}
+      <a href="{{ url_for('painel_agente') }}" class="nav-link agent-link">Painel do Agente</a>
+      {% endif %}
+
       {# Apenas Administradores têm acesso às Configurações #}
       {% if current_user.is_admin_user %}
       <a href="{{ url_for('configuracoes') }}" class="nav-link admin-link">Configurações</a>
@@ -43,15 +48,13 @@
   </header>
 
   <main>
-    <div id="toast-container"></div>
+    <div id="toast-container"></div> {# Mantém o id para a função showToast encontrar #}
     {% block content %}{% endblock %}
   </main>
 
-  {#
   <footer>
-    <p>© {% now 'Y' %} Reservas App. Todos os direitos reservados.</p> {# Exemplo de como pegar o ano atual com Jinja #}
+    <p>© 2024 Reservas App. Todos os direitos reservados.</p>
   </footer>
-  #}
 
   <script>
     function showToast(message, type) {
@@ -66,28 +69,30 @@
 
       let toastTypeClass = type;
       if (type === 'danger') {
-        toastTypeClass = 'error';
+        toastTypeClass = 'error'; // Mapeia 'danger' do Flask para 'error' no CSS
       } else if (type === 'message') {
-        toastTypeClass = 'info';
+        toastTypeClass = 'info'; // Mapeia 'message' do Flask para 'info' no CSS
       }
       const validTypes = ['success', 'error', 'warning', 'info'];
       if (!validTypes.includes(toastTypeClass)) {
-        toastTypeClass = 'info';
+        toastTypeClass = 'info'; // Fallback para 'info' se o tipo não for válido
       }
 
       toast.className = 'toast ' + toastTypeClass;
       container.appendChild(toast);
 
+      // Força um reflow para garantir que a transição CSS seja aplicada
       void toast.offsetWidth;
 
       toast.classList.add('show');
 
-      const duration = 3500;
-      const fadeOutDuration = 400;
+      const duration = 3500; // Duração total visível do toast
+      const fadeOutDuration = 400; // Duração da transição de fade out
 
       setTimeout(() => {
-        toast.classList.remove('show');
+        toast.classList.remove('show'); // Remove a classe 'show' para iniciar o fade out
 
+        // Remove o elemento do DOM após a transição de fade out
         setTimeout(() => {
           if (toast.parentNode === container) {
             container.removeChild(toast);
@@ -101,11 +106,13 @@
       {% with messages = get_flashed_messages(with_categories = true) %}
       {% if messages %}
       {% for category, message in messages %}
-      showToast({{ message| tojson | safe }}, {{ category| tojson | safe }});
+      // Passa as mensagens como strings JSON e as parseia no JavaScript para segurança e clareza.
+      // `|tojson` converte para JSON string, e `|safe` impede que Jinja faça HTML escaping adicional.
+      showToast(JSON.parse({{ message | tojson | safe }}), JSON.parse({{ category | tojson | safe }}));
     {% endfor %}
     {% endif %}
     {% endwith %}
-        });
+    });
   </script>
   {% block scripts_extra %}{% endblock %}
 </body>

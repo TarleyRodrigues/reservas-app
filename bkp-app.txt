@@ -382,8 +382,6 @@ def logout():
 # 👤 Cadastro
 
 
-# ... (código anterior) ...
-
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
     if current_user.is_authenticated:
@@ -410,7 +408,7 @@ def cadastro():
         if len(senha) < 6:
             errors.append('A senha deve ter pelo menos 6 caracteres.')
 
-        if not errors and buscar_usuario_por_email(email): # Confere se o email já existe *antes* de tentar inserir
+        if not errors and buscar_usuario_por_email(email):
             errors.append('Este email já está cadastrado.')
 
         if errors:
@@ -418,7 +416,6 @@ def cadastro():
                 flash(error_msg, 'error')
             return render_template('cadastro.html', nome=nome, email=email, telefone=telefone)
 
-        conn = None # Inicializa conn como None para o finally
         try:
             senha_hash = generate_password_hash(senha)
             conn = get_db_connection()
@@ -427,27 +424,20 @@ def cadastro():
                 (nome, email, senha_hash, 0, 'cliente', telefone)
             )
             conn.commit()
+            conn.close()
             flash('Cadastro realizado com sucesso! Faça login.', 'success')
             app.logger.info(
                 f"Novo usuário cadastrado: {email} como 'cliente'.")
             return redirect(url_for('login'))
-        except sqlite3.IntegrityError: # Captura erro de UNIQUE CONSTRAINT especificamente
-            flash('Este email já está cadastrado. Por favor, use outro.', 'error')
-            app.logger.warning(f"Tentativa de cadastro com email duplicado: {email}")
         except sqlite3.Error as e:
             flash(
                 'Erro ao cadastrar usuário no banco de dados. Tente novamente.', 'error')
-            app.logger.error(f'Erro DB no cadastro: {e}', exc_info=True) # Adicionado exc_info=True para mais detalhes
+            app.logger.error(f'Erro DB no cadastro: {e}')
         except Exception as e:
             flash(
                 'Ocorreu um erro inesperado durante o cadastro. Por favor, tente mais tarde.', 'error')
             app.logger.error(
                 f'Erro inesperado no cadastro: {e}', exc_info=True)
-        finally:
-            if conn: # Garante que conn existe antes de tentar fechar
-                conn.close()
-        
-        # Se houve um erro (e não foi redirecionado), re-renderiza com os dados do formulário
         return render_template('cadastro.html', nome=nome, email=email, telefone=telefone)
 
     return render_template('cadastro.html')
@@ -2185,51 +2175,66 @@ def criar_usuario_inicial():
     admin_email = os.environ.get('SUPER_ADMIN_EMAIL', 'admin@admin.com')
     admin_nome = "Administrador Principal"
 
-    # Definir a senha padrão do super admin e garantir que tenha no mínimo 6 caracteres
-    default_password = os.environ.get('SUPER_ADMIN_PASSWORD', '123456')
-    if len(default_password) < 6:
-        app.logger.error(
-            "Senha padrão do super admin é muito curta. Definindo uma mais segura para 'admin@admin.com'."
-        )
-        default_password = "ChangeMeNow123!"  # Fallback seguro
-    senha_hash = generate_password_hash(default_password)
+    # Busca o admin_user pelo email
+    admin_user = cursor.execute(
+        "SELECT id, is_admin, nome, tipo_usuario, telefone FROM usuarios WHERE email = ?", (admin_email,)).fetchone()
 
-    try:
-        # Tentar atualizar o usuário administrador.
-        # Se ele existe, garantimos que seu nome, senha, is_admin e tipo_usuario estejam corretos.
-        cursor.execute(
-            """
-            UPDATE usuarios 
-            SET nome = ?, senha = ?, is_admin = 1, tipo_usuario = 'admin' 
-            WHERE email = ?
-            """,
-            (admin_nome, senha_hash, admin_email)
-        )
+    # Define as flags com base no estado atual do usuário
+    needs_creation = False
+    needs_update = False
 
-        # O cursor.rowcount retorna o número de linhas afetadas pela última operação.
-        # Se 0 linhas foram afetadas, significa que o usuário não existe.
-        if cursor.rowcount == 0:
-            # Se o usuário não existe, então o inserimos.
-            cursor.execute(
-                'INSERT INTO usuarios (nome, email, senha, is_admin, tipo_usuario, telefone) VALUES (?, ?, ?, ?, ?, ?)',
-                # Telefone é None para o admin inicial
-                (admin_nome, admin_email, senha_hash, 1, 'admin', None)
-            )
-            app.logger.info(
-                f"Usuário administrador inicial '{admin_email}' CRIADO com sucesso.")
+    if not admin_user:  # Admin não existe, precisa criar
+        needs_creation = True
+        app.logger.info(
+            f"Admin principal '{admin_email}' não encontrado. Será criado.")
+    else:  # Admin existe, verifica se precisa ser atualizado
+        current_tipo_usuario = admin_user['tipo_usuario'] if 'tipo_usuario' in admin_user else None
+
+        if admin_user['is_admin'] != 1 or \
+           current_tipo_usuario != 'admin' or \
+           admin_user['nome'] != admin_nome:
+            needs_update = True
+            app.logger.warning(
+                f"Admin principal '{admin_email}' encontrado com tipo/is_admin/nome incorreto. Forçando atualização.")
         else:
             app.logger.info(
-                f"Usuário administrador inicial '{admin_email}' ATUALIZADO (estado verificado).")
+                f"Usuário administrador inicial '{admin_email}' já configurado corretamente.")
 
-        conn.commit()
-    except sqlite3.Error as e:
-        app.logger.error(
-            f"Erro ao configurar admin principal: {e}", exc_info=True)
-        conn.rollback()  # Garante rollback em caso de erro
-    finally:
-        conn.close()
-    app.logger.info(
-        "Configuração do usuário administrador principal finalizada.")
+    if needs_creation or needs_update:
+        # Se for uma atualização forçada (e o usuário existe), delete e recrie
+        if admin_user and needs_update:
+            cursor.execute("DELETE FROM usuarios WHERE id = ?",
+                           (admin_user['id'],))
+            conn.commit()  # Comita o delete antes da inserção
+            app.logger.info(
+                f"Admin '{admin_email}' removido devido a inconsistência para recriação forçada.")
+
+        # Agora, cria (ou recria) o usuário administrador principal com as configurações corretas
+        default_password = os.environ.get('SUPER_ADMIN_PASSWORD', '123456')
+        if len(default_password) < 6:
+            app.logger.error(
+                "Senha padrão do super admin é muito curta. Defina SUPER_ADMIN_PASSWORD com pelo menos 6 caracteres.")
+            default_password = "ChangeMeNow123!"  # Fallback seguro
+
+        senha_hash = generate_password_hash(default_password)
+        try:
+            cursor.execute(
+                'INSERT INTO usuarios (nome, email, senha, is_admin, tipo_usuario, telefone) VALUES (?, ?, ?, ?, ?, ?)',
+                (admin_nome, admin_email, senha_hash, 1, 'admin', None)
+            )
+            conn.commit()
+            app.logger.info(
+                f"Usuário administrador inicial '{admin_email}' CRIADO/RECRIADO com sucesso: tipo_usuario='admin'.")
+        except sqlite3.IntegrityError:
+            # Isso pode acontecer se ele foi deletado e outro processo inseriu
+            app.logger.warning(
+                f"Usuário administrador inicial '{admin_email}' já existe (concorrência).")
+        except sqlite3.Error as e:
+            app.logger.error(
+                f"Erro ao inserir/recriar admin principal: {e}", exc_info=True)
+            conn.rollback()  # Garante rollback em caso de erro de inserção
+
+    conn.close()  # Fechar a conexão no final da função
 
 
 # 🚀 Execução

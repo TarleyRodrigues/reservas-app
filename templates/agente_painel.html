@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+
+{% block title %}Painel do Agente{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+    <h2>Agendamentos Designados para Você</h2>
+
+    {% if agendamentos_agente %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>ID Agendamento</th>
+                <th>Data</th>
+                <th>Hora</th>
+                <th>Tipo de Serviço</th>
+                <th>Empreendimento</th>
+                <th>Unidade</th>
+                <th>Contato</th>
+                <th>Observações</th>
+                <th>Status Atual</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for agendamento in agendamentos_agente %}
+            <tr>
+                <td>{{ agendamento.id }}</td>
+                <td>{{ agendamento.data }}</td>
+                <td>{{ agendamento.hora }}</td>
+                <td>{{ agendamento.tipo_nome }}</td>
+                <td>{{ agendamento.empreendimento_nome }}</td>
+                <td>{{ agendamento.unidade_nome }}</td>
+                <td>{{ agendamento.contato_agendamento if agendamento.contato_agendamento else 'N/A' }}</td>
+                <td>{{ agendamento.observacoes if agendamento.observacoes else 'N/A' }}</td>
+                <td>
+                    <span class="status status-{{ agendamento.status.lower() }}">
+                        {{ agendamento.status }}
+                    </span>
+                </td>
+                <td>
+                    {% if agendamento.status == 'Pendente' %}
+                    <form method="POST" action="{{ url_for('alterar_status_agendamento') }}" style="display:inline;">
+                        <input type="hidden" name="agendamento_id" value="{{ agendamento.id }}">
+                        <input type="hidden" name="novo_status" value="Confirmado">
+                        <button type="submit" class="btn btn-success btn-sm">Confirmar</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('alterar_status_agendamento') }}" style="display:inline;"
+                        class="form-cancel">
+                        <input type="hidden" name="agendamento_id" value="{{ agendamento.id }}">
+                        <input type="hidden" name="novo_status" value="Cancelado">
+                        <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
+                    </form>
+                    {% elif agendamento.status == 'Confirmado' %}
+                    <form method="POST" action="{{ url_for('alterar_status_agendamento') }}" style="display:inline;">
+                        <input type="hidden" name="agendamento_id" value="{{ agendamento.id }}">
+                        <input type="hidden" name="novo_status" value="Concluído">
+                        <button type="submit" class="btn btn-primary btn-sm">Concluir</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('alterar_status_agendamento') }}" style="display:inline;"
+                        class="form-cancel">
+                        <input type="hidden" name="agendamento_id" value="{{ agendamento.id }}">
+                        <input type="hidden" name="novo_status" value="Cancelado">
+                        <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
+                    </form>
+                    {% else %}
+                    <span class="text-muted">Nenhuma ação disponível</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Nenhum agendamento designado para você no momento.</p>
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Adicionar confirmação para formulários de cancelamento
+        document.querySelectorAll('form.form-cancel').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                if (!confirm('Tem certeza que deseja CANCELAR este agendamento? Esta ação pode ser irreversível.')) {
+                    e.preventDefault();
+                }
+            });
+        });
+
+        // Adicionar confirmação genérica para outros formulários de ação, se desejar
+        // document.querySelectorAll('form:not(.form-cancel):not(.form-remove)').forEach(form => {
+        //     form.addEventListener('submit', function (e) {
+        //         if (!confirm('Confirmar esta ação?')) {
+        //             e.preventDefault();
+        //         }
+        //     });
+        // });
+    });
+</script>
+
+<style>
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        background-color: var(--form-bg);
+    }
+
+    .data-table th,
+    .data-table td {
+        border: 1px solid var(--input-border);
+        padding: 10px 15px;
+        text-align: left;
+        color: var(--text);
+    }
+
+    .data-table th {
+        background-color: var(--button-bg);
+        color: var(--button-text);
+        font-weight: bold;
+    }
+
+    .data-table tr:nth-child(even) {
+        background-color: var(--input-bg);
+        /* Lighter background for even rows */
+    }
+
+    .data-table tr:hover {
+        background-color: rgba(var(--input-border-rgb), 0.5);
+        /* Subtle hover effect */
+    }
+
+    .status {
+        padding: 4px 8px;
+        border-radius: 5px;
+        font-weight: bold;
+        font-size: 0.85em;
+        white-space: nowrap;
+        /* Prevent wrapping */
+    }
+
+    .status-pendente {
+        background-color: #ffc107;
+        color: #333;
+    }
+
+    /* Warning yellow */
+    .status-confirmado {
+        background-color: #28a745;
+        color: #fff;
+    }
+
+    /* Success green */
+    .status-cancelado {
+        background-color: #dc3545;
+        color: #fff;
+    }
+
+    /* Danger red */
+    .status-concluído {
+        background-color: #6c757d;
+        color: #fff;
+    }
+
+    /* Secondary grey */
+
+    .data-table .btn-sm {
+        padding: 5px 10px;
+        font-size: 0.8em;
+        margin-right: 5px;
+    }
+
+    .data-table form {
+        display: inline-block;
+    }
+</style>
+{% endblock %}

@@ -15,6 +15,7 @@
     <div class="config-main-content">
         <h1>Configurações do Sistema</h1>
 
+        {# Mensagens Flash (mantido o fallback, o JS já lida com os toasts) #}
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
@@ -29,7 +30,6 @@
             <h2>Tipos de Agendamento</h2>
             <form method="POST" action="{{ url_for('adicionar_tipo') }}" class="config-form">
                 <input type="text" name="novo_tipo" placeholder="Nome do novo tipo" required>
-                {# NOVO CAMPO: Duração Padrão ao Adicionar Tipo #}
                 <input type="number" name="duracao" placeholder="Duração padrão (minutos)" value="60" min="1" required>
                 <button type="submit" class="btn btn-primary btn-sm">Adicionar Tipo</button>
             </form>
@@ -38,7 +38,7 @@
                     <tr>
                         <th>Nome</th>
                         <th>Status</th>
-                        <th>Duração Padrão (min)</th> {# NOVA COLUNA #}
+                        <th>Duração Padrão (min)</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -51,7 +51,6 @@
                                 {% if tipo.ativo %}Ativo{% else %}Inativo{% endif %}
                             </span>
                         </td>
-                        {# Célula para Duração e Botão de Edição #}
                         <td>
                             <form method="POST" action="{{ url_for('editar_duracao_tipo') }}" style="display:inline;"
                                 class="form-edit-duracao">
@@ -70,7 +69,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="4">Nenhum tipo de agendamento cadastrado.</td> {# colspan ajustado para 4 #}
+                        <td colspan="4">Nenhum tipo de agendamento cadastrado.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -155,6 +154,7 @@
             </div>
         </div>
 
+        {# SEÇÃO DE GERENCIAMENTO DE USUÁRIOS #}
         <div id="config-usuarios" class="config-content-section" style="display: none;">
             <h2>Gerenciamento de Usuários</h2>
 
@@ -244,7 +244,7 @@
             {% endif %}
         </div>
 
-        {# SEÇÃO PARA HORÁRIOS DE FUNCIONAMENTO (existente) #}
+        {# SEÇÃO PARA HORÁRIOS DE FUNCIONAMENTO #}
         <div id="config-horarios" class="config-content-section" style="display: none;">
             <h2>Gerenciar Horários de Funcionamento dos Empreendimentos</h2>
 
@@ -322,15 +322,15 @@
                         <td>{{ admin_user.email }}</td>
                         <td>{{ admin_user.telefone if admin_user.telefone else 'Não informado' }}</td>
                         <td>
-                            {% if admin_user.id != current_user.id and admin_user.email !=
-                            (os.environ.get('SUPER_ADMIN_EMAIL', 'admin@admin.com')) %}
+                            {# AQUI ESTÁ A LINHA DO PROBLEMA #}
+                            {% if admin_user.id != current_user.id and admin_user.email != super_admin_email %}
                             <form method="POST" action="{{ url_for('remover_admin', user_id=admin_user.id) }}"
                                 style="display:inline;" class="form-remove">
                                 <button type="submit" class="btn btn-danger btn-sm">Remover Status Admin</button>
                             </form>
                             {% elif admin_user.id == current_user.id %}
                             <span>(Você)</span>
-                            {% elif admin_user.email == (os.environ.get('SUPER_ADMIN_EMAIL', 'admin@admin.com')) %}
+                            {% elif admin_user.email == super_admin_email %}
                             <span>(Admin Principal)</span>
                             {% endif %}
                         </td>
@@ -411,7 +411,7 @@
                 if (selectedEmpId) {
                     loadHorariosEmpreendimento(selectedEmpId);
                 } else {
-                    horariosTableBody.innerHTML = '<tr><td colspan="5">Selecione um empreendimento para ver seus horários ou adicione um novo.</td></tr>';
+                    horariosTableBody.innerHTML = '<tr><td colspan="5">Nenhum horário cadastrado. Selecione um empreendimento acima para ver seus horários ou adicione um novo.</td></tr>';
                 }
             }
         }
@@ -470,18 +470,18 @@
                             <td>${unidade.nome}</td>
                             <td>
                                 <span class="status ${unidade.ativo ? 'status-active' : 'status-inactive'}">
-                                    ${unidade.ativo ? 'Ativa' : 'Inativa'}
-                                </span>
-                            </td>
-                            <td>
-                                <form method="POST" action="${toggleUrl}" style="display:inline;">
-                                    <input type="hidden" name="unidade_id" value="${unidade.id}">
-                                    <input type="hidden" name="source_empreendimento_id" value="${empreendimentoId}">
+                                    <span class="math-inline">\{unidade\.ativo ? 'Ativa' \: 'Inativa'\}
+</span\>
+</td\>
+<td\>
+<form method\="POST" action\="</span>{toggleUrl}" style="display:inline;">
+                                    <input type="hidden" name="unidade_id" value="<span class="math-inline">\{unidade\.id\}"\>
+<input type\="hidden" name\="source\_empreendimento\_id" value\="</span>{empreendimentoId}">
                                     <button type="submit" class="btn btn-sm ${unidade.ativo ? 'btn-toggle btn-warning' : 'btn-toggle btn-success'}">
-                                        ${unidade.ativo ? 'Desativar' : 'Ativar'}
-                                    </button>
-                                </form>
-                                <form method="POST" action="${removeUrl}" style="display:inline;" class="form-remove">
+                                        <span class="math-inline">\{unidade\.ativo ? 'Desativar' \: 'Ativar'\}
+</button\>
+</form\>
+<form method\="POST" action\="</span>{removeUrl}" style="display:inline;" class="form-remove">
                                     <input type="hidden" name="source_empreendimento_id" value="${empreendimentoId}">
                                     <button type="submit" class="btn btn-danger btn-sm">Remover</button>
                                 </form>
@@ -629,13 +629,13 @@
                         const removeUrl = `{{ url_for('remover_horario_funcionamento', horario_id=0) }}`.replace('0', horario.id);
 
                         row.innerHTML = `
-                            <td>${horario.empreendimento_nome}</td>
-                            <td>${diasSemanaMap[horario.dia_semana]}</td>
-                            <td>${horario.hora_inicio}</td>
-                            <td>${horario.hora_fim}</td>
+                            <td><span class="math-inline">\{horario\.empreendimento\_nome\}</td\>
+<td\></span>{diasSemanaMap[horario.dia_semana]}</td>
+                            <td><span class="math-inline">\{horario\.hora\_inicio\}</td\>
+<td\></span>{horario.hora_fim}</td>
                             <td>
-                                <form method="POST" action="${removeUrl}" style="display:inline;" class="form-remove">
-                                    <input type="hidden" name="empreendimento_id" value="${horario.empreendimento_id}">
+                                <form method="POST" action="<span class="math-inline">\{removeUrl\}" style\="display\:inline;" class\="form\-remove"\>
+<input type\="hidden" name\="empreendimento\_id" value\="</span>{horario.empreendimento_id}">
                                     <button type="submit" class="btn btn-danger btn-sm">Remover</button>
                                 </form>
                             </td>
@@ -650,7 +650,6 @@
             }
         }
 
-        // Lógica para carregar a aba correta com base no parâmetro da URL
         const urlParams = new URLSearchParams(window.location.search);
         const activeTabFromUrl = urlParams.get('tab');
         const activeEmpIdFromUrl = urlParams.get('active_emp_id');
@@ -676,4 +675,4 @@
         }
     });
 </script>
-{% endblock %}
+{% endblock %}"
