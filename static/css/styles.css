@@ -7,3 +7,4 @@
 @import url('forms.css');
 @import url('calendar.css'); /* Pode deixar vazio, mas importa para a estrutura */
 @import url('reservas.css');
+@import url('detalhes_agendamento.css');

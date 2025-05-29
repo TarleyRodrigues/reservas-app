@@ -1,0 +1,94 @@
+    /* Estilos de fundo para a página de detalhes, similar ao calendário e agendar */
+    body {
+        background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
+        background-size: cover;
+        color: #333;
+        /* Cor do texto padrão */
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Wrapper para o efeito de glassmorfismo, similar ao agendar.html */
+    .details-wrapper {
+        max-width: 700px;
+        /* Largura para o cartão de detalhes */
+        margin: 40px auto;
+        /* Centralizar na página */
+        padding: 30px;
+        background-color: rgba(255, 255, 255, 0.15);
+        /* Branco semi-transparente */
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        /* Para compatibilidade com Safari */
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        color: #333;
+        /* Cor do texto padrão dentro do wrapper */
+        box-sizing: border-box;
+    }
+
+    .details-wrapper h1 {
+        color: #343a40;
+        text-align: center;
+        margin-top: 0;
+        margin-bottom: 25px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        padding-bottom: 15px;
+    }
+
+    .details-row {
+        display: flex;
+        margin-bottom: 10px;
+        line-height: 1.6;
+    }
+
+    .details-label {
+        font-weight: bold;
+        min-width: 150px;
+        /* Largura mínima para os rótulos */
+        color: #555;
+        flex-shrink: 0;
+        /* Evita que o label encolha */
+    }
+
+    .details-value {
+        flex-grow: 1;
+        color: #333;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .details-wrapper {
+            margin: 20px;
+            padding: 20px;
+        }
+
+        .details-row {
+            flex-direction: column;
+            /* Empilha label e valor em telas menores */
+            margin-bottom: 15px;
+        }
+
+        .details-label {
+            min-width: unset;
+            margin-bottom: 5px;
+        }
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-top: 30px;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+    }
+
+    .back-link:hover {
+        background-color: #0056b3;
+    }

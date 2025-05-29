@@ -250,8 +250,9 @@
     </div> {# FIM do calendar-page-wrapper #}
 </div>
 
-<!-- Custom Event Detail Modal -->
-<div id="eventDetailModal" class="modal hidden"> {# Adicionado 'hidden' para garantir que inicia oculto #}
+<!-- O modal customizado de detalhes será removido, pois agora vamos para uma nova página.
+     Deixei o HTML por enquanto, mas ele não será mais ativado pelo eventClick. -->
+<div id="eventDetailModal" class="modal hidden">
     <div class="modal-content">
         <span class="close-button">×</span>
         <h2>Detalhes do Agendamento</h2>
@@ -270,62 +271,30 @@
 </div>
 
 {# MOVIDO: TODOS OS SCRIPTS JS DO FULLCALENDAR E SEU CÓDIGO PARA O FINAL DO BODY #}
-{# Isso garante que o DOM esteja pronto e que a biblioteca FullCalendar esteja definida #}
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.11/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.11/index.global.min.js"></script>
-{# Removida importação de timegrid JS, pois seu código antigo não a usava. #}
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales-all.global.min.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', async function () {
         const calendarEl = document.getElementById('calendar');
-        const eventDetailModal = document.getElementById('eventDetailModal');
-        const closeModalButton = document.querySelector('#eventDetailModal .close-button');
-
-        // Modal elements
-        const modalTitle = document.getElementById('modalTitle');
-        const modalStatus = document.getElementById('modalStatus');
-        const modalClientName = document.getElementById('modalClientName');
-        const modalClientContact = document.getElementById('modalClientContact');
-        const modalClientEmail = document.getElementById('modalClientEmail');
-        const modalAgentAssigned = document.getElementById('modalAgentAssigned');
-        const modalService = document.getElementById('modalService');
-        const modalLocation = document.getElementById('modalLocation');
-        const modalObservations = document.getElementById('modalObservations');
-        const modalDate = document.getElementById('modalDate');
-        const modalTime = document.getElementById('modalTime');
-
-        // Rows that might be hidden based on permissions
-        const clientContactRow = document.getElementById('clientContactRow');
-        const clientEmailRow = document.getElementById('clientEmailRow');
-        const agentAssignedRow = document.getElementById('agentAssignedRow');
+        // REMOVIDAS referências a elementos do modal que não serão mais usados no eventClick
 
         const calendar = new FullCalendar.Calendar(calendarEl, {
-            locale: 'pt-br', // Define o idioma para português
+            locale: 'pt-br',
             initialView: 'dayGridMonth',
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                // Voltando para o que funcionava no seu código antigo (apenas dayGridMonth e listMonth)
                 right: 'dayGridMonth,listMonth'
             },
-            // CRÍTICO: Removido o array 'plugins: [...]'. Replicando seu código antigo que FUNCIONAVA.
-            // A sua versão do FullCalendar com essas imports globais parece se auto-registrar os plugins.
 
-            // Eventos carregados de forma assíncrona com tratamento de erro
             events: async function (fetchInfo, successCallback, failureCallback) {
                 try {
                     const response = await fetch('/eventos');
 
-                    if (response.redirected) {
-                        console.error('Requisição /eventos foi redirecionada para:', response.url);
-                        alert('Sua sessão expirou ou você não tem permissão para ver os eventos. Por favor, faça login novamente.');
-                        window.location.href = response.url;
-                        return;
-                    }
-
-                    if (!response.ok) {
+                    if (!response.ok) { // Alterado para apenas verificar !response.ok
                         const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido ou resposta não-JSON.' }));
                         console.error('Erro ao buscar eventos:', response.status, response.statusText, errorData);
                         failureCallback({ message: errorData.message || `Erro ao carregar eventos: ${response.status} ${response.statusText}` });
@@ -387,55 +356,16 @@
                 return { html: arg.event.title };
             },
 
+            // NOVO: Redireciona para a página de detalhes do agendamento
             eventClick: function (info) {
-                const event = info.event;
-                const props = event.extendedProps;
-
-                modalTitle.textContent = event.title;
-                modalStatus.textContent = props.status || 'N/A';
-                modalClientName.textContent = props.usuario_nome || 'N/A';
-                modalService.textContent = props.tipo || 'N/A';
-                modalLocation.textContent = `${props.unidade} (${props.empreendimento})`;
-                modalObservations.textContent = props.observacoes || 'N/A';
-
-                const eventDate = info.event.start;
-                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-                modalDate.textContent = eventDate.toLocaleDateString('pt-BR', options);
-                modalTime.textContent = eventDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-                if (USER_PERMISSIONS.isAdmin || USER_PERMISSIONS.isAgente) {
-                    clientContactRow.style.display = 'block';
-                    modalClientContact.textContent = props.contato || 'Não informado';
-
-                    clientEmailRow.style.display = 'block';
-                    modalClientEmail.textContent = props.usuario_email || 'Não informado';
-
-                    agentAssignedRow.style.display = 'block';
-                    modalAgentAssigned.textContent = props.agente_atribuido_nome || 'Não atribuído';
-                } else {
-                    clientContactRow.style.display = 'none';
-                    clientEmailRow.style.display = 'none';
-                    agentAssignedRow.style.display = 'none';
-                }
-
-                eventDetailModal.classList.remove('hidden');
-                eventDetailModal.classList.add('visible');
+                const eventId = info.event.id;
+                window.location.href = `/agendamento/${eventId}`; // Redireciona para a nova rota
             }
         });
 
         calendar.render();
 
-        closeModalButton.addEventListener('click', function () {
-            eventDetailModal.classList.remove('visible');
-            eventDetailModal.classList.add('hidden');
-        });
-
-        window.addEventListener('click', function (event) {
-            if (event.target == eventDetailModal) {
-                eventDetailModal.classList.remove('visible');
-                eventDetailModal.classList.add('hidden');
-            }
-        });
+        // REMOVIDOS listeners de fechar modal, pois o modal não será mais usado no clique de evento
     });
 </script>
 {% endblock %}

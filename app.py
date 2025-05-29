@@ -823,12 +823,92 @@ def calendario():
 
 # 🗓️ Eventos para o calendário
 
+# --- NOVA ROTA: Detalhes do Agendamento (tela dedicada) ---
+
+
+@app.route('/agendamento/<int:agendamento_id>')
+@login_required
+def detalhes_agendamento(agendamento_id):
+    conn = get_db_connection()
+    agendamento = None
+    try:
+        # Consulta para buscar todos os detalhes necessários
+        query = '''
+            SELECT a.id, a.data, a.hora, a.observacoes, a.contato_agendamento, a.status,
+                   u_cliente.id as cliente_id, u_cliente.nome as cliente_nome, u_cliente.email as cliente_email, u_cliente.telefone as cliente_telefone,
+                   ta.nome as tipo_nome, ta.duracao_minutos,
+                   un.nome as unidade_nome,
+                   e.nome as empreendimento_nome,
+                   u_agente.id as agente_id, u_agente.nome as agente_nome, u_agente.email as agente_email
+            FROM agendamentos a
+            JOIN usuarios u_cliente ON a.usuario_id = u_cliente.id
+            JOIN tipos_agendamento ta ON a.tipo_id = ta.id
+            JOIN unidades un ON a.unidade_id = un.id
+            JOIN empreendimentos e ON un.empreendimento_id = e.id
+            LEFT JOIN usuarios u_agente ON a.agente_atribuido_id = u_agente.id
+            WHERE a.id = ?
+        '''
+        agendamento = conn.execute(query, (agendamento_id,)).fetchone()
+
+        if not agendamento:
+            flash('Agendamento não encontrado.', 'error')
+            return redirect(url_for('calendario'))
+
+        # Lógica de Permissão para ver o agendamento
+        if not current_user.is_admin_user:  # Se não for admin, verificar permissões específicas
+            is_owner = current_user.id == agendamento['cliente_id']
+            is_assigned_agent = current_user.id == agendamento['agente_id']
+
+            if not (is_owner or is_assigned_agent):
+                flash(
+                    'Você não tem permissão para ver os detalhes deste agendamento.', 'error')
+                app.logger.warning(
+                    f"Acesso negado: Usuário {current_user.email} (ID: {current_user.id}) tentou acessar agendamento {agendamento_id} sem permissão.")
+                return redirect(url_for('calendario'))
+
+    except sqlite3.Error as e:
+        flash(f'Erro ao carregar detalhes do agendamento: {str(e)}', 'error')
+        app.logger.error(
+            f'Erro DB em detalhes_agendamento: {str(e)}', exc_info=True)
+        return redirect(url_for('calendario'))
+    finally:
+        if conn:
+            conn.close()
+
+    # Formata a data para exibição (ex: "Sexta-feira, 31 de Maio de 2024")
+    data_formatada = datetime.strptime(
+        agendamento['data'], '%Y-%m-%d').strftime('%A, %d de %B de %Y')
+    # Traduz o dia da semana e o mês para português
+    dias_semana = {
+        'Monday': 'Segunda-feira', 'Tuesday': 'Terça-feira', 'Wednesday': 'Quarta-feira',
+        'Thursday': 'Quinta-feira', 'Friday': 'Sexta-feira', 'Saturday': 'Sábado', 'Sunday': 'Domingo'
+    }
+    meses = {
+        'January': 'Janeiro', 'February': 'Fevereiro', 'March': 'Março',
+        'April': 'Abril', 'May': 'Maio', 'June': 'Junho', 'July': 'Julho',
+        'August': 'Agosto', 'September': 'Setembro', 'October': 'Outubro',
+        'November': 'Novembro', 'December': 'Dezembro'
+    }
+
+    for en, pt in dias_semana.items():
+        data_formatada = data_formatada.replace(en, pt)
+    for en, pt in meses.items():
+        data_formatada = data_formatada.replace(en, pt)
+
+    return render_template('detalhes_agendamento.html',
+                           agendamento=agendamento,
+                           data_formatada=data_formatada,
+                           # Passar as permissões para o template novamente para exibição condicional
+                           is_admin=current_user.is_admin_user,
+                           is_agente=current_user.is_agente)
 
 # app.py (somente a rota /eventos foi modificada aqui, mas incluo ela inteira para contexto)
 
 # ... (código anterior do app.py) ...
 
 # 🗓️ Eventos para o calendário
+
+
 @app.route('/eventos')
 @login_required
 def eventos():
