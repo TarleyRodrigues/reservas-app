@@ -1,215 +1,116 @@
-/* static/css/footer.css */
-<style>
-    /* Adicionar o background à página (corpo) e garantir legibilidade e espaçamento */
-    body {
-        background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
-        background-size: cover;
-        color: #333 !important;
-        /* Força a cor do texto para ser legível sobre o fundo */
-        margin: 0 !important;
-        /* Remove margens padrão do body */
-        padding: 0 !important;
-        /* Remove paddings padrão do body */
-        min-height: 100vh;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+body {
+    background: url("/static/images/background.png") no-repeat center center fixed;
+    background-size: cover;
+    color: #333 !important; /* Força a cor do texto para ser legível sobre o fundo */
+    margin: 0 !important; /* Remove margens padrão do body */
+    padding: 0 !important; /* Remove paddings padrão do body */
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
 
-    /* Ajustar o container padrão para não interferir com o wrapper */
-    .container.mt-4 {
-        max-width: unset;
-        /* Remover largura máxima padrão */
-        padding: 0;
-        /* Remover padding padrão */
-        margin: 0 auto;
-        /* Centralizar o container principal */
-    }
+/* Ajustar o container padrão para não interferir com o wrapper */
+.container.mt-4 {
+    max-width: unset; /* Remover largura máxima padrão */
+    padding: 0; /* Remover padding padrão */
+    margin: 0 auto; /* Centralizar o container principal */
+}
 
-    /* Wrapper para o efeito de glassmorfismo */
-    .calendar-page-wrapper {
-        max-width: 950px;
-        /* Largura um pouco maior que o calendário */
-        margin: 40px auto;
-        /* Centralizar na página com margem superior */
-        padding: 30px;
-        /* Preenchimento interno */
-        background-color: rgba(255, 255, 255, 0.15);
-        /* Branco semi-transparente */
-        backdrop-filter: blur(10px);
-        /* O EFEITO DE BLUR */
-        -webkit-backdrop-filter: blur(10px);
-        /* Para compatibilidade com Safari */
-        border-radius: 15px;
-        /* Bordas arredondadas */
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        /* Borda sutil */
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        /* Sombra sutil */
-        color: #333;
-        /* Cor do texto padrão dentro do wrapper */
-        display: flex;
-        /* Para organizar o conteúdo interno */
-        flex-direction: column;
-        /* Conteúdo empilhado verticalmente */
-        align-items: center;
-        /* Centralizar itens horizontalmente */
-        min-height: 500px;
-        /* Altura mínima para o wrapper */
-        box-sizing: border-box;
-        /* Incluir padding no tamanho */
-    }
+/* Wrapper para o efeito de glassmorfismo */
+.calendar-page-wrapper {
+    max-width: 950px; /* Largura um pouco maior que o calendário */
+    margin: 40px auto; /* Centralizar na página com margem superior */
+    padding: 30px; /* Preenchimento interno */
+    background-color: rgba(255, 255, 255, 0.15); /* Branco semi-transparente */
+    backdrop-filter: blur(10px); /* O EFEITO DE BLUR */
+    -webkit-backdrop-filter: blur(10px); /* Para compatibilidade com Safari */
+    border-radius: 15px; /* Bordas arredondadas */
+    border: 1px solid rgba(255, 255, 255, 0.3); /* Borda sutil */
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); /* Sombra sutil */
+    color: #333; /* Cor do texto padrão dentro do wrapper */
+    display: flex; /* Para organizar o conteúdo interno */
+    flex-direction: column; /* Conteúdo empilhado verticalmente */
+    align-items: center; /* Centralizar itens horizontalmente */
+    min-height: 500px; /* Altura mínima para o wrapper */
+    box-sizing: border-box; /* Incluir padding no tamanho */
+}
 
-    /* Estilos para o título dentro do wrapper */
-    .calendar-page-wrapper h1 {
-        color: #343a40;
-        /* Cor mais escura para o título */
-        margin-top: 0;
-        /* Resetar margem superior */
-        margin-bottom: 25px;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-        /* Separador sutil */
-        padding-bottom: 15px;
-        width: 100%;
-        /* Ocupar toda a largura do wrapper */
-        text-align: center;
-    }
+/* Estilos para o título dentro do wrapper */
+.calendar-page-wrapper h1 {
+    color: #343a40; /* Cor mais escura para o título */
+    margin-top: 0; /* Resetar margem superior */
+    margin-bottom: 25px;
+    border-bottom: 1px solid rgba(0,0,0,0.1); /* Separador sutil */
+    padding-bottom: 15px;
+    width: 100%; /* Ocupar toda a largura do wrapper */
+    text-align: center;
+}
 
-    /* Estilos para o calendário dentro do wrapper */
-    #calendar {
-        max-width: 900px;
-        /* Manter a largura máxima do calendário em si */
-        margin: 20px 0;
-        /* Margem ajustada dentro do wrapper */
-        padding: 0;
-        /* Remover preenchimento interno, o wrapper já tem */
-        background-color: transparent;
-        /* Tornar o fundo transparente, o wrapper já tem o glass */
-        box-shadow: none;
-        /* Remover sombra, o wrapper já tem */
-        width: 100%;
-        /* Ocupar toda a largura do wrapper */
-        color: #333;
-        /* Garantir que o texto do calendário seja legível */
-    }
+/* Estilos para o calendário dentro do wrapper */
+#calendar {
+    max-width: 900px; /* Manter a largura máxima do calendário em si */
+    margin: 20px 0; /* Margem ajustada dentro do wrapper */
+    padding: 0; /* Remover preenchimento interno, o wrapper já tem */
+    background-color: transparent; /* Tornar o fundo transparente, o wrapper já tem o glass */
+    box-shadow: none; /* Remover sombra, o wrapper já tem */
+    width: 100%; /* Ocupar toda a largura do wrapper */
+    color: #333; /* Garantir que o texto do calendário seja legível */
+}
 
-    /* Estilos para o conteúdo do modal (mais opaco para legibilidade) */
-    .modal-content {
-        background-color: rgba(255, 255, 255, 0.95);
-        /* Branco quase opaco */
-        color: #333;
-        /* Texto escuro para melhor contraste */
-    }
+/* Estilos para o conteúdo do modal (mais opaco para legibilidade) */
+.modal-content {
+    background-color: rgba(255, 255, 255, 0.95); /* Branco quase opaco */
+    color: #333; /* Texto escuro para melhor contraste */
+}
+.modal-content p, .modal-content p strong, .modal-content h2 {
+    color: #333; /* Garantir que todo o texto do modal seja escuro */
+}
 
-    .modal-content p,
-    .modal-content p strong,
-    .modal-content h2 {
-        color: #333;
-        /* Garantir que todo o texto do modal seja escuro */
-    }
+/* --- Custom Modal Styles (mantido do código anterior) --- */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+    align-items: center;
+    justify-content: center;
+}
+.modal.hidden {
+    display: none;
+}
+.modal.visible {
+    display: flex;
+}
+@keyframes animatetop {
+    from {top: -300px; opacity: 0}
+    to {top: 0; opacity: 1}
+}
+.close-button {
+    color: #aaa;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.close-button:hover, .close-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
 
-    /* --- Custom Modal Styles (mantido do código anterior) --- */
-    .modal {
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0, 0, 0, 0.4);
-        align-items: center;
-        justify-content: center;
-    }
-
-    .modal.hidden {
-        display: none;
-    }
-
-    .modal.visible {
-        display: flex;
-    }
-
-    @keyframes animatetop {
-        from {
-            top: -300px;
-            opacity: 0
-        }
-
-        to {
-            top: 0;
-            opacity: 1
-        }
-    }
-
-    .close-button {
-        color: #aaa;
-        position: absolute;
-        top: 10px;
-        right: 15px;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    .close-button:hover,
-    .close-button:focus {
-        color: black;
-        text-decoration: none;
-        cursor: pointer;
-    }
-
-    /* --- FullCalendar Event Status Colors (mantido do código anterior) --- */
-    .fc-event.event-status-Pendente {
-        background-color: #ffc107;
-        border-color: #ffc107;
-        color: #333;
-    }
-
-    .fc-event.event-status-Confirmado {
-        background-color: #28a745;
-        border-color: #28a745;
-    }
-
-    .fc-event.event-status-Cancelado {
-        background-color: #dc3545;
-        border-color: #dc3545;
-        text-decoration: line-through;
-        opacity: 0.7;
-    }
-
-    .fc-event.event-status-Concluído {
-        background-color: #6c757d;
-        border-color: #6c757d;
-        opacity: 0.8;
-    }
-
-    .fc-event {
-        color: white;
-        font-weight: bold;
-        padding: 2px 4px;
-    }
-
-    .fc-event.event-status-Pendente {
-        color: #333;
-    }
-
-    .fc-event-details {
-        padding: 5px;
-    }
-
-    .fc-event-title {
-        font-weight: bold;
-        margin-bottom: 3px;
-    }
-
-    .fc-event-meta {
-        font-size: 0.85em;
-        color: #555;
-        margin-bottom: 3px;
-    }
-
-    .fc-event-notes {
-        font-size: 0.8em;
-        color: #777;
-        white-space: pre-wrap;
-    }
-</style>
+/* --- FullCalendar Event Status Colors (mantido do código anterior) --- */
+.fc-event.event-status-Pendente { background-color: #ffc107; border-color: #ffc107; color: #333; }
+.fc-event.event-status-Confirmado { background-color: #28a745; border-color: #28a745; }
+.fc-event.event-status-Cancelado { background-color: #dc3545; border-color: #dc3545; text-decoration: line-through; opacity: 0.7; }
+.fc-event.event-status-Concluído { background-color: #6c757d; border-color: #6c757d; opacity: 0.8; }
+.fc-event { color: white; font-weight: bold; padding: 2px 4px; }
+.fc-event.event-status-Pendente { color: #333; }
+.fc-event-details { padding: 5px; }
+.fc-event-title { font-weight: bold; margin-bottom: 3px; }
+.fc-event-meta { font-size: 0.85em; color: #555; margin-bottom: 3px; }
+.fc-event-notes { font-size: 0.8em; color: #777; white-space: pre-wrap; }
