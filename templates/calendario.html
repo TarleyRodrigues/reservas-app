@@ -2,171 +2,6 @@
 
 {% block head %}
 {{ super() }}
-<style>
-    /* ... Seu CSS aqui, exatamente como na última versão, incluindo os estilos do modal e do evento ... */
-    /* Base styles for the calendar container */
-    #calendar {
-        max-width: 900px;
-        margin: 40px auto;
-        padding: 0 10px;
-        font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
-        font-size: 14px;
-    }
-
-    /* --- Custom Modal Styles --- */
-    .modal {
-        position: fixed;
-        /* Stay in place */
-        z-index: 1000;
-        /* Sit on top */
-        left: 0;
-        top: 0;
-        width: 100%;
-        /* Full width */
-        height: 100%;
-        /* Full height */
-        overflow: auto;
-        /* Enable scroll if needed */
-        background-color: rgba(0, 0, 0, 0.4);
-        /* Black w/ opacity */
-        align-items: center;
-        /* Center vertically (aplicado quando display: flex) */
-        justify-content: center;
-        /* Center horizontally (aplicado quando display: flex) */
-    }
-
-    /* Classes para controlar a visibilidade do modal */
-    .modal.hidden {
-        display: none;
-        /* Este sempre esconde */
-    }
-
-    .modal.visible {
-        display: flex;
-        /* Este sempre mostra e centraliza */
-    }
-
-
-    .modal-content {
-        background-color: #fefefe;
-        margin: auto;
-        /* Auto margin for older browsers, flexbox handles centering */
-        padding: 25px;
-        border: 1px solid #888;
-        border-radius: 8px;
-        width: 80%;
-        /* Could be more specific, like max-width: 500px; */
-        max-width: 600px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        position: relative;
-        animation-name: animatetop;
-        animation-duration: 0.4s;
-    }
-
-    /* Add Animation */
-    @keyframes animatetop {
-        from {
-            top: -300px;
-            opacity: 0
-        }
-
-        to {
-            top: 0;
-            opacity: 1
-        }
-    }
-
-    .close-button {
-        color: #aaa;
-        position: absolute;
-        top: 10px;
-        right: 15px;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    .close-button:hover,
-    .close-button:focus {
-        color: black;
-        text-decoration: none;
-        cursor: pointer;
-    }
-
-    .modal-content h2 {
-        margin-top: 0;
-        color: #007bff;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 10px;
-        margin-bottom: 15px;
-    }
-
-    .modal-content p {
-        margin-bottom: 8px;
-        line-height: 1.5;
-    }
-
-    .modal-content p strong {
-        color: #333;
-    }
-
-    /* --- FullCalendar Event Status Colors --- */
-    .fc-event.event-status-Pendente {
-        background-color: #ffc107;
-        border-color: #ffc107;
-        color: #333;
-    }
-
-    .fc-event.event-status-Confirmado {
-        background-color: #28a745;
-        border-color: #28a745;
-    }
-
-    .fc-event.event-status-Cancelado {
-        background-color: #dc3545;
-        border-color: #dc3545;
-        text-decoration: line-through;
-        opacity: 0.7;
-    }
-
-    .fc-event.event-status-Concluído {
-        background-color: #6c757d;
-        border-color: #6c757d;
-        opacity: 0.8;
-    }
-
-    .fc-event {
-        color: white;
-        font-weight: bold;
-        padding: 2px 4px;
-    }
-
-    .fc-event.event-status-Pendente {
-        color: #333;
-    }
-
-    /* Estilos adicionais para o eventContent customizado */
-    .fc-event-details {
-        padding: 5px;
-    }
-
-    .fc-event-title {
-        font-weight: bold;
-        margin-bottom: 3px;
-    }
-
-    .fc-event-meta {
-        font-size: 0.85em;
-        color: #555;
-        margin-bottom: 3px;
-    }
-
-    .fc-event-notes {
-        font-size: 0.8em;
-        color: #777;
-        white-space: pre-wrap;
-    }
-</style>
 
 {# Injetar permissões do usuário para o JS #}
 <script>
@@ -176,26 +11,27 @@
         };
 </script>
 
-<!-- Importações de CSS do FullCalendar (do seu código antigo) -->
+<!-- Importações de CSS do FullCalendar (EXATAMENTE como no seu código antigo que funcionava) -->
 <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/index.global.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.11/index.global.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.11/index.global.min.css" rel="stylesheet">
-{# Adicionei TimeGrid CSS pois o TimeGridWeek e TimeGridDay estão na toolbar #}
-<link href="https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.11/index.global.min.css" rel="stylesheet">
+{# Removida importação de timegrid CSS, pois seu código antigo não a usava. #}
 
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h1>Calendário de Agendamentos</h1>
+    <div class="calendar-page-wrapper"> {# NOVO: Wrapper para o efeito glassmorphism #}
+        <h1>Calendário de Agendamentos</h1>
 
-    <div style="text-align: center; margin-bottom: 20px;">
-        <form action="{{ url_for('agendar') }}">
-            <button type="submit" class="btn btn-primary">Fazer Agendamento</button>
-        </form>
-    </div>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <form action="{{ url_for('agendar') }}">
+                <button type="submit" class="btn btn-primary">Fazer Agendamento</button>
+            </form>
+        </div>
 
-    <div id='calendar'></div>
+        <div id='calendar'></div>
+    </div> {# FIM do calendar-page-wrapper #}
 </div>
 
 <!-- Custom Event Detail Modal -->
@@ -221,10 +57,9 @@
 {# Isso garante que o DOM esteja pronto e que a biblioteca FullCalendar esteja definida #}
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.11/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.11/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.11/index.global.min.js"></script>
+{# Removida importação de timegrid JS, pois seu código antigo não a usava. #}
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales-all.global.min.js"></script>
-
 
 <script>
     document.addEventListener('DOMContentLoaded', async function () {
@@ -256,11 +91,11 @@
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                // Atualizado para incluir timeGridWeek e timeGridDay na toolbar
-                right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+                // Voltando para o que funcionava no seu código antigo (apenas dayGridMonth e listMonth)
+                right: 'dayGridMonth,listMonth'
             },
-            // REMOVIDO o array 'plugins' para replicar o comportamento do seu código antigo que funcionava.
-            // FullCalendar.dayGrid, FullCalendar.timeGrid, FullCalendar.list
+            // CRÍTICO: Removido o array 'plugins: [...]'. Replicando seu código antigo que FUNCIONAVA.
+            // A sua versão do FullCalendar com essas imports globais parece se auto-registrar os plugins.
 
             // Eventos carregados de forma assíncrona com tratamento de erro
             events: async function (fetchInfo, successCallback, failureCallback) {
@@ -275,10 +110,15 @@
                     }
 
                     if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error('Erro ao buscar eventos:', response.status, response.statusText, errorText);
-                        failureCallback({ message: `Erro ao carregar eventos: ${response.status} ${response.statusText}` });
-                        alert('Erro ao carregar eventos. Verifique o console para mais detalhes.');
+                        const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido ou resposta não-JSON.' }));
+                        console.error('Erro ao buscar eventos:', response.status, response.statusText, errorData);
+                        failureCallback({ message: errorData.message || `Erro ao carregar eventos: ${response.status} ${response.statusText}` });
+                        alert(`Erro ao carregar eventos: ${errorData.message || response.statusText}. Verifique o console para mais detalhes.`);
+
+                        if ((response.status === 401 || response.status === 403) && errorData.redirect_to) {
+                            alert(errorData.message || 'Sua sessão expirou ou você não tem permissão. Redirecionando para login.');
+                            window.location.href = errorData.redirect_to;
+                        }
                         return;
                     }
 
@@ -304,7 +144,6 @@
             selectable: true,
             eventColor: '#3788d8',
 
-            // Adiciona classes CSS aos eventos com base no status
             eventDidMount: function (info) {
                 const status = info.event.extendedProps.status;
                 if (status) {
@@ -312,7 +151,6 @@
                 }
             },
 
-            // Lógica de eventContent para listMonth (do seu código antigo)
             eventContent: function (arg) {
                 if (arg.view.type === 'listMonth') {
                     const observacoes = arg.event.extendedProps.observacoes;
@@ -330,16 +168,13 @@
                         `
                     };
                 }
-                // Para outras visualizações (como dayGridMonth), você pode querer exibir as observações ao clicar no evento
                 return { html: arg.event.title };
             },
 
-            // Abre o modal customizado ao clicar no evento (fusão da sua lógica antiga com a nova)
             eventClick: function (info) {
                 const event = info.event;
                 const props = event.extendedProps;
 
-                // Popula o modal
                 modalTitle.textContent = event.title;
                 modalStatus.textContent = props.status || 'N/A';
                 modalClientName.textContent = props.usuario_nome || 'N/A';
@@ -347,13 +182,11 @@
                 modalLocation.textContent = `${props.unidade} (${props.empreendimento})`;
                 modalObservations.textContent = props.observacoes || 'N/A';
 
-                // Formata a data de forma amigável
                 const eventDate = info.event.start;
                 const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
                 modalDate.textContent = eventDate.toLocaleDateString('pt-BR', options);
                 modalTime.textContent = eventDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-                // Exibição condicional de dados sensíveis
                 if (USER_PERMISSIONS.isAdmin || USER_PERMISSIONS.isAgente) {
                     clientContactRow.style.display = 'block';
                     modalClientContact.textContent = props.contato || 'Não informado';
