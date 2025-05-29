@@ -216,3 +216,52 @@ input:focus {
     margin-right: 10px;
     margin-top: 15px;
 }
+
+/* Adicionar ao seu arquivo CSS relevante, por exemplo, static/css/forms.css ou reservas.css */
+
+.add-agent-card {
+    background-color: var(--form-bg); /* Fundo do card, igual aos outros */
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Sombra para destacá-lo */
+    margin-bottom: 30px; /* Espaço abaixo do card */
+}
+
+.add-agent-card h4 {
+    color: var(--text); /* Cor do título do card */
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.3em;
+    border-bottom: 1px solid var(--input-border); /* Linha divisória */
+    padding-bottom: 10px;
+}
+
+/* Os estilos .form-group, input[type="text"], input[type="email"], input[type="password"],
+   e .btn .btn-primary já devem ser aplicados a este formulário,
+   garantindo consistência visual. */
+
+/* Ajuste para tabelas pequenas na área de gerenciamento de usuários */
+.data-table.small-table th,
+.data-table.small-table td {
+    font-size: 0.9em;
+    padding: 8px 12px;
+}
+
+/* Estilo para o span de serviços vinculados */
+.servicos-vinculados-agente {
+    font-style: italic;
+    color: var(--secondary-text); /* Cor para texto secundário, pode ser um cinza mais claro */
+    cursor: pointer;
+    text-decoration: underline dotted; /* Indica que é clicável */
+}
+
+.servicos-vinculados-agente:hover {
+    color: var(--primary-color); /* Efeito hover, se tiver uma cor primária definida */
+}
+
+/* Estilos para checkbox desabilitado no modal de vinculação */
+.checkbox-item input[type="checkbox"]:disabled + label {
+    color: var(--disabled-text-color, #999); /* Cor mais clara para labels desabilitadas */
+    cursor: not-allowed;
+    text-decoration: line-through; /* Opcional: riscar o texto */
+}

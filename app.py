@@ -1,4 +1,4 @@
-# app.py (VERSÃO FINAL E CONSOLIDADA)
+# app.py (VERSÃO FINAL E CONSOLIDADA COM CORREÇÕES PARA PROBLEMAS DE SESSÃO)
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import (
@@ -71,10 +71,11 @@ def buscar_usuario_por_email(email):
     ).fetchone()
     conn.close()
     if row:
+        # Acessa diretamente 'tipo_usuario' e 'telefone' pois init_db garante sua existência
         return Usuario(row["id"], row["nome"], row["email"], row["senha"],
                        row["is_admin"],
-                       row['tipo_usuario'] if 'tipo_usuario' in row else 'cliente',
-                       row['telefone'] if 'telefone' in row else None)
+                       row['tipo_usuario'],
+                       row['telefone'])
     return None
 
 
@@ -87,10 +88,11 @@ def load_user(user_id):
     ).fetchone()
     conn.close()
     if row:
+        # Acessa diretamente 'tipo_usuario' e 'telefone'
         return Usuario(row["id"], row["nome"], row["email"], row["senha"],
                        row["is_admin"],
-                       row['tipo_usuario'] if 'tipo_usuario' in row else 'cliente',
-                       row['telefone'] if 'telefone' in row else None)
+                       row['tipo_usuario'],
+                       row['telefone'])
     return None
 
 # 🏠 Página inicial
@@ -218,6 +220,7 @@ def cadastro():
         if len(senha) < 6:
             errors.append('A senha deve ter pelo menos 6 caracteres.')
 
+        # Confere se o email já existe *antes* de tentar inserir
         if not errors and buscar_usuario_por_email(email):
             errors.append('Este email já está cadastrado.')
 
@@ -226,199 +229,7 @@ def cadastro():
                 flash(error_msg, 'error')
             return render_template('cadastro.html', nome=nome, email=email, telefone=telefone)
 
-        try:
-            senha_hash = generate_password_hash(senha)
-            conn = get_db_connection()
-            conn.execute(
-                'INSERT INTO usuarios (nome, email, senha, is_admin, tipo_usuario, telefone) VALUES (?, ?, ?, ?, ?, ?)',
-                (nome, email, senha_hash, 0, 'cliente', telefone)
-            )
-            conn.commit()
-            conn.close()
-            flash('Cadastro realizado com sucesso! Faça login.', 'success')
-            app.logger.info(
-                f"Novo usuário cadastrado: {email} como 'cliente'.")
-            return redirect(url_for('login'))
-        except sqlite3.Error as e:
-            flash(
-                'Erro ao cadastrar usuário no banco de dados. Tente novamente.', 'error')
-            app.logger.error(f'Erro DB no cadastro: {e}')
-        except Exception as e:
-            flash(
-                'Ocorreu um erro inesperado durante o cadastro. Por favor, tente mais tarde.', 'error')
-            app.logger.error(
-                f'Erro inesperado no cadastro: {e}', exc_info=True)
-        return render_template('cadastro.html', nome=nome, email=email, telefone=telefone)
-
-    return render_template('cadastro.html')
-
-
-# 📋 Configuração de logs
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
-
-# 🔧 Inicialização do app
-app = Flask(__name__)
-app.secret_key = os.environ.get(
-    'SECRET_KEY', 'DevSecretKeyForReservasApp')
-
-# 🔐 Configuração do Flask-Login
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
-login_manager.login_message = "Por favor, realize o login para acessar esta página."
-login_manager.login_message_category = "info"
-
-# 🔗 Classe de usuário
-
-
-class Usuario(UserMixin):
-    def __init__(self, id, nome, email, senha_hash, is_admin=0, tipo_usuario='cliente', telefone=None):
-        self.id = id
-        self.nome = nome
-        self.email = email
-        self.senha_hash = senha_hash
-        self.is_admin = is_admin
-        self.tipo_usuario = tipo_usuario
-        self.telefone = telefone
-
-    @property
-    def is_cliente(self):
-        return self.tipo_usuario == 'cliente'
-
-    @property
-    def is_agente(self):
-        return self.tipo_usuario == 'agente'
-
-    @property
-    def is_admin_user(self):
-        return self.tipo_usuario == 'admin' or self.is_admin == 1
-
-# 🔍 Funções auxiliares
-
-
-def get_db_connection():
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def buscar_usuario_por_email(email):
-    conn = get_db_connection()
-    row = conn.execute(
-        "SELECT id, nome, email, senha, is_admin, tipo_usuario, telefone FROM usuarios WHERE email = ?", (
-            email,)
-    ).fetchone()
-    conn.close()
-    if row:
-        return Usuario(row["id"], row["nome"], row["email"], row["senha"],
-                       row["is_admin"],
-                       row['tipo_usuario'] if 'tipo_usuario' in row else 'cliente',
-                       row['telefone'] if 'telefone' in row else None)
-    return None
-
-
-@login_manager.user_loader
-def load_user(user_id):
-    conn = get_db_connection()
-    row = conn.execute(
-        "SELECT id, nome, email, senha, is_admin, tipo_usuario, telefone FROM usuarios WHERE id = ?", (
-            user_id,)
-    ).fetchone()
-    conn.close()
-    if row:
-        return Usuario(row["id"], row["nome"], row["email"], row["senha"],
-                       row["is_admin"],
-                       row['tipo_usuario'] if 'tipo_usuario' in row else 'cliente',
-                       row['telefone'] if 'telefone' in row else None)
-    return None
-
-# 🏠 Página inicial
-
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-# 🔐 Login
-
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip()
-        senha = request.form.get('senha', '')
-
-        if not email or not senha:
-            flash('Email e senha são obrigatórios.', 'error')
-            return render_template('login.html', email=email)
-
-        user = buscar_usuario_por_email(email)
-
-        if user and check_password_hash(user.senha_hash, senha):
-            login_user(user)
-            flash('Login realizado com sucesso!', 'success')
-            next_page = request.args.get('next')
-            app.logger.info(
-                f"Usuário {user.email} logado com sucesso (Tipo: {user.tipo_usuario}).")
-            return redirect(next_page or url_for('index'))
-        else:
-            flash('Email ou senha incorretos.', 'error')
-            app.logger.warning(f"Falha de login para o email: {email}")
-            return render_template('login.html', email=email)
-
-    return render_template('login.html')
-
-
-@app.route('/logout')
-@login_required
-def logout():
-    app.logger.info(f"Usuário {current_user.email} deslogado.")
-    logout_user()
-    flash('Você saiu da sua conta.', 'success')
-    return redirect(url_for('login'))
-
-# 👤 Cadastro
-
-
-# ... (código anterior) ...
-
-@app.route('/cadastro', methods=['GET', 'POST'])
-def cadastro():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    if request.method == 'POST':
-        nome = request.form.get('nome', '').strip()
-        email = request.form.get('email', '').strip()
-        senha = request.form.get('senha', '')
-        confirmar_senha = request.form.get('confirmar_senha', '')
-        telefone = request.form.get('telefone', '').strip()
-
-        errors = []
-        if not nome:
-            errors.append('O nome é obrigatório.')
-        if not email:
-            errors.append('O email é obrigatório.')
-        if not senha:
-            errors.append('A senha é obrigatória.')
-        if not confirmar_senha:
-            errors.append('A confirmação de senha é obrigatória.')
-
-        if senha != confirmar_senha:
-            errors.append('As senhas não coincidem.')
-        if len(senha) < 6:
-            errors.append('A senha deve ter pelo menos 6 caracteres.')
-
-        if not errors and buscar_usuario_por_email(email): # Confere se o email já existe *antes* de tentar inserir
-            errors.append('Este email já está cadastrado.')
-
-        if errors:
-            for error_msg in errors:
-                flash(error_msg, 'error')
-            return render_template('cadastro.html', nome=nome, email=email, telefone=telefone)
-
-        conn = None # Inicializa conn como None para o finally
+        conn = None  # Inicializa conn como None para o finally
         try:
             senha_hash = generate_password_hash(senha)
             conn = get_db_connection()
@@ -431,31 +242,32 @@ def cadastro():
             app.logger.info(
                 f"Novo usuário cadastrado: {email} como 'cliente'.")
             return redirect(url_for('login'))
-        except sqlite3.IntegrityError: # Captura erro de UNIQUE CONSTRAINT especificamente
+        except sqlite3.IntegrityError:  # Captura erro de UNIQUE CONSTRAINT especificamente
             flash('Este email já está cadastrado. Por favor, use outro.', 'error')
-            app.logger.warning(f"Tentativa de cadastro com email duplicado: {email}")
+            app.logger.warning(
+                f"Tentativa de cadastro com email duplicado: {email}")
         except sqlite3.Error as e:
             flash(
                 'Erro ao cadastrar usuário no banco de dados. Tente novamente.', 'error')
-            app.logger.error(f'Erro DB no cadastro: {e}', exc_info=True) # Adicionado exc_info=True para mais detalhes
+            # Adicionado exc_info=True para mais detalhes
+            app.logger.error(f'Erro DB no cadastro: {e}', exc_info=True)
         except Exception as e:
             flash(
                 'Ocorreu um erro inesperado durante o cadastro. Por favor, tente mais tarde.', 'error')
             app.logger.error(
                 f'Erro inesperado no cadastro: {e}', exc_info=True)
         finally:
-            if conn: # Garante que conn existe antes de tentar fechar
+            if conn:  # Garante que conn existe antes de tentar fechar
                 conn.close()
-        
+
         # Se houve um erro (e não foi redirecionado), re-renderiza com os dados do formulário
         return render_template('cadastro.html', nome=nome, email=email, telefone=telefone)
 
     return render_template('cadastro.html')
 
-# ATUALIZADO: Lógica de validação de agendamento
-
-
 # Lógica de validação de agendamento (com `contato_agendamento` e atribuição de agente)
+
+
 @app.route('/agendar', methods=['GET', 'POST'])
 @login_required
 def agendar():
@@ -719,15 +531,18 @@ def agendar():
                                        form_data=form_data_for_repopulation)
 
             agente_disponivel_id = None
+            found_available_agente_for_slot = False
+
             for agente in agentes_para_tipo:
+                is_agente_available_for_this_slot = True
+
                 agendamentos_agente = conn.execute('''
                     SELECT a.hora, ta.duracao_minutos
                     FROM agendamentos a
                     JOIN tipos_agendamento ta ON a.tipo_id = ta.id
-                    WHERE a.usuario_id = ? AND a.data = ?
+                    WHERE a.agente_atribuido_id = ? AND a.data = ?  -- CORRIGIDO: Checa agendamentos ATRIBUÍDOS ao agente
                 ''', (agente['id'], data_para_db)).fetchall()
 
-                is_agente_available = True
                 for existing_a_agente in agendamentos_agente:
                     existing_start_time_agente = datetime.strptime(
                         existing_a_agente['hora'], '%H:%M').time()
@@ -738,14 +553,16 @@ def agendar():
 
                     if (data_hora_agendamento < existing_end_datetime_agente) and \
                        (data_hora_fim_agendamento > existing_start_datetime_agente):
-                        is_agente_available = False
+                        is_agente_available_for_this_slot = False
                         break
 
-                if is_agente_available:
+                if is_agente_available_for_this_slot:
                     agente_disponivel_id = agente['id']
-                    break
+                    # Define como True se encontrou um agente
+                    found_available_agente_for_slot = True
+                    break  # Sai do loop de agentes se um for encontrado
 
-            if not agente_disponivel_id:
+            if not found_available_agente_for_slot:
                 errors.append(
                     "Não há agentes disponíveis para este tipo de serviço no horário selecionado.")
 
@@ -869,16 +686,6 @@ def api_slots_disponiveis():
             WHERE ats.tipo_id = ? AND u.tipo_usuario = 'agente'
         ''', (tipo_id,)).fetchall()
 
-        agendamentos_agentes = []
-        for agente in agentes_para_tipo:
-            agendamentos_agente_db = conn.execute('''
-                SELECT a.hora, ta.duracao_minutos
-                FROM agendamentos a
-                JOIN tipos_agendamento ta ON a.tipo_id = ta.id
-                WHERE a.usuario_id = ? AND a.data = ?
-            ''', (agente['id'], data_str)).fetchall()
-            agendamentos_agentes.extend(agendamentos_agente_db)
-
         # --- Lógica para gerar slots disponíveis ---
         slots_disponiveis = []
         now = datetime.now()
@@ -929,19 +736,27 @@ def api_slots_disponiveis():
                         break  # Unidade ocupada neste slot
 
                 if not is_slot_available:
-                    # Pula para o fim do agendamento que causou a colisão
-                    current_slot_start_dt = existing_end_dt
+                    # Pula para o fim do agendamento que causou a colisão,
+                    # ajustando para a granularidade se necessário
+                    new_start = existing_end_dt
+                    if new_start.minute % 30 != 0:
+                        new_start = new_start + \
+                            timedelta(minutes=(30 - new_start.minute % 30))
+                    current_slot_start_dt = new_start
                     continue  # Próxima iteração do while, verificando a partir do novo current_slot_start_dt
 
                 # 6. Validação: Checar colisão com agendamentos dos AGENTES disponíveis
-                # Se não há agentes para este tipo de serviço, todos os slots são inválidos.
+                # Se não há agentes para este tipo de serviço, nenhum slot é válido por falta de recurso humano.
                 if not agentes_para_tipo:
-                    is_slot_available = False  # Nenhum agente disponível para este tipo
+                    # Nenhum agente disponível para este tipo (no geral)
+                    is_slot_available = False
                 else:
-                    # Tentar encontrar pelo menos UM agente disponível para este slot
+                    # Inicialização defensiva para evitar UnboundLocalError
                     found_available_agente_for_slot = False
+                    # Tentar encontrar pelo menos UM agente disponível para este slot
                     for agente_id_dict in agentes_para_tipo:
                         agente_id = agente_id_dict['id']
+                        # Reinicializa para cada agente para evitar UnboundLocalError
                         is_agente_available_for_this_slot = True
 
                         # Verificar agendamentos do agente específico
@@ -949,7 +764,7 @@ def api_slots_disponiveis():
                             SELECT a.hora, ta.duracao_minutos
                             FROM agendamentos a
                             JOIN tipos_agendamento ta ON a.tipo_id = ta.id
-                            WHERE a.usuario_id = ? AND a.data = ?
+                            WHERE a.agente_atribuido_id = ? AND a.data = ? -- CORRIGIDO
                         ''', (agente_id, data_str)).fetchall()
 
                         for existing_a_agente in agendamentos_agente_especifico:
@@ -1030,7 +845,7 @@ def eventos():
         query += " AND a.usuario_id = ?"
         params.append(current_user.id)
     # NOVO: Agentes também veem apenas seus agendamentos atribuídos (se não forem admin)
-    elif current_user.is_agente:
+    elif current_user.is_agente and not current_user.is_admin_user:  # Agente não-admin
         query += " AND a.agente_atribuido_id = ?"
         params.append(current_user.id)
 
@@ -1360,6 +1175,7 @@ def configuracoes():
     admin_users_data = []
     agente_users_data = []
     cliente_users_data = []
+    non_admin_users_for_promotion = []  # Lista para passar ao template
 
     # NOVO: Obter o SUPER_ADMIN_EMAIL do ambiente
     super_admin_email = os.environ.get('SUPER_ADMIN_EMAIL', 'admin@admin.com')
@@ -1377,6 +1193,16 @@ def configuracoes():
         cliente_users_data = conn.execute(
             "SELECT id, nome, email, telefone, tipo_usuario FROM usuarios WHERE tipo_usuario = 'cliente' ORDER BY nome").fetchall()
 
+        # Lógica para filtrar usuários que podem ser promovidos a admin
+        # Pega todos os IDs dos usuários que JÁ SÃO administradores
+        admin_user_ids = {user['id'] for user in admin_users_data}
+
+        # Concatena clientes e agentes, e filtra quem NÃO É admin
+        all_potential_promotees = agente_users_data + cliente_users_data
+        for user in all_potential_promotees:
+            if user['id'] not in admin_user_ids:
+                non_admin_users_for_promotion.append(user)
+
     except sqlite3.Error as e:
         flash("Erro ao carregar dados de configuração.", "error")
         app.logger.error(
@@ -1390,8 +1216,77 @@ def configuracoes():
                            admin_users=admin_users_data,
                            agente_users=agente_users_data,
                            cliente_users=cliente_users_data,
-                           super_admin_email=super_admin_email  # NOVO: Passar para o template
+                           super_admin_email=super_admin_email,
+                           non_admin_users=non_admin_users_for_promotion  # Passa a lista filtrada
                            )
+
+
+@app.route('/adicionar_agente', methods=['POST'])
+@admin_required  # Apenas administradores podem adicionar novos agentes
+def adicionar_agente():
+    nome = request.form.get('nome', '').strip()
+    email = request.form.get('email', '').strip()
+    senha = request.form.get('senha', '')
+    confirmar_senha = request.form.get('confirmar_senha', '')
+    telefone = request.form.get('telefone', '').strip()
+
+    errors = []
+    if not nome:
+        errors.append('O nome é obrigatório.')
+    if not email:
+        errors.append('O email é obrigatório.')
+    if not senha:
+        errors.append('A senha é obrigatória.')
+    if not confirmar_senha:
+        errors.append('A confirmação de senha é obrigatória.')
+
+    if senha != confirmar_senha:
+        errors.append('As senhas não coincidem.')
+    if len(senha) < 6:
+        errors.append('A senha deve ter pelo menos 6 caracteres.')
+
+    # Valida se o email já está cadastrado (independente do tipo de usuário)
+    if not errors and buscar_usuario_por_email(email):
+        errors.append('Este email já está cadastrado.')
+
+    if errors:
+        for error_msg in errors:
+            flash(error_msg, 'error')
+        # Retorna para a página de configurações, na aba de usuários
+        return redirect(url_for('configuracoes', tab='usuarios'))
+
+    conn = None  # Inicializa conn como None para o finally
+    try:
+        senha_hash = generate_password_hash(senha)
+        conn = get_db_connection()
+        conn.execute(
+            'INSERT INTO usuarios (nome, email, senha, is_admin, tipo_usuario, telefone) VALUES (?, ?, ?, ?, ?, ?)',
+            # is_admin=0 e tipo_usuario='agente'
+            (nome, email, senha_hash, 0, 'agente', telefone)
+        )
+        conn.commit()
+        flash(f'Agente "{nome}" cadastrado com sucesso!', 'success')
+        app.logger.info(
+            f"Novo agente cadastrado: {email} por {current_user.email}.")
+    except sqlite3.IntegrityError:
+        flash('Erro: Este email já está cadastrado. Por favor, use outro.', 'error')
+        app.logger.warning(
+            f"Tentativa de cadastro de agente com email duplicado: {email}")
+    except sqlite3.Error as e:
+        flash(
+            f'Erro ao cadastrar agente no banco de dados: {str(e)}', 'error')
+        app.logger.error(f'Erro DB no cadastro de agente: {e}', exc_info=True)
+    except Exception as e:
+        flash(
+            'Ocorreu um erro inesperado durante o cadastro do agente. Por favor, tente mais tarde.', 'error')
+        app.logger.error(
+            f'Erro inesperado no cadastro de agente: {e}', exc_info=True)
+    finally:
+        if conn:
+            conn.close()
+
+    # Redireciona de volta para a aba de usuários
+    return redirect(url_for('configuracoes', tab='usuarios'))
 
 
 @app.route('/api/empreendimento/<int:empreendimento_id>/unidades')
@@ -1716,7 +1611,6 @@ def promover_admin():
     conn = get_db_connection()
     try:
         user = conn.execute(
-            # Include email for buscalog
             "SELECT id, nome, is_admin, tipo_usuario, email FROM usuarios WHERE id = ?", (user_id_to_promote,)).fetchone()
         if not user:
             flash('Usuário não encontrado.', 'error')
@@ -1732,15 +1626,16 @@ def promover_admin():
             app.logger.info(
                 f"Usuário ID {user_id_to_promote} promovido a admin por {current_user.email}.")
 
-            # NOVO: Se o usuário promovido for o usuário atualmente logado, reloga-o para atualizar a sessão
+            # CORREÇÃO: Forçar o recarregamento da sessão se o próprio usuário logado for promovido
             if str(user['id']) == str(current_user.id):
+                app.logger.info(
+                    f"Forçando recarregamento da sessão para {current_user.email} após promoção a admin.")
+                logout_user()  # Limpa a sessão antiga
                 updated_user = buscar_usuario_por_email(
                     user['email'])  # Busca do DB com as novas infos
                 if updated_user:
-                    # Reloga, atualizando current_user na sessão
+                    # Recarrega a nova sessão com dados atualizados
                     login_user(updated_user, remember=True)
-                    app.logger.info(
-                        f"Usuário {updated_user.email} recarregado na sessão com novo tipo: {updated_user.tipo_usuario}.")
 
     except sqlite3.Error as e:
         flash(f'Erro no banco de dados ao promover usuário: {e}', 'error')
@@ -1763,7 +1658,6 @@ def gerenciar_agente():
     conn = get_db_connection()
     try:
         user = conn.execute(
-            # Include email
             "SELECT id, nome, email, tipo_usuario, is_admin FROM usuarios WHERE id = ?", (user_id,)).fetchone()
 
         if not user:
@@ -1787,13 +1681,15 @@ def gerenciar_agente():
                 app.logger.info(
                     f"Usuário ID {user_id} promovido a agente por {current_user.email}.")
 
-                # NOVO: Se o usuário promovido for o usuário atualmente logado, reloga-o para atualizar a sessão
+                # CORREÇÃO: Forçar o recarregamento da sessão se o próprio usuário logado for promovido
                 if str(user['id']) == str(current_user.id):
+                    app.logger.info(
+                        f"Forçando recarregamento da sessão para {current_user.email} após promoção a agente.")
+                    logout_user()  # Limpa a sessão antiga
                     updated_user = buscar_usuario_por_email(user['email'])
                     if updated_user:
+                        # Recarrega a nova sessão com dados atualizados
                         login_user(updated_user, remember=True)
-                        app.logger.info(
-                            f"Usuário {updated_user.email} recarregado na sessão com novo tipo: {updated_user.tipo_usuario}.")
 
         elif action == 'demover':
             if user['tipo_usuario'] == 'cliente':
@@ -1810,13 +1706,15 @@ def gerenciar_agente():
                 app.logger.info(
                     f"Status agente removido do usuário ID {user_id} por {current_user.email}. Vinculações de serviço também removidas.")
 
-                # NOVO: Se o usuário rebaixado for o usuário atualmente logado, reloga-o
+                # CORREÇÃO: Forçar o recarregamento da sessão se o próprio usuário logado for demoovido
                 if str(user['id']) == str(current_user.id):
+                    app.logger.info(
+                        f"Forçando recarregamento da sessão para {current_user.email} após despromoção a cliente.")
+                    logout_user()  # Limpa a sessão antiga
                     updated_user = buscar_usuario_por_email(user['email'])
                     if updated_user:
+                        # Recarrega a nova sessão com dados atualizados
                         login_user(updated_user, remember=True)
-                        app.logger.info(
-                            f"Usuário {updated_user.email} recarregado na sessão com novo tipo: {updated_user.tipo_usuario}.")
         else:
             flash('Ação inválida.', 'error')
 
@@ -1858,7 +1756,8 @@ def remover_admin(user_id):
                     'Não é possível remover o status do último administrador do sistema.', 'error')
             else:
                 conn.execute(
-                    "UPDATE usuarios SET is_admin = 0, tipo_usuario = 'cliente' WHERE id = ?", (user_id,))
+                    # BUG: a vírgula extra no final
+                    "UPDATE usuarios SET is_admin = 0, tipo_usuario = 'cliente' WHERE id = ?,", (user_id,))
                 conn.commit()
                 flash(
                     f"Status de administrador removido do usuário '{target_user['nome'] if target_user['nome'] else target_user['email']}' com sucesso!", 'success')
@@ -2089,8 +1988,6 @@ def init_db():
     app.logger.info("Tabela 'agendamentos' verificada/criada.")
 
     # --- Adição de Colunas (ALTER TABLE) e Migração de Dados Existentes (APENAS ALTERS) ---
-    # Removidos os UPDATES de tipo_usuario e status daqui. Eles serão tratados em criar_usuario_inicial.
-
     try:
         cursor.execute(
             "ALTER TABLE tipos_agendamento ADD COLUMN duracao_minutos INTEGER DEFAULT 60")

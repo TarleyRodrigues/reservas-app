@@ -73,7 +73,10 @@
         </tbody>
     </table>
     {% else %}
-    <p>Nenhum agendamento designado para você no momento.</p>
+    {# NOVO BLOCO PARA QUANDO NÃO HÁ AGENDAMENTOS #}
+    <div class="no-agendamentos-info">
+        <p>Nenhum agendamento designado para você no momento.</p>
+    </div>
     {% endif %}
 </div>
 
@@ -87,19 +90,11 @@
                 }
             });
         });
-
-        // Adicionar confirmação genérica para outros formulários de ação, se desejar
-        // document.querySelectorAll('form:not(.form-cancel):not(.form-remove)').forEach(form => {
-        //     form.addEventListener('submit', function (e) {
-        //         if (!confirm('Confirmar esta ação?')) {
-        //             e.preventDefault();
-        //         }
-        //     });
-        // });
     });
 </script>
 
 <style>
+    /* Seu CSS existente para data-table, status, etc. vai aqui */
     .data-table {
         width: 100%;
         border-collapse: collapse;
@@ -174,6 +169,50 @@
 
     .data-table form {
         display: inline-block;
+    }
+
+    /* NOVO CSS PARA A MENSAGEM DE AUSÊNCIA DE AGENDAMENTOS */
+    .no-agendamentos-info {
+        background-color: var(--form-bg);
+        /* Usa a cor de fundo dos formulários/cards para consistência */
+        padding: 30px;
+        margin-top: 20px;
+        /* Alinha com a margem da tabela */
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        /* Adiciona uma sombra suave */
+        text-align: center;
+        max-width: 600px;
+        /* Limita a largura do box para um visual mais agradável */
+        margin-left: auto;
+        /* Centraliza o bloco na página */
+        margin-right: auto;
+        /* Centraliza o bloco na página */
+    }
+
+    .no-agendamentos-info p {
+        color: var(--text);
+        /* Garante que o texto tenha a cor principal definida */
+        font-size: 1.15em;
+        /* Aumenta um pouco o tamanho da fonte para destaque */
+        font-weight: 500;
+        /* Deixa o texto um pouco mais encorpado */
+        margin-bottom: 0;
+        /* Remove margem padrão inferior de parágrafos */
+    }
+
+    /* Se o H2 "Agendamentos Designados para Você" também estiver apagado (e ele está fora do condicional)
+       você pode querer ajustar a cor dele globalmente ou dar uma classe específica para ele nesta página.
+       No seu HTML atual, o H2 *está* sempre presente. Se a cor de `var(--text)` for clara no seu tema
+       e o background for claro, ele realmente ficará apagado.
+       Uma solução rápida seria: */
+    .page-container h2 {
+        color: var(--text);
+        /* Garante que o H2 tenha a cor principal do texto */
+        margin-bottom: 20px;
+        /* Adiciona um pouco de espaço abaixo do título */
+        text-align: center;
+        /* Centraliza o título */
     }
 </style>
 {% endblock %}

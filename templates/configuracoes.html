@@ -1,5 +1,420 @@
 {% extends 'base.html' %}
 
+{% block head %}
+{{ super() }}
+<style>
+    /* Estilos CSS para a página de configurações */
+    .config-page-container {
+        display: flex;
+        min-height: calc(100vh - 100px);
+        /* Ajuste conforme a altura do seu header/footer */
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        /* Garante que o box-shadow seja contido */
+        margin: 20px auto;
+        max-width: 1200px;
+        /* Largura máxima do container */
+    }
+
+    .config-sidebar {
+        width: 250px;
+        background-color: #343a40;
+        /* Cor escura para a sidebar */
+        padding: 20px;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .config-menu {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .config-menu li {
+        margin-bottom: 10px;
+    }
+
+    .config-menu-link {
+        display: block;
+        padding: 10px 15px;
+        color: #f8f9fa;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .config-menu-link:hover,
+    .config-menu-link.active {
+        background-color: #007bff;
+        /* Cor primária para hover/ativo */
+        color: white;
+    }
+
+    .config-main-content {
+        flex-grow: 1;
+        padding: 30px;
+        background-color: #fff;
+    }
+
+    .config-main-content h1 {
+        color: #343a40;
+        margin-bottom: 25px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 15px;
+    }
+
+    .config-content-section {
+        margin-bottom: 30px;
+    }
+
+    .config-content-section h2,
+    .config-content-section h3 {
+        color: #007bff;
+        margin-bottom: 20px;
+    }
+
+    .config-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+        align-items: center;
+    }
+
+    .config-form label {
+        min-width: 120px;
+        /* Para alinhar labels em formulários mais complexos */
+        font-weight: bold;
+        color: #555;
+        text-align: right;
+        /* Alinha o texto da label à direita */
+        padding-right: 10px;
+        /* Espaço entre label e input */
+        box-sizing: border-box;
+        /* Inclui padding na largura */
+    }
+
+    /* Ajuste para que labels fiquem em sua própria linha em telas pequenas */
+    @media (max-width: 768px) {
+        .config-form label {
+            width: 100%;
+            text-align: left;
+            padding-right: 0;
+        }
+    }
+
+
+    .config-form input[type="text"],
+    .config-form input[type="number"],
+    .config-form input[type="email"],
+    .config-form input[type="password"],
+    /* Adicionado para o novo formulário de agente */
+    .config-form input[type="tel"],
+    /* Adicionado para o novo formulário de agente */
+    .config-form input[type="time"],
+    .config-form select {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        min-width: 180px;
+        /* Garante que não fiquem muito pequenos */
+    }
+
+    .config-form button {
+        padding: 8px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        white-space: nowrap;
+        /* Evita que o texto do botão quebre */
+    }
+
+    /* Tabela base */
+    .config-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+
+    .config-table thead th {
+        background-color: #e9ecef;
+        color: #495057;
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .config-table tbody td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #e2e6ea;
+        vertical-align: middle;
+    }
+
+    .config-table tbody tr:hover {
+        background-color: #f1f1f1;
+    }
+
+    /* Estilos para botões */
+    .btn {
+        display: inline-block;
+        font-weight: 400;
+        color: #212529;
+        text-align: center;
+        vertical-align: middle;
+        user-select: none;
+        background-color: transparent;
+        border: 1px solid transparent;
+        font-size: 0.875rem;
+        /* Menor para sm */
+        line-height: 1.5;
+        border-radius: 0.25rem;
+        transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+            border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.765rem;
+        border-radius: 0.2rem;
+    }
+
+    .btn-primary {
+        color: #fff;
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+
+    .btn-primary:hover {
+        background-color: #0056b3;
+        border-color: #0056b3;
+    }
+
+    .btn-success {
+        color: #fff;
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+
+    .btn-success:hover {
+        background-color: #218838;
+        border-color: #218838;
+    }
+
+    .btn-warning {
+        color: #212529;
+        background-color: #ffc107;
+        border-color: #ffc107;
+    }
+
+    .btn-warning:hover {
+        background-color: #e0a800;
+        border-color: #e0a800;
+    }
+
+    .btn-danger {
+        color: #fff;
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+
+    .btn-danger:hover {
+        background-color: #c82333;
+        border-color: #bd2130;
+    }
+
+    .btn-info {
+        color: #fff;
+        background-color: #17a2b8;
+        border-color: #17a2b8;
+    }
+
+    .btn-info:hover {
+        background-color: #138496;
+        border-color: #117a8b;
+    }
+
+    .btn-secondary {
+        color: #fff;
+        background-color: #6c757d;
+        border-color: #6c757d;
+    }
+
+    .btn-secondary:hover {
+        background-color: #5a6268;
+        border-color: #545b62;
+    }
+
+    /* Estilos para status (Ativo/Inativo) */
+    .status {
+        display: inline-block;
+        padding: 0.3em 0.6em;
+        font-size: 0.75em;
+        font-weight: bold;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: baseline;
+        border-radius: 0.25rem;
+        color: white;
+        /* Cor do texto padrão para status */
+    }
+
+    .status-active {
+        background-color: #28a745;
+        /* Verde */
+    }
+
+    .status-inactive {
+        background-color: #6c757d;
+        /* Cinza */
+    }
+
+    /* Estilos para o container de serviços do agente */
+    .servicos-form-container {
+        padding: 15px;
+        background-color: #f0f8ff;
+        border-left: 5px solid #007bff;
+        margin-top: 10px;
+        border-radius: 4px;
+    }
+
+    .servicos-form-container h4 {
+        margin-top: 0;
+        color: #0056b3;
+        margin-bottom: 15px;
+    }
+
+    .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+    }
+
+    .checkbox-item input[type="checkbox"] {
+        margin-right: 8px;
+        transform: scale(1.2);
+        /* Aumenta um pouco o tamanho do checkbox */
+    }
+
+    /* Estilos para mensagens flash (alerts) - embora o JS as transforme em toasts */
+    .alert {
+        padding: 10px 15px;
+        margin-bottom: 20px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+    }
+
+    .alert-success {
+        color: #155724;
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+    }
+
+    .alert-error,
+    .alert-danger {
+        /* Usando alert-error para consistência com o JS */
+        color: #721c24;
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+    }
+
+    .alert-warning {
+        color: #856404;
+        background-color: #fff3cd;
+        border-color: #ffeeba;
+    }
+
+    .alert-info {
+        color: #0c5460;
+        background-color: #d1ecf1;
+        border-color: #bee5eb;
+    }
+
+    /* Ajustes para formulários inline na tabela */
+    .config-table form {
+        margin-bottom: 0;
+    }
+
+    .config-table input[type="number"] {
+        padding: 5px 8px;
+        width: 80px;
+        /* Ajuste para inputs de número */
+    }
+
+    .config-table .btn-sm {
+        margin-left: 5px;
+    }
+
+    hr {
+        margin-top: 30px;
+        margin-bottom: 30px;
+        border: 0;
+        border-top: 1px solid rgba(0, 0, 0, .1);
+    }
+
+    /* Responsividade básica */
+    @media (max-width: 768px) {
+        .config-page-container {
+            flex-direction: column;
+            margin: 10px;
+        }
+
+        .config-sidebar {
+            width: 100%;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .config-menu {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .config-menu li {
+            margin-bottom: 0;
+        }
+
+        .config-menu-link {
+            padding: 8px 10px;
+            font-size: 0.9em;
+        }
+
+        .config-main-content {
+            padding: 20px;
+        }
+
+        .config-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .config-form input,
+        .config-form select,
+        .config-form button {
+            width: 100%;
+            min-width: unset;
+        }
+
+        /* Reset de alinhamento para labels em telas pequenas */
+        .config-form label {
+            text-align: left;
+            padding-right: 0;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="config-page-container">
     <div class="config-sidebar">
@@ -29,8 +444,10 @@
         <div id="config-tipos" class="config-content-section">
             <h2>Tipos de Agendamento</h2>
             <form method="POST" action="{{ url_for('adicionar_tipo') }}" class="config-form">
-                <input type="text" name="novo_tipo" placeholder="Nome do novo tipo" required>
-                <input type="number" name="duracao" placeholder="Duração padrão (minutos)" value="60" min="1" required>
+                <label for="novo_tipo_nome">Nome do novo tipo:</label>
+                <input type="text" id="novo_tipo_nome" name="novo_tipo" placeholder="Ex: Visita ao Imóvel" required>
+                <label for="tipo_duracao">Duração padrão (minutos):</label>
+                <input type="number" id="tipo_duracao" name="duracao" placeholder="60" value="60" min="1" required>
                 <button type="submit" class="btn btn-primary btn-sm">Adicionar Tipo</button>
             </form>
             <table class="config-table">
@@ -79,7 +496,8 @@
         <div id="config-empreendimentos" class="config-content-section" style="display: none;">
             <h2>Empreendimentos</h2>
             <form method="POST" action="{{ url_for('adicionar_empreendimento') }}" class="config-form">
-                <input type="text" name="nome" placeholder="Nome do novo empreendimento" required>
+                <label for="novo_empreendimento_nome">Nome do empreendimento:</label>
+                <input type="text" id="novo_empreendimento_nome" name="nome" placeholder="Ex: Condomínio Alfa" required>
                 <button type="submit" class="btn btn-primary btn-sm">Adicionar Empreendimento</button>
             </form>
             <table class="config-table" id="empreendimentos-table">
@@ -133,7 +551,8 @@
                 <form method="POST" action="{{ url_for('adicionar_unidade') }}" class="config-form"
                     id="form-adicionar-unidade">
                     <input type="hidden" name="empreendimento_id" id="form-unidade-empreendimento-id" value="">
-                    <input type="text" name="nome" placeholder="Nome da nova unidade" required>
+                    <label for="unidade_nome">Nome da nova unidade:</label>
+                    <input type="text" id="unidade_nome" name="nome" placeholder="Ex: Apartamento 101" required>
                     <button type="submit" class="btn btn-primary btn-sm">Adicionar Unidade</button>
                 </form>
                 <table class="config-table" id="unidades-table">
@@ -157,6 +576,30 @@
         {# SEÇÃO DE GERENCIAMENTO DE USUÁRIOS #}
         <div id="config-usuarios" class="config-content-section" style="display: none;">
             <h2>Gerenciamento de Usuários</h2>
+
+            {# NOVO FORMULÁRIO: Adicionar novo Agente #}
+            <h3>Cadastrar Novo Agente</h3>
+            <form method="POST" action="{{ url_for('adicionar_agente') }}" class="config-form">
+                <label for="agente_nome">Nome:</label>
+                <input type="text" id="agente_nome" name="nome" placeholder="Nome completo do agente" required>
+
+                <label for="agente_email">Email:</label>
+                <input type="email" id="agente_email" name="email" placeholder="email@exemplo.com" required>
+
+                <label for="agente_telefone">Telefone (opcional):</label>
+                <input type="tel" id="agente_telefone" name="telefone" placeholder="(XX) XXXXX-XXXX">
+
+                <label for="agente_senha">Senha:</label>
+                <input type="password" id="agente_senha" name="senha" placeholder="Mínimo 6 caracteres" required>
+
+                <label for="agente_confirmar_senha">Confirmar Senha:</label>
+                <input type="password" id="agente_confirmar_senha" name="confirmar_senha" placeholder="Repita a senha"
+                    required>
+
+                <button type="submit" class="btn btn-primary btn-sm">Cadastrar Agente</button>
+            </form>
+
+            <hr>
 
             <h3>Agentes Atuais</h3>
             {% if agente_users %}
@@ -202,8 +645,9 @@
                                     <div class="checkbox-group">
                                         {% for tipo in tipos %}
                                         <div class="checkbox-item">
-                                            <label>
-                                                <input type="checkbox" name="tipos_servico[]" value="{{ tipo.id }}">
+                                            <label for="tipo_servico_{{ user.id }}_{{ tipo.id }}">
+                                                <input type="checkbox" id="tipo_servico_{{ user.id }}_{{ tipo.id }}"
+                                                    name="tipos_servico[]" value="{{ tipo.id }}">
                                                 {{ tipo.nome }}
                                             </label>
                                         </div>
@@ -229,8 +673,9 @@
             {% if cliente_users %}
             <form method="POST" action="{{ url_for('gerenciar_agente') }}" id="form-promover-agente"
                 class="config-form">
+                <label for="promover_agente_user_id">Selecione um usuário:</label>
                 <input type="hidden" name="action" value="promover">
-                <select name="user_id" required>
+                <select id="promover_agente_user_id" name="user_id" required>
                     <option value="">Selecione um usuário...</option>
                     {% for user in cliente_users %}
                     <option value="{{ user.id }}">{{ user.nome if user.nome else user.email }} ({{ user.email }})
@@ -250,16 +695,16 @@
 
             <h3>Adicionar Horário de Funcionamento</h3>
             <form method="POST" action="{{ url_for('adicionar_horario_funcionamento') }}" class="config-form">
-                <label for="horario_empreendimento_id">Empreendimento:</label>
-                <select id="horario_empreendimento_id" name="empreendimento_id" required>
+                <label for="horario_empreendimento_id_form">Empreendimento:</label> {# ID diferente do select do JS #}
+                <select id="horario_empreendimento_id_form" name="empreendimento_id" required>
                     <option value="" disabled selected>Selecione um empreendimento</option>
                     {% for emp in empreendimentos %}
                     <option value="{{ emp.id }}">{{ emp.nome }}</option>
                     {% endfor %}
                 </select>
 
-                <label for="dia_semana">Dia da Semana:</label>
-                <select id="dia_semana" name="dia_semana" required>
+                <label for="dia_semana_form">Dia da Semana:</label>
+                <select id="dia_semana_form" name="dia_semana" required>
                     <option value="" disabled selected>Selecione o dia</option>
                     <option value="0">Segunda-feira</option>
                     <option value="1">Terça-feira</option>
@@ -270,11 +715,11 @@
                     <option value="6">Domingo</option>
                 </select>
 
-                <label for="hora_inicio">Hora Início:</label>
-                <input type="time" id="hora_inicio" name="hora_inicio" required>
+                <label for="hora_inicio_form">Hora Início:</label>
+                <input type="time" id="hora_inicio_form" name="hora_inicio" required>
 
-                <label for="hora_fim">Hora Fim:</label>
-                <input type="time" id="hora_fim" name="hora_fim" required>
+                <label for="hora_fim_form">Hora Fim:</label>
+                <input type="time" id="hora_fim_form" name="hora_fim" required>
 
                 <button type="submit" class="btn btn-primary btn-sm">Adicionar Horário</button>
             </form>
@@ -322,7 +767,7 @@
                         <td>{{ admin_user.email }}</td>
                         <td>{{ admin_user.telefone if admin_user.telefone else 'Não informado' }}</td>
                         <td>
-                            {# AQUI ESTÁ A LINHA DO PROBLEMA #}
+                            {# Não permita que um admin remova a si mesmo ou o super admin #}
                             {% if admin_user.id != current_user.id and admin_user.email != super_admin_email %}
                             <form method="POST" action="{{ url_for('remover_admin', user_id=admin_user.id) }}"
                                 style="display:inline;" class="form-remove">
@@ -343,12 +788,13 @@
             {% endif %}
             <hr>
             <h3>Promover Usuário a Administrador</h3>
-            {% set users_to_promote_admin = agente_users + cliente_users %}
-            {% if users_to_promote_admin %}
+            {# non_admin_users é agora passado diretamente da rota Flask #}
+            {% if non_admin_users %}
             <form method="POST" action="{{ url_for('promover_admin') }}" id="form-promover-admin" class="config-form">
-                <select name="user_to_promote_id" required>
+                <label for="promover_admin_user_id">Selecione um usuário:</label>
+                <select id="promover_admin_user_id" name="user_to_promote_id" required>
                     <option value="">Selecione um usuário...</option>
-                    {% for user in users_to_promote_admin %}
+                    {% for user in non_admin_users %}
                     <option value="{{ user.id }}">{{ user.nome if user.nome else user.email }} ({{ user.email }}) [{{
                         user.tipo_usuario.capitalize() }}]</option>
                     {% endfor %}
@@ -372,8 +818,14 @@
         const formUnidadeEmpreendimentoId = document.getElementById('form-unidade-empreendimento-id');
         const noUnitsMessageRowOriginal = document.getElementById('no-units-message').parentNode.cloneNode(true);
 
+        // O select de empreendimentos para carregar horários, mantendo ID original
+        // ATENÇÃO: O ID do select no formulário HTML agora é 'horario_empreendimento_id_form'
+        // Mas o JavaScript ainda pode usar 'horario_empreendimento_id' se você tiver um select separado para o JS.
+        // Se houver apenas um select de empreendimento para HORÁRIOS, o ID deve ser o mesmo em HTML e JS.
+        // Vou assumir que o JS deveria referenciar o mesmo select que o formulário.
+        const horarioEmpreendimentoSelect = document.getElementById('horario_empreendimento_id_form'); // CORRIGIDO AQUI
         const horariosTableBody = document.querySelector('#horarios-table tbody');
-        const horarioEmpreendimentoSelect = document.getElementById('horario_empreendimento_id');
+
 
         const diasSemanaMap = {
             '0': 'Segunda-feira',
@@ -396,7 +848,18 @@
             if (targetId !== 'empreendimentos' && !keepUnitsVisible) {
                 unidadesSection.style.display = 'none';
             } else if (targetId === 'empreendimentos') {
-                if (unidadesTableBody.children.length > 0 && unidadesTableBody.firstChild.id !== 'no-units-message') {
+                const urlParams = new URLSearchParams(window.location.search);
+                const activeEmpIdFromUrl = urlParams.get('active_emp_id');
+                if (activeEmpIdFromUrl) {
+                    const empRow = document.querySelector(`#empreendimentos-table tr[data-empreendimento-id="${activeEmpIdFromUrl}"]`);
+                    if (empRow) {
+                        const empName = empRow.querySelector('td:first-child').textContent;
+                        loadUnidades(activeEmpIdFromUrl, empName);
+                    } else {
+                        resetUnidadesView();
+                        unidadesSection.style.display = 'block';
+                    }
+                } else if (unidadesTableBody.children.length > 0 && unidadesTableBody.firstChild.id !== 'no-units-message') {
                     unidadesSection.style.display = 'block';
                 } else {
                     resetUnidadesView();
@@ -407,6 +870,7 @@
                 loadAgenteServicos();
             }
             if (targetId === 'horarios') {
+                // Apenas carregue se um empreendimento já estiver selecionado no dropdown de horários
                 const selectedEmpId = horarioEmpreendimentoSelect.value;
                 if (selectedEmpId) {
                     loadHorariosEmpreendimento(selectedEmpId);
@@ -448,7 +912,8 @@
             unidadesTableBody.innerHTML = '<tr><td colspan="3">Carregando unidades...</td></tr>';
 
             try {
-                const response = await fetch(`{{ url_for('api_get_unidades_por_empreendimento', empreendimento_id=0) }}`.replace('0', empreendimentoId));
+                // CORREÇÃO: Constrói a URL diretamente no JavaScript, pois 'empreendimento_id' é um parâmetro de rota inteiro.
+                const response = await fetch(`/api/empreendimento/${empreendimentoId}/unidades`);
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ detail: "Erro desconhecido ao buscar unidades." }));
                     throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
@@ -463,25 +928,27 @@
                 } else {
                     unidades.forEach(unidade => {
                         const row = unidadesTableBody.insertRow();
-                        const toggleUrl = `{{ url_for('toggle_unidade', unidade_id=0) }}`.replace('0', unidade.id);
-                        const removeUrl = `{{ url_for('remover_unidade', unidade_id=0) }}`.replace('0', unidade.id);
+                        // CORREÇÃO: Constrói as URLs de ação diretamente no JavaScript.
+                        // Flask espera um ID inteiro no PATH para essas rotas.
+                        const toggleUrl = `/toggle_unidade/${unidade.id}`;
+                        const removeUrl = `/remover_unidade/${unidade.id}`;
 
                         row.innerHTML = `
                             <td>${unidade.nome}</td>
                             <td>
                                 <span class="status ${unidade.ativo ? 'status-active' : 'status-inactive'}">
-                                    <span class="math-inline">\{unidade\.ativo ? 'Ativa' \: 'Inativa'\}
-</span\>
-</td\>
-<td\>
-<form method\="POST" action\="</span>{toggleUrl}" style="display:inline;">
-                                    <input type="hidden" name="unidade_id" value="<span class="math-inline">\{unidade\.id\}"\>
-<input type\="hidden" name\="source\_empreendimento\_id" value\="</span>{empreendimentoId}">
+                                    ${unidade.ativo ? 'Ativa' : 'Inativa'}
+                                </span>
+                            </td>
+                            <td>
+                                <form method="POST" action="${toggleUrl}" style="display:inline;">
+                                    <input type="hidden" name="unidade_id" value="${unidade.id}">
+                                    <input type="hidden" name="source_empreendimento_id" value="${empreendimentoId}">
                                     <button type="submit" class="btn btn-sm ${unidade.ativo ? 'btn-toggle btn-warning' : 'btn-toggle btn-success'}">
-                                        <span class="math-inline">\{unidade\.ativo ? 'Desativar' \: 'Ativar'\}
-</button\>
-</form\>
-<form method\="POST" action\="</span>{removeUrl}" style="display:inline;" class="form-remove">
+                                        ${unidade.ativo ? 'Desativar' : 'Ativar'}
+                                    </button>
+                                </form>
+                                <form method="POST" action="${removeUrl}" style="display:inline;" class="form-remove">
                                     <input type="hidden" name="source_empreendimento_id" value="${empreendimentoId}">
                                     <button type="submit" class="btn btn-danger btn-sm">Remover</button>
                                 </form>
@@ -614,9 +1081,11 @@
         async function loadHorariosEmpreendimento(empreendimentoId) {
             horariosTableBody.innerHTML = '<tr><td colspan="5">Carregando horários...</td></tr>';
             try {
+                // CORREÇÃO: Constrói a URL diretamente no JavaScript.
                 const response = await fetch(`/api/empreendimento/${empreendimentoId}/horarios`);
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorData = await response.json().catch(() => ({ detail: "Erro desconhecido ao buscar horários." }));
+                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
                 }
                 const horarios = await response.json();
 
@@ -626,16 +1095,17 @@
                 } else {
                     horarios.forEach(horario => {
                         const row = horariosTableBody.insertRow();
-                        const removeUrl = `{{ url_for('remover_horario_funcionamento', horario_id=0) }}`.replace('0', horario.id);
+                        // CORREÇÃO: Constrói a URL de remoção diretamente no JavaScript.
+                        const removeUrl = `/remover_horario_funcionamento/${horario.id}`;
 
                         row.innerHTML = `
-                            <td><span class="math-inline">\{horario\.empreendimento\_nome\}</td\>
-<td\></span>{diasSemanaMap[horario.dia_semana]}</td>
-                            <td><span class="math-inline">\{horario\.hora\_inicio\}</td\>
-<td\></span>{horario.hora_fim}</td>
+                            <td>${horario.empreendimento_nome}</td>
+                            <td>${diasSemanaMap[horario.dia_semana]}</td>
+                            <td>${horario.hora_inicio}</td>
+                            <td>${horario.hora_fim}</td>
                             <td>
-                                <form method="POST" action="<span class="math-inline">\{removeUrl\}" style\="display\:inline;" class\="form\-remove"\>
-<input type\="hidden" name\="empreendimento\_id" value\="</span>{horario.empreendimento_id}">
+                                <form method="POST" action="${removeUrl}" style="display:inline;" class="form-remove">
+                                    <input type="hidden" name="empreendimento_id" value="${horario.empreendimento_id}">
                                     <button type="submit" class="btn btn-danger btn-sm">Remover</button>
                                 </form>
                             </td>
@@ -653,26 +1123,12 @@
         const urlParams = new URLSearchParams(window.location.search);
         const activeTabFromUrl = urlParams.get('tab');
         const activeEmpIdFromUrl = urlParams.get('active_emp_id');
-        const activeUserIdFromUrl = urlParams.get('active_user_id');
 
         if (activeTabFromUrl) {
             showSection(activeTabFromUrl, activeTabFromUrl === 'empreendimentos' && activeEmpIdFromUrl);
-            if (activeTabFromUrl === 'empreendimentos' && activeEmpIdFromUrl) {
-                const empRow = document.querySelector(`#empreendimentos-table tr[data-empreendimento-id="${activeEmpIdFromUrl}"]`);
-                if (empRow) {
-                    const empName = empRow.querySelector('td:first-child').textContent;
-                    loadUnidades(activeEmpIdFromUrl, empName);
-                }
-            }
-            if (activeTabFromUrl === 'horarios') {
-                const selectedEmpId = horarioEmpreendimentoSelect.value;
-                if (selectedEmpId) {
-                    loadHorariosEmpreendimento(selectedEmpId);
-                }
-            }
         } else {
             showSection('tipos'); // Aba padrão
         }
     });
 </script>
-{% endblock %}"
+{% endblock %}
