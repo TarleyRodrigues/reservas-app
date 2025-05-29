@@ -824,6 +824,11 @@ def calendario():
 # 🗓️ Eventos para o calendário
 
 
+# app.py (somente a rota /eventos foi modificada aqui, mas incluo ela inteira para contexto)
+
+# ... (código anterior do app.py) ...
+
+# 🗓️ Eventos para o calendário
 @app.route('/eventos')
 @login_required
 def eventos():
@@ -831,12 +836,14 @@ def eventos():
     query = '''
         SELECT a.id, u.nome as usuario_nome, u.email as usuario_email, a.data, a.hora, a.observacoes, 
                 t.nome AS tipo_nome, un.nome as unidade_nome, e.nome as empreendimento_nome,
-                a.status, a.contato_agendamento, a.agente_atribuido_id -- Incluir novas colunas
+                a.status, a.contato_agendamento, 
+                a.agente_atribuido_id, u_agente.nome as agente_atribuido_nome -- NOVO: Incluir nome do agente atribuído
         FROM agendamentos a
         JOIN usuarios u ON a.usuario_id = u.id
         JOIN tipos_agendamento t ON a.tipo_id = t.id
         JOIN unidades un ON a.unidade_id = un.id
         JOIN empreendimentos e ON un.empreendimento_id = e.id
+        LEFT JOIN usuarios u_agente ON a.agente_atribuido_id = u_agente.id -- NOVO: LEFT JOIN para obter nome do agente
         WHERE t.ativo = 1 AND un.ativo = 1 AND e.ativo = 1
     '''
     params = []
@@ -845,7 +852,7 @@ def eventos():
         query += " AND a.usuario_id = ?"
         params.append(current_user.id)
     # NOVO: Agentes também veem apenas seus agendamentos atribuídos (se não forem admin)
-    elif current_user.is_agente and not current_user.is_admin_user:  # Agente não-admin
+    elif current_user.is_agente and not current_user.is_admin_user:
         query += " AND a.agente_atribuido_id = ?"
         params.append(current_user.id)
 
@@ -858,7 +865,8 @@ def eventos():
     for row in eventos_db:
         try:
             start_datetime_str = f"{row['data']}T{row['hora']}"
-            datetime.strptime(start_datetime_str, '%Y-%m-%dT%H:%M')
+            datetime.strptime(start_datetime_str,
+                              '%Y-%m-%dT%H:%M')  # Valida formato
             evento = {
                 "id": row["id"],
                 "title": f"{row['tipo_nome']} - {row['unidade_nome']} ({row['empreendimento_nome']})",
@@ -869,12 +877,13 @@ def eventos():
                     "tipo": row['tipo_nome'],
                     "unidade": row['unidade_nome'],
                     "empreendimento": row['empreendimento_nome'],
-                    "observacoes": row['observacoes'] or "",
-                    # Passar o contato
-                    "contato": row['contato_agendamento'] or "",
-                    "status": row['status'],  # Passar o status
-                    # Passar o ID do agente atribuído
-                    "agente_atribuido_id": row['agente_atribuido_id']
+                    # Padronizar para N/A se vazio
+                    "observacoes": row['observacoes'] or "N/A",
+                    # Padronizar
+                    "contato": row['contato_agendamento'] or "Não informado",
+                    "status": row['status'],
+                    # NOVO: Nome do agente
+                    "agente_atribuido_nome": row['agente_atribuido_nome'] or "Não atribuído"
                 }
             }
             eventos_lista.append(evento)
@@ -886,6 +895,8 @@ def eventos():
                 f"Erro ao processar evento ID {row['id']}: {e}", exc_info=True)
 
     return jsonify(eventos_lista)
+
+# ... (restante do código do app.py) ...
 
 
 @app.route('/painel_agente')
