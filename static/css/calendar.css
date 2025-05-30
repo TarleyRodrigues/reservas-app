@@ -1,3 +1,55 @@
 /* static/css/calendar.css */
 
-/* Estilos específicos para o calendário (adicione aqui no futuro) */
+
+/* Wrapper para o efeito de glassmorfismo */
+.calendar-page-wrapper {
+    max-width: 950px; /* Largura um pouco maior que o calendário */
+    margin: 40px auto; /* Centralizar na página com margem superior */
+    padding: 30px; /* Preenchimento interno */
+    background-color: rgba(255, 255, 255, 0.379); /* Branco semi-transparente */
+    backdrop-filter: blur(10px); /* O EFEITO DE BLUR */
+    -webkit-backdrop-filter: blur(10px); /* Para compatibilidade com Safari */
+    border-radius: 15px; /* Bordas arredondadas */
+    border: 1px solid rgba(255, 255, 255, 0.3); /* Borda sutil */
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); /* Sombra sutil */
+    color: #333; /* Cor do texto padrão dentro do wrapper */
+    display: flex; /* Para organizar o conteúdo interno */
+    flex-direction: column; /* Conteúdo empilhado verticalmente */
+    align-items: center; /* Centralizar itens horizontalmente */
+    min-height: 500px; /* Altura mínima para o wrapper */
+    box-sizing: border-box; /* Incluir padding no tamanho */
+}
+
+/* Estilos para o título dentro do wrapper */
+.calendar-page-wrapper h1 {
+    color: #343a40; /* Cor mais escura para o título */
+    margin-top: 0; /* Resetar margem superior */
+    margin-bottom: 25px;
+    border-bottom: 1px solid rgba(0,0,0,0.1); /* Separador sutil */
+    padding-bottom: 15px;
+    width: 100%; /* Ocupar toda a largura do wrapper */
+    text-align: center;
+}
+
+/* Estilos para o calendário dentro do wrapper */
+#calendar {
+    max-width: 900px; /* Manter a largura máxima do calendário em si */
+    margin: 20px 0; /* Margem ajustada dentro do wrapper */
+    padding: 0; /* Remover preenchimento interno, o wrapper já tem */
+    background-color: transparent; /* Tornar o fundo transparente, o wrapper já tem o glass */
+    box-shadow: none; /* Remover sombra, o wrapper já tem */
+    width: 100%; /* Ocupar toda a largura do wrapper */
+    color: #333; /* Garantir que o texto do calendário seja legível */
+}
+
+/* --- FullCalendar Event Status Colors (mantido do código anterior) --- */
+.fc-event.event-status-Pendente { background-color: #ffc107; border-color: #ffc107; color: #333; }
+.fc-event.event-status-Confirmado { background-color: #28a745; border-color: #28a745; }
+.fc-event.event-status-Cancelado { background-color: #dc3545; border-color: #dc3545; text-decoration: line-through; opacity: 0.7; }
+.fc-event.event-status-Concluído { background-color: #6c757d; border-color: #6c757d; opacity: 0.8; }
+.fc-event { color: white; font-weight: bold; padding: 2px 4px; }
+.fc-event.event-status-Pendente { color: #333; }
+.fc-event-details { padding: 5px; }
+.fc-event-title { font-weight: bold; margin-bottom: 3px; }
+.fc-event-meta { font-size: 0.85em; color: #555; margin-bottom: 3px; }
+.fc-event-notes { font-size: 0.8em; color: #777; white-space: pre-wrap; }
