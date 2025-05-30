@@ -1,14 +1,5 @@
     /* Estilos de fundo para a página de detalhes, similar ao calendário e agendar */
-    body {
-        background: url("{{ url_for('static', filename='images/background.png') }}") no-repeat center center fixed;
-        background-size: cover;
-        color: #333;
-        /* Cor do texto padrão */
-        margin: 0;
-        padding: 0;
-        min-height: 100vh;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    
 
     /* Wrapper para o efeito de glassmorfismo, similar ao agendar.html */
     .details-wrapper {
