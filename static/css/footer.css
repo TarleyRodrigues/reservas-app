@@ -20,7 +20,7 @@ body {
     max-width: 950px; /* Largura um pouco maior que o calendário */
     margin: 40px auto; /* Centralizar na página com margem superior */
     padding: 30px; /* Preenchimento interno */
-    background-color: rgba(255, 255, 255, 0.15); /* Branco semi-transparente */
+    background-color: rgba(255, 255, 255, 0.379); /* Branco semi-transparente */
     backdrop-filter: blur(10px); /* O EFEITO DE BLUR */
     -webkit-backdrop-filter: blur(10px); /* Para compatibilidade com Safari */
     border-radius: 15px; /* Bordas arredondadas */

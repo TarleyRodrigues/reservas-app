@@ -8,7 +8,7 @@
         margin: 40px auto;
         /* Centralizar na página */
         padding: 30px;
-        background-color: rgba(255, 255, 255, 0.15);
+        background-color: rgba(255, 255, 255, 0.422);
         /* Branco semi-transparente */
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
