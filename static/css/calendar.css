@@ -42,6 +42,32 @@
     color: #333; /* Garantir que o texto do calendário seja legível */
 }
 
+
+
+.custom-calendar-tooltip {
+    position: absolute; /* Essencial para posicionar livremente */
+    background-color: #333; /* Fundo escuro */
+    color: white;         /* Texto branco */
+    padding: 10px 15px;
+    border-radius: 6px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Sombra suave */
+    z-index: 10000;       /* Garante que o tooltip apareça sobre tudo */
+    white-space: nowrap;  /* Impede que o texto quebre linhas automaticamente */
+    pointer-events: none; /* MUITO IMPORTANTE: Garante que o tooltip não bloqueie eventos do mouse no calendário */
+    opacity: 0;           /* Começa invisível (para fade-in/out) */
+    visibility: hidden;   /* Esconde completamente quando não visível */
+    transition: opacity 0.3s ease, visibility 0.3s ease; /* Transição suave */
+    text-align: left;
+    display: none;        /* Começa sem ocupar espaço no layout */
+    font-family: 'Arial', sans-serif; /* Ou sua fonte principal */
+    font-size: 0.875rem; /* Tamanho da fonte */
+}
+
+.custom-calendar-tooltip strong {
+    color: #ffd700; /* Cor de destaque para os títulos (amarelo dourado) */
+    font-weight: bold;
+}
+
 /* --- FullCalendar Event Status Colors (mantido do código anterior) --- */
 .fc-event.event-status-Pendente { background-color: #ffc107; border-color: #ffc107; color: #333; }
 .fc-event.event-status-Confirmado { background-color: #28a745; border-color: #28a745; }

@@ -902,12 +902,10 @@ def detalhes_agendamento(agendamento_id):
                            is_admin=current_user.is_admin_user,
                            is_agente=current_user.is_agente)
 
-# app.py (somente a rota /eventos foi modificada aqui, mas incluo ela inteira para contexto)
-
-# ... (código anterior do app.py) ...
 
 # 🗓️ Eventos para o calendário
 
+# app.py (rota /eventos)
 
 @app.route('/eventos')
 @login_required
@@ -963,7 +961,14 @@ def eventos():
                     "contato": row['contato_agendamento'] or "Não informado",
                     "status": row['status'],
                     # NOVO: Nome do agente
-                    "agente_atribuido_nome": row['agente_atribuido_nome'] or "Não atribuído"
+                    "agente_atribuido_nome": row['agente_atribuido_nome'] or "Não atribuído",
+
+                    # --- NOVOS CAMPOS PARA O TOOLTIP ---
+                    "cliente": row['usuario_nome'],  # Nome do cliente
+                    "empreendimento": row['empreendimento_nome'],
+                    "unidade": row['unidade_nome'],
+                    "contato": row['contato_agendamento'] or "Não informado",
+                    "hora_agendamento": row['hora'],  # A hora do agendamento
                 }
             }
             eventos_lista.append(evento)
@@ -1848,7 +1853,7 @@ def remover_admin(user_id):
             else:
                 conn.execute(
                     # BUG: a vírgula extra no final
-                    "UPDATE usuarios SET is_admin = 0, tipo_usuario = 'cliente' WHERE id = ?,", (user_id,))
+                    "UPDATE usuarios SET is_admin = 0, tipo_usuario = 'cliente' WHERE id = ?", (user_id,))
                 conn.commit()
                 flash(
                     f"Status de administrador removido do usuário '{target_user['nome'] if target_user['nome'] else target_user['email']}' com sucesso!", 'success')
@@ -1976,6 +1981,7 @@ def remover_horario_funcionamento(horario_id):
     finally:
         conn.close()
     return redirect(url_for('configuracoes', tab='horarios'))
+
 
 # 🧱 Banco de dados
 

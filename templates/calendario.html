@@ -7,20 +7,19 @@
     const USER_PERMISSIONS = {
         isAdmin: {{ current_user.is_admin_user | tojson }},
     isAgente: { { current_user.is_agente | tojson } }
-        };
+    };
 </script>
 
-<!-- Importações de CSS do FullCalendar (exatamente como no seu código antigo que funcionava) -->
+<!-- Importações de CSS do FullCalendar (permanecem) -->
 <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/index.global.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.11/index.global.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.11/index.global.min.css" rel="stylesheet">
-{# Removida importação de timegrid CSS, pois seu código antigo não a usava. #}
 
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <div class="calendar-page-wrapper"> {# NOVO: Wrapper para o efeito glassmorphism #}
+    <div class="calendar-page-wrapper">
         <h1>Calendário de Agendamentos</h1>
 
         <div style="text-align: center; margin-bottom: 20px;">
@@ -30,11 +29,10 @@
         </div>
 
         <div id='calendar'></div>
-    </div> {# FIM do calendar-page-wrapper #}
+    </div>
 </div>
 
-<!-- O modal customizado de detalhes será removido, pois agora vamos para uma nova página.
-     Deixei o HTML por enquanto, mas ele não será mais ativado pelo eventClick. -->
+<!-- O modal customizado de detalhes (manter aqui por enquanto) -->
 <div id="eventDetailModal" class="modal hidden">
     <div class="modal-content">
         <span class="close-button">×</span>
@@ -53,16 +51,20 @@
     </div>
 </div>
 
-{# MOVIDO: TODOS OS SCRIPTS JS DO FULLCALENDAR E SEU CÓDIGO PARA O FINAL DO BODY #}
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.11/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.11/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales-all.global.min.js"></script>
+<!-- Scripts JavaScript - Todos com 'defer' -->
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/index.global.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.11/index.global.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.11/index.global.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales-all.global.min.js" defer></script>
 
-<script>
+<script defer>
     document.addEventListener('DOMContentLoaded', async function () {
         const calendarEl = document.getElementById('calendar');
-        // REMOVIDAS referências a elementos do modal que não serão mais usados no eventClick
+
+        // --- NOVO: Criar o elemento do tooltip personalizado UMA VEZ ---
+        let customTooltip = document.createElement('div');
+        customTooltip.classList.add('custom-calendar-tooltip');
+        document.body.appendChild(customTooltip); // Adiciona ao body para garantir que não será cortado
 
         const calendar = new FullCalendar.Calendar(calendarEl, {
             locale: 'pt-br',
@@ -74,10 +76,11 @@
             },
 
             events: async function (fetchInfo, successCallback, failureCallback) {
+                // ... (seu código events: async function - permanece o mesmo) ...
                 try {
                     const response = await fetch('/eventos');
 
-                    if (!response.ok) { // Alterado para apenas verificar !response.ok
+                    if (!response.ok) {
                         const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido ou resposta não-JSON.' }));
                         console.error('Erro ao buscar eventos:', response.status, response.statusText, errorData);
                         failureCallback({ message: errorData.message || `Erro ao carregar eventos: ${response.status} ${response.statusText}` });
@@ -139,7 +142,64 @@
                 return { html: arg.event.title };
             },
 
-            // NOVO: Redireciona para a página de detalhes do agendamento
+            // --- NOVO: Lógica para exibir o tooltip personalizado ao passar o mouse ---
+            eventMouseEnter: function (info) {
+                const props = info.event.extendedProps;
+
+                // Validação defensiva dos dados (importante manter!)
+                if (!props || !props.cliente || !props.empreendimento || !props.unidade || !props.contato || !props.hora_agendamento) {
+                    console.warn('Dados extendedProps incompletos para o tooltip. Verifique a rota /eventos no app.py.', props);
+                    return;
+                }
+
+                // Conteúdo do tooltip
+                customTooltip.innerHTML = `
+                    <strong>Cliente:</strong> ${props.cliente}<br/>
+                    <strong>Empreendimento:</strong> ${props.empreendimento}<br/>
+                    <strong>Unidade:</strong> ${props.unidade}<br/>
+                    <strong>Contato:</strong> ${props.contato}<br/>
+                    <strong>Hora do agendamento:</strong> ${props.hora_agendamento}
+                `;
+
+                // Posição do tooltip (acima e centralizado no evento)
+                const eventRect = info.el.getBoundingClientRect(); // Posição do evento na tela
+                const scrollX = window.scrollX || window.pageXOffset;
+                const scrollY = window.scrollY || window.pageYOffset;
+
+                // Para calcular a largura/altura do tooltip, ele precisa estar visível (temporariamente)
+                customTooltip.style.visibility = 'hidden'; // Esconde primeiro para não "piscar"
+                customTooltip.style.display = 'block'; // Garante que ele tenha dimensões
+
+                const tooltipWidth = customTooltip.offsetWidth;
+                const tooltipHeight = customTooltip.offsetHeight;
+
+                // Calcula a posição para centralizar acima do evento
+                const leftPos = eventRect.left + (eventRect.width / 2) - (tooltipWidth / 2) + scrollX;
+                const topPos = eventRect.top - tooltipHeight - 5 + scrollY; // 5px de espaçamento
+
+                customTooltip.style.left = `${leftPos}px`;
+                customTooltip.style.top = `${topPos}px`;
+
+                // Exibir o tooltip com um pequeno delay e fade-in
+                setTimeout(() => {
+                    customTooltip.style.opacity = '1';
+                    customTooltip.style.visibility = 'visible';
+                }, 100); // Pequeno delay antes de mostrar
+
+            },
+
+            // --- NOVO: Esconder o tooltip personalizado ao sair com o mouse ---
+            eventMouseLeave: function (info) {
+                // Esconder o tooltip com fade-out
+                customTooltip.style.opacity = '0';
+                // Atraso antes de realmente esconder (display: none) para permitir a transição
+                setTimeout(() => {
+                    customTooltip.style.visibility = 'hidden';
+                    customTooltip.style.display = 'none';
+                }, 300); // Duração da transição CSS
+            },
+
+            // Redireciona para a página de detalhes do agendamento
             eventClick: function (info) {
                 const eventId = info.event.id;
                 window.location.href = `/agendamento/${eventId}`; // Redireciona para a nova rota
@@ -147,8 +207,6 @@
         });
 
         calendar.render();
-
-        // REMOVIDOS listeners de fechar modal, pois o modal não será mais usado no clique de evento
     });
 </script>
 {% endblock %}
