@@ -28,9 +28,14 @@
       <a href="{{ url_for('agendar') }}" class="nav-link">Agendar</a>
       {% endif %}
 
-      {# NOVO LINK: Painel do Agente (visível para Agentes e Admins) #}
+      {# Painel do Agente (visível para Agentes e Admins) #}
       {% if current_user.is_agente or current_user.is_admin_user %}
       <a href="{{ url_for('painel_agente') }}" class="nav-link agent-link">Painel do Agente</a>
+      {% endif %}
+
+      {# NOVO LINK: Painel do Agente (visível para Agentes e Admins) #}
+      {% if current_user.is_agente or current_user.is_admin_user %}
+      <a href="{{ url_for('gerenciar_clientes') }}" class="nav-link agent-link">Clientes</a>
       {% endif %}
 
       {# Apenas Administradores têm acesso às Configurações #}
