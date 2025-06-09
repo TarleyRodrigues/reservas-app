@@ -1983,8 +1983,64 @@ def remover_horario_funcionamento(horario_id):
     return redirect(url_for('configuracoes', tab='horarios'))
 
 
-# 🧱 Banco de dados
+@app.route('/clientes')
+@agente_required  # Acesso apenas para agentes e administradores
+def gerenciar_clientes():
+    """Renderiza a página de gerenciamento de clientes."""
+    # A lista inicial de clientes será carregada via AJAX pelo JavaScript
+    # ao carregar a página, então não precisamos buscar aqui.
+    return render_template('clientes.html')
 
+
+@app.route('/api/clientes_busca', methods=['GET'])
+@agente_required  # Acesso apenas para agentes e administradores
+def api_clientes_busca():
+    """
+    API para buscar clientes por nome, email ou telefone.
+    Usada para a funcionalidade de pesquisa em tempo real.
+    """
+    search_term = request.args.get('q', '').strip()
+    conn = get_db_connection()
+    clientes = []
+    try:
+        query_base = """
+            SELECT id, nome, email, telefone
+            FROM usuarios
+            WHERE tipo_usuario = 'cliente'
+        """
+        params = []
+
+        if search_term:
+            # Proteção contra SQL Injection: Usar placeholders para a query
+            # e adicionar '%' diretamente no valor do parâmetro.
+            search_pattern = f"%{search_term}%"
+            query_base += """
+                AND (
+                    LOWER(nome) LIKE LOWER(?) OR
+                    LOWER(email) LIKE LOWER(?) OR
+                    LOWER(telefone) LIKE LOWER(?)
+                )
+            """
+            params.extend([search_pattern, search_pattern, search_pattern])
+
+        query_base += " ORDER BY nome ASC"
+
+        clientes_db = conn.execute(query_base, params).fetchall()
+
+        # Converter Rows para dicionários para jsonify
+        clientes = [dict(c) for c in clientes_db]
+
+    except sqlite3.Error as e:
+        app.logger.error(
+            f"Erro DB ao buscar clientes na API: {e}", exc_info=True)
+        return jsonify({"error": "Erro ao buscar clientes no banco de dados."}), 500
+    finally:
+        conn.close()
+
+    return jsonify({"clientes": clientes}), 200
+
+
+# 🧱 Banco de dados
 
 def init_db():
     conn = get_db_connection()

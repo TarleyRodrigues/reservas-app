@@ -1,0 +1,93 @@
+/* static/css/clientes.css */
+
+.clientes-page-wrapper {
+    background: rgba(255, 255, 255, 0.1); /* Efeito glassmorphism leve */
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    padding: 20px 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #fff; /* Cor do texto padrão para o glassmorphism */
+    margin-bottom: 30px;
+}
+
+.page-title {
+    color: #007bff; /* Cor do título principal */
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 2.2rem;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.search-section {
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: center; /* Centraliza o campo de busca */
+}
+
+.search-section .form-control {
+    width: 100%; /* Ocupa a largura total na div flex */
+    /*max-width: 500px; /* Limita a largura máxima do campo de busca */
+    background-color: rgba(255, 255, 255, 0.8); /* Fundo branco semitransparente */
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    padding: 10px 15px;
+    color: #495057; /* Cor do texto digitado */
+}
+
+.search-section .form-control::placeholder {
+    color: #6c757d; /* Cor do placeholder */
+    opacity: 0.8;
+}
+
+.clients-table-container {
+    background-color: rgba(255, 255, 255, 0.9); /* Fundo mais opaco para a tabela */
+    border-radius: 8px;
+    overflow: hidden; /* Garante bordas arredondadas para a tabela */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.table {
+    width: 100%;
+    margin-bottom: 0; /* Remove margem inferior padrão */
+    border-collapse: collapse; /* Para remover espaçamento entre células */
+}
+
+.table thead th {
+    background-color: #007bff; /* Cor do cabeçalho da tabela */
+    color: white;
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: none; /* Remove a borda inferior padrão do Bootstrap */
+    font-weight: 600;
+}
+
+.table tbody tr {
+    border-bottom: 1px solid #dee2e6; /* Linha de separação entre clientes */
+    transition: background-color 0.2s ease; /* Transição para o hover */
+}
+
+.table tbody tr:last-child {
+    border-bottom: none; /* Remove borda da última linha */
+}
+
+.table tbody tr:hover {
+    background-color: #e2f2ff; /* Cor de fundo ao passar o mouse */
+    cursor: pointer; /* Indica que a linha é interativa (futuras expansões) */
+}
+
+.table tbody td {
+    padding: 12px 15px;
+    vertical-align: middle;
+    color: #495057; /* Cor do texto da célula */
+}
+
+.table tbody tr:nth-child(even) {
+    background-color: #f8f9fa; /* Fundo mais claro para linhas pares (zebra striping) */
+}
+
+.text-center.text-muted, .text-center.text-info {
+    padding: 20px;
+    color: #6c757d !important; /* Força a cor para visibilidade no glassmorphism */
+}

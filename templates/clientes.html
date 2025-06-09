@@ -1,0 +1,102 @@
+{# templates/clientes.html #}
+{% extends 'base.html' %}
+
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/clientes.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="clientes-page-wrapper">
+        <h1 class="page-title">Gerenciamento de Clientes</h1>
+
+        <div class="search-section">
+            <label for="searchClientInput" class="sr-only">Pesquisar Clientes</label>
+            <input type="text" id="searchClientInput" class="form-control"
+                placeholder="Pesquisar por nome, e-mail ou contato...">
+        </div>
+
+        <div class="clients-table-container">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>E-mail</th>
+                        <th>Contato</th>
+                    </tr>
+                </thead>
+                <tbody id="clientsTableBody">
+                    {# Clientes serão carregados aqui via JavaScript #}
+                </tbody>
+            </table>
+            <p id="noClientsFound" class="text-center text-muted" style="display: none;">Nenhum cliente encontrado.</p>
+            <p id="loadingClients" class="text-center text-info" style="display: none;">Carregando clientes...</p>
+        </div>
+    </div>
+</div>
+
+<script defer>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('searchClientInput');
+        const clientsTableBody = document.getElementById('clientsTableBody');
+        const noClientsFoundMessage = document.getElementById('noClientsFound');
+        const loadingClientsMessage = document.getElementById('loadingClients');
+        let debounceTimer; // Variável para controlar o debounce
+
+        // Função para carregar e exibir clientes
+        async function fetchAndDisplayClients(query = '') {
+            loadingClientsMessage.style.display = 'block'; // Mostra mensagem de carregamento
+            clientsTableBody.innerHTML = ''; // Limpa a tabela antes de carregar novos dados
+            noClientsFoundMessage.style.display = 'none'; // Esconde a mensagem de "não encontrado"
+
+            try {
+                const response = await fetch(`/api/clientes_busca?q=${encodeURIComponent(query)}`);
+
+                if (!response.ok) {
+                    // Se a resposta não for OK, pode ser um erro de permissão ou interno
+                    const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido.' }));
+                    console.error('Erro ao buscar clientes:', response.status, response.statusText, errorData);
+                    alert(`Erro ao carregar clientes: ${errorData.message || response.statusText}`);
+                    // Redireciona se for erro de autenticação/autorização
+                    if (response.status === 401 || response.status === 403) {
+                        window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+                    }
+                    return;
+                }
+
+                const data = await response.json();
+                const clients = data.clientes;
+
+                loadingClientsMessage.style.display = 'none'; // Esconde mensagem de carregamento
+
+                if (clients.length === 0) {
+                    noClientsFoundMessage.style.display = 'block'; // Mostra mensagem de "nenhum encontrado"
+                } else {
+                    clients.forEach(client => {
+                        const row = clientsTableBody.insertRow();
+                        row.insertCell().textContent = client.nome || 'N/A';
+                        row.insertCell().textContent = client.email || 'N/A';
+                        row.insertCell().textContent = client.telefone || 'N/A';
+                    });
+                }
+            } catch (error) {
+                console.error('Erro de rede ou ao processar a resposta:', error);
+                loadingClientsMessage.style.display = 'none';
+                alert('Ocorreu um erro ao carregar os clientes. Tente novamente.');
+            }
+        }
+
+        // Evento de digitação no campo de busca (com debounce)
+        searchInput.addEventListener('keyup', function () {
+            clearTimeout(debounceTimer); // Limpa o timer anterior
+            debounceTimer = setTimeout(() => {
+                fetchAndDisplayClients(searchInput.value);
+            }, 300); // Espera 300ms após a última digitação
+        });
+
+        // Carrega todos os clientes quando a página é carregada
+        fetchAndDisplayClients();
+    });
+</script>
+{% endblock %}
