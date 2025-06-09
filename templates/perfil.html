@@ -43,17 +43,22 @@
         <h3 class="mt-4">Alterar Senha</h3>
         <p class="text-muted small">Preencha apenas se desejar alterar sua senha.</p>
         <label for="senha_atual">Senha Atual:</label>
-        <input type="password" id="senha_atual" name="senha_atual" placeholder="Sua senha atual">
+        {# autocomplete="current-password" ou "off" para tentar controlar o autofill #}
+        <input type="password" id="senha_atual" name="senha_atual" placeholder="Sua senha atual"
+            autocomplete="current-password">
 
         <label for="nova_senha">Nova Senha:</label>
-        <input type="password" id="nova_senha" name="nova_senha" placeholder="Mínimo 6 caracteres" minlength="6">
+        {# autocomplete="new-password" instrui o navegador que é um campo para nova senha #}
+        <input type="password" id="nova_senha" name="nova_senha" placeholder="Mínimo 6 caracteres" minlength="6"
+            autocomplete="new-password">
 
         <label for="confirmar_nova_senha">Confirmar Nova Senha:</label>
-        <input type="password" id="confirmar_nova_senha" name="confirmar_nova_senha" placeholder="Repita a nova senha">
+        {# autocomplete="new-password" para a confirmação também #}
+        <input type="password" id="confirmar_nova_senha" name="confirmar_nova_senha" placeholder="Repita a nova senha"
+            autocomplete="new-password">
         <div id="senhaError" class="error-message" style="color: #c62828; display: none; margin-top: 5px;"></div>
 
-        <button type="submit" class="btn-agendar mt-4">Atualizar Perfil</button> {# Usando a mesma classe de botão do
-        agendar.html #}
+        <button type="submit" class="btn-agendar mt-4">Atualizar Perfil</button>
     </form>
 </div>
 
@@ -66,24 +71,18 @@
         const senhaErrorElement = document.getElementById('senhaError');
 
         function validatePasswordFields() {
-            const novaSenha = novaSenhaInput.value;
-            const confirmarNovaSenha = confirmarNovaSenhaInput.value;
-            const senhaAtual = senhaAtualInput.value;
+            // IMPORTANT: Use .trim() para garantir que espaços em branco não ativem a validação
+            const novaSenha = novaSenhaInput.value.trim();
+            const confirmarNovaSenha = confirmarNovaSenhaInput.value.trim();
+            const senhaAtual = senhaAtualInput.value.trim();
 
             senhaErrorElement.style.display = 'none';
             senhaErrorElement.textContent = '';
 
-            if (novaSenha || confirmarNovaSenha || senhaAtual) {
-                if (!senhaAtual) {
-                    senhaErrorElement.textContent = 'Para alterar a senha, sua senha atual é obrigatória.';
-                    senhaErrorElement.style.display = 'block';
-                    return false;
-                }
-                if (!novaSenha) {
-                    senhaErrorElement.textContent = 'Nova senha é obrigatória.';
-                    senhaErrorElement.style.display = 'block';
-                    return false;
-                }
+            // A validação de senha SÓ DEVE SER ATIVADA se o campo 'Nova Senha' foi preenchido.
+            // Se 'novaSenha' estiver vazio, o usuário NÃO deseja alterar a senha.
+            if (novaSenha) {
+                // Se a nova senha foi fornecida, então todas as validações de senha são obrigatórias
                 if (novaSenha.length < 6) {
                     senhaErrorElement.textContent = 'A nova senha deve ter pelo menos 6 caracteres.';
                     senhaErrorElement.style.display = 'block';
@@ -94,17 +93,40 @@
                     senhaErrorElement.style.display = 'block';
                     return false;
                 }
+                if (!senhaAtual) {
+                    senhaErrorElement.textContent = 'Para alterar a senha, sua senha atual é obrigatória.';
+                    senhaErrorElement.style.display = 'block';
+                    return false;
+                }
+            } else {
+                // Se 'novaSenha' está vazia, o usuário não pretende mudar a senha.
+                // Mas, se 'senhaAtual' ou 'confirmarNovaSenha' foram preenchidos (ex: por autofill),
+                // devemos limpar e ignorar, para evitar validações erradas no backend.
+                if (senhaAtual || confirmarNovaSenha) {
+                    senhaAtualInput.value = '';
+                    confirmarNovaSenhaInput.value = '';
+                    // Não é necessário limpar novaSenhaInput, pois sabemos que já está vazio.
+                }
             }
+
+            // Se chegamos aqui, ou a validação de senha passou, ou ela não foi ativada.
             return true;
         }
 
+        // Adiciona listeners para validação em tempo real (input) e ao perder o foco/autofill (change)
         novaSenhaInput.addEventListener('input', validatePasswordFields);
         confirmarNovaSenhaInput.addEventListener('input', validatePasswordFields);
         senhaAtualInput.addEventListener('input', validatePasswordFields);
 
+        novaSenhaInput.addEventListener('change', validatePasswordFields);
+        confirmarNovaSenhaInput.addEventListener('change', validatePasswordFields);
+        senhaAtualInput.addEventListener('change', validatePasswordFields);
+
+
         perfilForm.addEventListener('submit', function (event) {
+            // A validação final antes de enviar o formulário
             if (!validatePasswordFields()) {
-                event.preventDefault();
+                event.preventDefault(); // Impede o envio do formulário se a validação client-side falhar
             }
         });
     });
