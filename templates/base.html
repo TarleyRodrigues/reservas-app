@@ -38,6 +38,9 @@
       <a href="{{ url_for('gerenciar_clientes') }}" class="nav-link agent-link">Clientes</a>
       {% endif %}
 
+      {# NOVO LINK: Perfil do Usuário (visível para qualquer usuário logado) #}
+      <a href="{{ url_for('perfil') }}" class="nav-link">Meu Perfil</a>
+
       {# Apenas Administradores têm acesso às Configurações #}
       {% if current_user.is_admin_user %}
       <a href="{{ url_for('configuracoes') }}" class="nav-link admin-link">Configurações</a>

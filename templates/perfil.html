@@ -1,0 +1,112 @@
+{# templates/perfil.html #}
+{% extends 'base.html' %}
+
+{% block title %}Meu Perfil{% endblock %} {# Define o título da página #}
+
+{% block content %}
+<div class="form-wrapper"> {# Usa a mesma classe de container do agendar.html #}
+    {# <button class="theme-toggle" aria-label="Alternar modo claro e escuro" id="toggleTheme">🌙</button> #}
+    {# O toggle de tema é específico do agendar.html, pode ser adicionado aqui se desejar #}
+
+    <h2>Meu Perfil</h2> {# Título principal da página #}
+
+    {# Botão de navegação, semelhante ao "Ver Calendário" do agendar.html #}
+    <a href="{{ url_for('index') }}" class="header-btn" style="display: inline-block; margin-bottom: 20px;">
+        🏠 Voltar ao Início
+    </a>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <ul class="flash-messages">
+        {% for category, message in messages %}
+        <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('perfil') }}" method="POST" id="perfilForm">
+        <h3>Dados Cadastrais</h3>
+        {# Mantendo a estrutura label + input direto, como no agendar.html #}
+        <label for="nome">Nome Completo:</label>
+        <input type="text" id="nome" name="nome" placeholder="Seu nome completo" value="{{ current_user.nome }}"
+            required>
+
+        <label for="email">E-mail:</label>
+        <input type="email" id="email" name="email" placeholder="seu@email.com" value="{{ current_user.email }}"
+            required>
+
+        <label for="telefone">Contato (Telefone):</label>
+        <input type="text" id="telefone" name="telefone" placeholder="Ex: (XX) XXXXX-XXXX"
+            value="{{ current_user.telefone if current_user.telefone is not none else '' }}">
+
+        <h3 class="mt-4">Alterar Senha</h3>
+        <p class="text-muted small">Preencha apenas se desejar alterar sua senha.</p>
+        <label for="senha_atual">Senha Atual:</label>
+        <input type="password" id="senha_atual" name="senha_atual" placeholder="Sua senha atual">
+
+        <label for="nova_senha">Nova Senha:</label>
+        <input type="password" id="nova_senha" name="nova_senha" placeholder="Mínimo 6 caracteres" minlength="6">
+
+        <label for="confirmar_nova_senha">Confirmar Nova Senha:</label>
+        <input type="password" id="confirmar_nova_senha" name="confirmar_nova_senha" placeholder="Repita a nova senha">
+        <div id="senhaError" class="error-message" style="color: #c62828; display: none; margin-top: 5px;"></div>
+
+        <button type="submit" class="btn-agendar mt-4">Atualizar Perfil</button> {# Usando a mesma classe de botão do
+        agendar.html #}
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const perfilForm = document.getElementById('perfilForm');
+        const senhaAtualInput = document.getElementById('senha_atual');
+        const novaSenhaInput = document.getElementById('nova_senha');
+        const confirmarNovaSenhaInput = document.getElementById('confirmar_nova_senha');
+        const senhaErrorElement = document.getElementById('senhaError');
+
+        function validatePasswordFields() {
+            const novaSenha = novaSenhaInput.value;
+            const confirmarNovaSenha = confirmarNovaSenhaInput.value;
+            const senhaAtual = senhaAtualInput.value;
+
+            senhaErrorElement.style.display = 'none';
+            senhaErrorElement.textContent = '';
+
+            if (novaSenha || confirmarNovaSenha || senhaAtual) {
+                if (!senhaAtual) {
+                    senhaErrorElement.textContent = 'Para alterar a senha, sua senha atual é obrigatória.';
+                    senhaErrorElement.style.display = 'block';
+                    return false;
+                }
+                if (!novaSenha) {
+                    senhaErrorElement.textContent = 'Nova senha é obrigatória.';
+                    senhaErrorElement.style.display = 'block';
+                    return false;
+                }
+                if (novaSenha.length < 6) {
+                    senhaErrorElement.textContent = 'A nova senha deve ter pelo menos 6 caracteres.';
+                    senhaErrorElement.style.display = 'block';
+                    return false;
+                }
+                if (novaSenha !== confirmarNovaSenha) {
+                    senhaErrorElement.textContent = 'A nova senha e a confirmação não coincidem.';
+                    senhaErrorElement.style.display = 'block';
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        novaSenhaInput.addEventListener('input', validatePasswordFields);
+        confirmarNovaSenhaInput.addEventListener('input', validatePasswordFields);
+        senhaAtualInput.addEventListener('input', validatePasswordFields);
+
+        perfilForm.addEventListener('submit', function (event) {
+            if (!validatePasswordFields()) {
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

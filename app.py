@@ -271,6 +271,146 @@ def cadastro():
     # para que o campo não seja preenchido com lixo se o template tentar acessá-lo.
     return render_template('cadastro.html', nome='', email='', telefone='')
 
+
+@app.route('/perfil', methods=['GET', 'POST'])
+@login_required  # Apenas usuários logados podem acessar seu perfil
+def perfil():
+    conn = get_db_connection()
+    try:
+        if request.method == 'POST':
+            novo_nome = request.form.get('nome', '').strip()
+            novo_email = request.form.get('email', '').strip()
+            novo_telefone = request.form.get('telefone', '').strip()
+
+            senha_atual = request.form.get('senha_atual', '')
+            nova_senha = request.form.get('nova_senha', '')
+            confirmar_nova_senha = request.form.get('confirmar_nova_senha', '')
+
+            errors = []
+            success_messages = []
+
+            # --- Validação e Atualização de Dados Cadastrais (Nome, Email, Telefone) ---
+            if not novo_nome:
+                errors.append('O nome não pode ser vazio.')
+            if not novo_email:
+                errors.append('O e-mail não pode ser vazio.')
+
+            # Checa se o email já existe, mas permite que seja o email do próprio usuário
+            if novo_email != current_user.email:
+                existing_user = buscar_usuario_por_email(novo_email)
+                if existing_user:
+                    errors.append(
+                        'Este e-mail já está em uso por outro usuário.')
+
+            if not errors:  # Se não há erros nos dados cadastrais
+                # Verifica se houve alguma alteração nos dados cadastrais
+                if novo_nome != current_user.nome or \
+                   novo_email != current_user.email or \
+                   novo_telefone != current_user.telefone:
+
+                    try:
+                        conn.execute(
+                            'UPDATE usuarios SET nome = ?, email = ?, telefone = ? WHERE id = ?',
+                            (novo_nome, novo_email, novo_telefone, current_user.id)
+                        )
+                        conn.commit()
+                        success_messages.append(
+                            'Dados cadastrais atualizados com sucesso!')
+                        app.logger.info(
+                            f"Usuário {current_user.email} (ID: {current_user.id}) atualizou dados cadastrais.")
+
+                        # Se o e-mail foi alterado, force o re-login para atualizar a sessão
+                        if novo_email != current_user.email:
+                            flash(
+                                'Seu e-mail foi alterado. Por favor, faça login novamente com o novo e-mail.', 'info')
+                            logout_user()
+                            # Redireciona para login e depois para o perfil
+                            return redirect(url_for('login', next=url_for('perfil')))
+
+                    except sqlite3.IntegrityError:
+                        errors.append(
+                            'Erro de integridade ao atualizar dados. O e-mail pode já estar em uso.')
+                        app.logger.error(
+                            f"IntegrityError ao atualizar perfil de {current_user.email}: {e}", exc_info=True)
+                    except sqlite3.Error as e:
+                        errors.append(
+                            f'Erro no banco de dados ao atualizar dados: {str(e)}')
+                        app.logger.error(
+                            f"Erro DB ao atualizar perfil de {current_user.email}: {e}", exc_info=True)
+
+            # --- Validação e Atualização de Senha ---
+            if nova_senha:  # Se o usuário tentou definir uma nova senha
+                if not senha_atual:
+                    errors.append(
+                        'Para alterar a senha, você deve informar sua senha atual.')
+                elif not check_password_hash(current_user.senha_hash, senha_atual):
+                    errors.append('Senha atual incorreta.')
+                elif nova_senha != confirmar_nova_senha:
+                    errors.append(
+                        'A nova senha e a confirmação não coincidem.')
+                elif len(nova_senha) < 6:
+                    errors.append(
+                        'A nova senha deve ter pelo menos 6 caracteres.')
+
+                if not errors:  # Se não há erros na validação da senha
+                    try:
+                        nova_senha_hash = generate_password_hash(nova_senha)
+                        conn.execute(
+                            'UPDATE usuarios SET senha = ? WHERE id = ?',
+                            (nova_senha_hash, current_user.id)
+                        )
+                        conn.commit()
+                        success_messages.append(
+                            'Senha atualizada com sucesso!')
+                        app.logger.info(
+                            f"Usuário {current_user.email} (ID: {current_user.id}) alterou a senha.")
+
+                        # Após alterar a senha, é boa prática forçar o re-login
+                        flash(
+                            'Sua senha foi alterada. Por favor, faça login novamente.', 'info')
+                        logout_user()
+                        return redirect(url_for('login'))
+
+                    except sqlite3.Error as e:
+                        errors.append(
+                            f'Erro no banco de dados ao atualizar senha: {str(e)}')
+                        app.logger.error(
+                            f"Erro DB ao atualizar senha de {current_user.email}: {e}", exc_info=True)
+
+            # Após todas as operações, se não houve redirecionamento de login,
+            # recarregue os dados do usuário na sessão, se algo mudou.
+            # (Isto é importante porque Flask-Login pode cachear propriedades)
+            if success_messages:
+                updated_user = buscar_usuario_por_email(current_user.email)
+                if updated_user:
+                    # Atualiza a sessão
+                    login_user(updated_user, remember=True)
+                    for msg in success_messages:
+                        flash(msg, 'success')
+
+            if errors:
+                for msg in errors:
+                    flash(msg, 'error')
+
+            # Redirecionar para evitar reenvio do formulário (POST-Redirect-GET)
+            return redirect(url_for('perfil'))
+
+        else:  # request.method == 'GET'
+            # Os dados do current_user já estão disponíveis para pré-preencher o formulário
+            pass
+
+    except Exception as e:
+        flash(f'Ocorreu um erro inesperado: {str(e)}', 'error')
+        app.logger.error(
+            f"Erro inesperado na rota /perfil para {current_user.email}: {e}", exc_info=True)
+        # Redireciona para uma página segura em caso de erro grave
+        return redirect(url_for('index'))
+    finally:
+        if conn:
+            conn.close()
+
+    return render_template('perfil.html')
+
 # Lógica de validação de agendamento (com `contato_agendamento` e atribuição de agente)
 
 
