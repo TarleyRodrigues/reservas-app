@@ -194,6 +194,7 @@ def logout():
 # 👤 Cadastro
 
 
+# 👤 Cadastro
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
     if current_user.is_authenticated:
@@ -203,6 +204,7 @@ def cadastro():
         email = request.form.get('email', '').strip()
         senha = request.form.get('senha', '')
         confirmar_senha = request.form.get('confirmar_senha', '')
+        # NOVO: Captura o telefone
         telefone = request.form.get('telefone', '').strip()
 
         errors = []
@@ -227,14 +229,16 @@ def cadastro():
         if errors:
             for error_msg in errors:
                 flash(error_msg, 'error')
+            # ATUALIZADO: Passa o telefone de volta para repopular o campo
             return render_template('cadastro.html', nome=nome, email=email, telefone=telefone)
 
-        conn = None  # Inicializa conn como None para o finally
+        conn = None
         try:
             senha_hash = generate_password_hash(senha)
             conn = get_db_connection()
             conn.execute(
                 'INSERT INTO usuarios (nome, email, senha, is_admin, tipo_usuario, telefone) VALUES (?, ?, ?, ?, ?, ?)',
+                # ATUALIZADO: Inclui o telefone
                 (nome, email, senha_hash, 0, 'cliente', telefone)
             )
             conn.commit()
@@ -242,14 +246,13 @@ def cadastro():
             app.logger.info(
                 f"Novo usuário cadastrado: {email} como 'cliente'.")
             return redirect(url_for('login'))
-        except sqlite3.IntegrityError:  # Captura erro de UNIQUE CONSTRAINT especificamente
+        except sqlite3.IntegrityError:
             flash('Este email já está cadastrado. Por favor, use outro.', 'error')
             app.logger.warning(
                 f"Tentativa de cadastro com email duplicado: {email}")
         except sqlite3.Error as e:
             flash(
                 'Erro ao cadastrar usuário no banco de dados. Tente novamente.', 'error')
-            # Adicionado exc_info=True para mais detalhes
             app.logger.error(f'Erro DB no cadastro: {e}', exc_info=True)
         except Exception as e:
             flash(
@@ -257,13 +260,16 @@ def cadastro():
             app.logger.error(
                 f'Erro inesperado no cadastro: {e}', exc_info=True)
         finally:
-            if conn:  # Garante que conn existe antes de tentar fechar
+            if conn:
                 conn.close()
 
         # Se houve um erro (e não foi redirecionado), re-renderiza com os dados do formulário
+        # ATUALIZADO: Garante que telefone seja passado aqui também
         return render_template('cadastro.html', nome=nome, email=email, telefone=telefone)
 
-    return render_template('cadastro.html')
+    # NOVO: Para o método GET, o telefone deve ser passado como vazio ou None
+    # para que o campo não seja preenchido com lixo se o template tentar acessá-lo.
+    return render_template('cadastro.html', nome='', email='', telefone='')
 
 # Lógica de validação de agendamento (com `contato_agendamento` e atribuição de agente)
 

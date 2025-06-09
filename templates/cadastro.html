@@ -34,8 +34,13 @@
         {% endwith %}
 
         <form method="POST" action="{{ url_for('cadastro') }}" id="formCadastro" onsubmit="return validarSenhas()">
-            <input type="text" name="nome" placeholder="Nome completo" required>
-            <input type="email" name="email" placeholder="Email" required>
+            <input type="text" name="nome" placeholder="Nome completo" value="{{ nome if nome is not none else '' }}"
+                required>
+            <input type="email" name="email" placeholder="Email" value="{{ email if email is not none else '' }}"
+                required>
+            {# NOVO CAMPO: Telefone (Contato) #}
+            <input type="text" name="telefone" placeholder="Contato (Telefone)"
+                value="{{ telefone if telefone is not none else '' }}">
             <input type="password" name="senha" id="senha" placeholder="Senha (mínimo 6 caracteres)" required
                 minlength="6">
             <input type="password" name="confirmar_senha" id="confirmar_senha" placeholder="Confirmar Senha" required>
