@@ -127,7 +127,10 @@
       {% with messages = get_flashed_messages(with_categories = true) %}
       {% if messages %}
       {% for category, message in messages %}
-      showToast(JSON.parse({{ message | tojson | safe }}), JSON.parse({{ category | tojson | safe }}));
+      // CORREÇÃO AQUI: Removido o JSON.parse()
+      // O 'message | tojson | safe' já garante que a string seja um JSON válido (com aspas).
+      // JSON.parse() estava tentando parsear uma string que JÁ ERA JSON, causando o erro.
+      showToast({{ message | tojson | safe }}, {{ category | tojson | safe }});
     {% endfor %}
     {% endif %}
     {% endwith %}
@@ -148,7 +151,7 @@
         }
       });
     }
-  });
+    });
   </script>
   {% block scripts_extra %}{% endblock %}
 </body>
