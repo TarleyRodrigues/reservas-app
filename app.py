@@ -539,6 +539,7 @@ def agendar():
     conn = get_db_connection()
     try:
         if request.method == 'POST':
+            # Capturar 'contato' do formulário
             contato_agendamento_form = request.form.get('contato', '').strip()
             data_str = request.form.get('data')
             hora_str = request.form.get('hora')
@@ -555,6 +556,7 @@ def agendar():
             }
 
             errors = []
+            # Validações iniciais de campos vazios
             if not contato_agendamento_form:
                 errors.append("O campo 'Contato' é obrigatório.")
             if not data_str:
@@ -599,6 +601,7 @@ def agendar():
                 unidade_id = int(unidade_id_str)
                 usuario_id = current_user.id
 
+                # 1. Validação de Data e Hora no Passado
                 if data_hora_agendamento < datetime.now():
                     errors.append(
                         "Não é possível agendar em datas e horários passados.")
@@ -766,82 +769,10 @@ def agendar():
                 return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
                                        form_data=form_data_for_repopulation)
 
-            agentes_para_tipo = conn.execute('''
-                SELECT u.id, u.nome
-                FROM usuarios u
-                JOIN agente_tipos_servico ats ON u.id = ats.agente_id
-                WHERE ats.tipo_id = ? AND u.tipo_usuario = 'agente'
-            ''', (tipo_id,)).fetchall()
-
-            if not agentes_para_tipo:
-                errors.append(
-                    "Não há agentes vinculados ou disponíveis para este tipo de serviço.")
-
-            if errors:
-                for error in errors:
-                    flash(error, 'error')
-                tipos_refresh = conn.execute(
-                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute(
-                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
-                unidades_refresh = conn.execute('''
-                    SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
-                    FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
-                    WHERE u.ativo = 1 AND e.ativo = 1 ORDER BY e.nome, u.nome
-                ''').fetchall()
-                return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
-                                       form_data=form_data_for_repopulation)
-
-            agente_disponivel_id = None
-            found_available_agente_for_slot = False
-
-            for agente in agentes_para_tipo:
-                is_agente_available_for_this_slot = True
-
-                agendamentos_agente = conn.execute('''
-                    SELECT a.hora, ta.duracao_minutos
-                    FROM agendamentos a
-                    JOIN tipos_agendamento ta ON a.tipo_id = ta.id
-                    WHERE a.agente_atribuido_id = ? AND a.data = ?  -- CORRIGIDO: Checa agendamentos ATRIBUÍDOS ao agente
-                ''', (agente['id'], data_para_db)).fetchall()
-
-                for existing_a_agente in agendamentos_agente:
-                    existing_start_time_agente = datetime.strptime(
-                        existing_a_agente['hora'], '%H:%M').time()
-                    existing_start_datetime_agente = datetime.combine(
-                        data_agendamento_obj, existing_start_time_agente)
-                    existing_end_datetime_agente = existing_start_datetime_agente + \
-                        timedelta(minutes=existing_a_agente['duracao_minutos'])
-
-                    if (data_hora_agendamento < existing_end_datetime_agente) and \
-                       (data_hora_fim_agendamento > existing_start_datetime_agente):
-                        is_agente_available_for_this_slot = False
-                        break
-
-                if is_agente_available_for_this_slot:
-                    agente_disponivel_id = agente['id']
-                    # Define como True se encontrou um agente
-                    found_available_agente_for_slot = True
-                    break  # Sai do loop de agentes se um for encontrado
-
-            if not found_available_agente_for_slot:
-                errors.append(
-                    "Não há agentes disponíveis para este tipo de serviço no horário selecionado.")
-
-            if errors:  # Final check before insertion
-                for error in errors:
-                    flash(error, 'error')
-                tipos_refresh = conn.execute(
-                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute(
-                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
-                unidades_refresh = conn.execute('''
-                    SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento 
-                    FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id
-                    WHERE u.ativo = 1 AND e.ativo = 1 ORDER BY e.nome, u.nome
-                ''').fetchall()
-                return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
-                                       form_data=form_data_for_repopulation)
+            # --- REMOVIDO: Lógica de atribuição de agente aqui ---
+            # agentes_para_tipo = conn.execute(...)
+            # if not agentes_para_tipo: errors.append(...)
+            # ... (toda a lógica de encontrar agente_disponivel_id) ...
 
             try:
                 conn.execute(
@@ -851,14 +782,16 @@ def agendar():
                      data_hora_agendamento.strftime('%Y-%m-%d'),
                      data_hora_agendamento.strftime('%H:%M'),
                      observacoes,
-                     contato_agendamento_form,  # Valor do campo contato
-                     agente_disponivel_id,     # ID do agente encontrado
-                     'Pendente')               # Status inicial
+                     contato_agendamento_form,
+                     None,  # AGENTE ATRIBUÍDO: AGORA É SEMPRE NULL NO AGENDAMENTO INICIAL
+                     'Pendente')  # Status inicial
                 )
                 conn.commit()
-                flash('Agendamento realizado com sucesso!', 'success')
+                # MENSAGEM ATUALIZADA
+                flash(
+                    'Agendamento realizado com sucesso! Aguardando atribuição de agente.', 'success')
                 app.logger.info(
-                    f"Novo agendamento por {current_user.email} (ID: {usuario_id}) para {data_hora_agendamento.strftime('%Y-%m-%d')} às {data_hora_agendamento.strftime('%H:%M')}, tipo '{tipo_selecionado['nome']}', unidade '{unidade_selecionada['unidade_nome']}', Contato: '{contato_agendamento_form}', Obs: '{observacoes}'. Agente atribuído ID: {agente_disponivel_id if agente_disponivel_id else 'N/A'}.")
+                    f"Novo agendamento por {current_user.email} (ID: {usuario_id}) para {data_hora_agendamento.strftime('%Y-%m-%d')} às {data_hora_agendamento.strftime('%H:%M')}, tipo '{tipo_selecionado['nome']}', unidade '{unidade_selecionada['unidade_nome']}', Contato: '{contato_agendamento_form}', Obs: '{observacoes}'. AGENTE NÃO ATRIBUÍDO INICIALMENTE.")
                 return redirect(url_for('calendario'))
             except sqlite3.Error as db_error:
                 flash(
@@ -1082,23 +1015,36 @@ def painel_agente():
     conn = get_db_connection()
     agendamentos_agente = []
     try:
-        # Se for admin, pode ver todos os agendamentos pendentes/confirmados.
-        # Se for agente, vê apenas os agendamentos atribuídos a ele.
+        # Consulta base para todos os agendamentos "ativos"
         query = '''
             SELECT a.id, a.data, a.hora, a.observacoes, a.contato_agendamento, a.status,
                    ta.nome as tipo_nome, un.nome as unidade_nome, e.nome as empreendimento_nome,
-                   u_cliente.nome as cliente_nome, u_cliente.email as cliente_email
+                   u_cliente.nome as cliente_nome, u_cliente.email as cliente_email,
+                   a.agente_atribuido_id, u_agente.nome as agente_atribuido_nome -- Inclui dados do agente atribuído
             FROM agendamentos a
             JOIN tipos_agendamento ta ON a.tipo_id = ta.id
             JOIN unidades un ON a.unidade_id = un.id
             JOIN empreendimentos e ON un.empreendimento_id = e.id
             JOIN usuarios u_cliente ON a.usuario_id = u_cliente.id
+            LEFT JOIN usuarios u_agente ON a.agente_atribuido_id = u_agente.id -- LEFT JOIN para agentes
             WHERE a.status IN ('Pendente', 'Confirmado')
         '''
         params = []
+
         if current_user.is_agente and not current_user.is_admin_user:  # Agente não-admin
-            query += " AND a.agente_atribuido_id = ?"
+            # Agente vê agendamentos atribuídos a ele OU agendamentos NÃO ATRIBUÍDOS que ele pode atender
+            query += """
+                AND (
+                    a.agente_atribuido_id = ?
+                    OR
+                    (a.agente_atribuido_id IS NULL AND a.tipo_id IN (
+                        SELECT ats.tipo_id FROM agente_tipos_servico ats WHERE ats.agente_id = ?
+                    ))
+                )
+            """
             params.append(current_user.id)
+            params.append(current_user.id)  # Segundo ? para a subquery
+
         # Se for admin_user, não há filtro adicional aqui, ele vê todos os agendamentos pendentes/confirmados
 
         query += " ORDER BY a.data ASC, a.hora ASC"
@@ -1176,7 +1122,71 @@ def alterar_status_agendamento():
     return redirect(url_for('painel_agente'))
 
 
+# --- NOVO: ROTA PARA ATRIBUIR AGENDAMENTO A SI MESMO (AGENTE) ---
+@app.route('/atribuir_agendamento_agente', methods=['POST'])
+@agente_required  # Acesso apenas para agentes e administradores
+def atribuir_agendamento_agente():
+    agendamento_id = request.form.get('agendamento_id')
+
+    if not agendamento_id:
+        flash('ID do agendamento não fornecido.', 'error')
+        return redirect(url_for('painel_agente'))
+
+    conn = get_db_connection()
+    try:
+        agendamento = conn.execute(
+            "SELECT id, agente_atribuido_id, tipo_id, status FROM agendamentos WHERE id = ?", (agendamento_id,)).fetchone()
+
+        if not agendamento:
+            flash('Agendamento não encontrado.', 'error')
+            return redirect(url_for('painel_agente'))
+
+        # Se já tem um agente atribuído E não é o agente logado, não pode assumir
+        if agendamento['agente_atribuido_id'] is not None and agendamento['agente_atribuido_id'] != current_user.id:
+            # Apenas admin pode reatribuir de outro agente
+            if not current_user.is_admin_user:
+                flash('Este agendamento já está atribuído a outro agente.', 'warning')
+                return redirect(url_for('painel_agente'))
+
+        # Verifica se o agente logado pode atender a este tipo de serviço (se não for admin)
+        if not current_user.is_admin_user:
+            agente_pode_atender = conn.execute('''
+                SELECT 1 FROM agente_tipos_servico ats
+                WHERE ats.agente_id = ? AND ats.tipo_id = ?
+            ''', (current_user.id, agendamento['tipo_id'])).fetchone()
+
+            if not agente_pode_atender:
+                flash(
+                    'Você não está configurado para atender este tipo de serviço.', 'error')
+                return redirect(url_for('painel_agente'))
+
+        # Se o agendamento já está confirmado e o agente não é admin, talvez não deva poder assumir
+        # Depende da regra de negócio: Se um agendamento já está Confirmado mas sem agente, um agente pode assumir?
+        # Por simplicidade, vamos permitir assumir Pendente ou Confirmado.
+
+        # Atualiza o agendamento
+        conn.execute('UPDATE agendamentos SET agente_atribuido_id = ?, status = ? WHERE id = ?',
+                     # Define status como Confirmado ao assumir
+                     (current_user.id, 'Confirmado', agendamento_id))
+        conn.commit()
+
+        flash(
+            f'Agendamento {agendamento_id} atribuído a você e confirmado com sucesso!', 'success')
+        app.logger.info(
+            f"Agendamento ID {agendamento_id} atribuído e confirmado por Agente/Admin {current_user.email}")
+
+    except sqlite3.Error as e:
+        flash(
+            f'Erro no banco de dados ao atribuir agendamento: {str(e)}', 'error')
+        app.logger.error(
+            f'Erro DB em atribuir_agendamento_agente: {str(e)}', exc_info=True)
+    finally:
+        conn.close()
+
+    return redirect(url_for('painel_agente'))
+
 # 🛠️ Rota de depuração do usuário
+
 
 @app.route('/debug-user')
 @login_required
