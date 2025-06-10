@@ -28,27 +28,41 @@
       <a href="{{ url_for('agendar') }}" class="nav-link">Agendar</a>
       {% endif %}
 
-      {# Painel do Agente (visível para Agentes e Admins) #}
+      {# Painel do Agente e Clientes (visível para Agentes e Admins) #}
       {% if current_user.is_agente or current_user.is_admin_user %}
       <a href="{{ url_for('painel_agente') }}" class="nav-link agent-link">Painel do Agente</a>
-      {% endif %}
-
-      {# NOVO LINK: Painel do Agente (visível para Agentes e Admins) #}
-      {% if current_user.is_agente or current_user.is_admin_user %}
       <a href="{{ url_for('gerenciar_clientes') }}" class="nav-link agent-link">Clientes</a>
       {% endif %}
-
-      {# NOVO LINK: Perfil do Usuário (visível para qualquer usuário logado) #}
-      <a href="{{ url_for('perfil') }}" class="nav-link">Meu Perfil</a>
 
       {# Apenas Administradores têm acesso às Configurações #}
       {% if current_user.is_admin_user %}
       <a href="{{ url_for('configuracoes') }}" class="nav-link admin-link">Configurações</a>
       {% endif %}
 
-      <a href="{{ url_for('logout') }}" class="nav-link logout">Sair</a>
-      <span class="user-info">Olá, {{ current_user.nome if current_user.nome else current_user.email }} ({{
-        current_user.tipo_usuario.capitalize() }})</span> {# Exibir o tipo de usuário #}
+      {# --- NOVO: Avatar e Dropdown do Usuário --- #}
+      <div class="profile-avatar-container" id="profileAvatarContainer">
+        {# Exibe o avatar ou iniciais #}
+        {% if current_user.foto_perfil %}
+        <img src="{{ url_for('static', filename=current_user.foto_perfil) }}" alt="Foto de Perfil"
+          class="profile-avatar">
+        {% else %}
+        <div class="profile-avatar profile-initials">{{ current_user.nome[:2].upper() }}</div>
+        {% endif %}
+
+        {# Exibe o nome e tipo de usuário ao lado do avatar #}
+        <span class="user-info-compact">Olá, {{ current_user.nome if current_user.nome else current_user.email }} ({{
+          current_user.tipo_usuario.capitalize() }})</span>
+
+        {# O Dropdown que aparece ao clicar #}
+        <div class="profile-dropdown" id="profileDropdown">
+          <a href="{{ url_for('perfil') }}" class="dropdown-item">Meu Perfil</a>
+          <a href="{{ url_for('logout') }}" class="dropdown-item">Sair</a>
+        </div>
+      </div>
+
+      {# REMOVIDO: Links "Meu Perfil" e "Sair" antigos e o span .user-info #}
+      {# Eles foram movidos para dentro do profile-avatar-container ou do profile-dropdown #}
+
       {% else %}
       <a href="{{ url_for('login') }}" class="nav-link">Login</a>
       <a href="{{ url_for('cadastro') }}" class="nav-link">Cadastre-se</a>
@@ -57,7 +71,7 @@
   </header>
 
   <main>
-    <div id="toast-container"></div> {# Mantém o id para a função showToast encontrar #}
+    <div id="toast-container"></div>
     {% block content %}{% endblock %}
   </main>
 
@@ -78,30 +92,28 @@
 
       let toastTypeClass = type;
       if (type === 'danger') {
-        toastTypeClass = 'error'; // Mapeia 'danger' do Flask para 'error' no CSS
+        toastTypeClass = 'error';
       } else if (type === 'message') {
-        toastTypeClass = 'info'; // Mapeia 'message' do Flask para 'info' no CSS
+        toastTypeClass = 'info';
       }
       const validTypes = ['success', 'error', 'warning', 'info'];
       if (!validTypes.includes(toastTypeClass)) {
-        toastTypeClass = 'info'; // Fallback para 'info' se o tipo não for válido
+        toastTypeClass = 'info';
       }
 
       toast.className = 'toast ' + toastTypeClass;
       container.appendChild(toast);
 
-      // Força um reflow para garantir que a transição CSS seja aplicada
       void toast.offsetWidth;
 
       toast.classList.add('show');
 
-      const duration = 3500; // Duração total visível do toast
-      const fadeOutDuration = 400; // Duração da transição de fade out
+      const duration = 3500;
+      const fadeOutDuration = 400;
 
       setTimeout(() => {
-        toast.classList.remove('show'); // Remove a classe 'show' para iniciar o fade out
+        toast.classList.remove('show');
 
-        // Remove o elemento do DOM após a transição de fade out
         setTimeout(() => {
           if (toast.parentNode === container) {
             container.removeChild(toast);
@@ -115,13 +127,28 @@
       {% with messages = get_flashed_messages(with_categories = true) %}
       {% if messages %}
       {% for category, message in messages %}
-      // Passa as mensagens como strings JSON e as parseia no JavaScript para segurança e clareza.
-      // `|tojson` converte para JSON string, e `|safe` impede que Jinja faça HTML escaping adicional.
       showToast(JSON.parse({{ message | tojson | safe }}), JSON.parse({{ category | tojson | safe }}));
     {% endfor %}
     {% endif %}
     {% endwith %}
-    });
+
+    // JavaScript para o Avatar e Dropdown do Usuário
+    const profileAvatarContainer = document.getElementById('profileAvatarContainer');
+    const profileDropdown = document.getElementById('profileDropdown');
+
+    if (profileAvatarContainer && profileDropdown) {
+      profileAvatarContainer.addEventListener('click', function (event) {
+        event.stopPropagation();
+        profileDropdown.classList.toggle('show');
+      });
+
+      document.addEventListener('click', function (event) {
+        if (profileDropdown.classList.contains('show') && !profileAvatarContainer.contains(event.target)) {
+          profileDropdown.classList.remove('show');
+        }
+      });
+    }
+  });
   </script>
   {% block scripts_extra %}{% endblock %}
 </body>

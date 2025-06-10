@@ -1,4 +1,7 @@
 # app.py (VERSÃO FINAL E CONSOLIDADA COM CORREÇÕES PARA PROBLEMAS DE SESSÃO)
+import uuid  # NOVO: Import para gerar nomes de arquivo únicos
+# NOVO: Import para nomes de arquivo seguros
+from werkzeug.utils import secure_filename
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import (
@@ -29,6 +32,19 @@ login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, realize o login para acessar esta página."
 login_manager.login_message_category = "info"
 
+# 🖼️ Configuração de Uploads de Imagem
+UPLOAD_FOLDER = 'static/uploads/perfil'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limite de 16MB
+
+# Função auxiliar para verificar extensões permitidas
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 # 🔗 Classe de usuário
 
 
@@ -41,6 +57,52 @@ class Usuario(UserMixin):
         self.is_admin = is_admin
         self.tipo_usuario = tipo_usuario
         self.telefone = telefone
+        # <--- PROBLEMA AQUI: 'foto_perfil' não é um parâmetro de __init__
+        self.foto_perfil = foto_perfil
+
+
+# 📋 Configuração de logs
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+
+# 🔧 Inicialização do app
+app = Flask(__name__)
+app.secret_key = os.environ.get(
+    'SECRET_KEY', 'DevSecretKeyForReservasApp')
+
+# 🔐 Configuração do Flask-Login
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+login_manager.login_message = "Por favor, realize o login para acessar esta página."
+login_manager.login_message_category = "info"
+
+# 🖼️ Configuração de Uploads de Imagem
+UPLOAD_FOLDER = 'static/uploads/perfil'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limite de 16MB
+
+# Função auxiliar para verificar extensões permitidas
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# 🔗 Classe de usuário
+
+
+class Usuario(UserMixin):
+    # CORREÇÃO CRÍTICA AQUI: Adicione 'foto_perfil=None' como um parâmetro de __init__
+    def __init__(self, id, nome, email, senha_hash, is_admin=0, tipo_usuario='cliente', telefone=None, foto_perfil=None):
+        self.id = id
+        self.nome = nome
+        self.email = email
+        self.senha_hash = senha_hash
+        self.is_admin = is_admin
+        self.tipo_usuario = tipo_usuario
+        self.telefone = telefone
+        self.foto_perfil = foto_perfil  # Agora 'foto_perfil' é um parâmetro válido
 
     @property
     def is_cliente(self):
@@ -65,34 +127,49 @@ def get_db_connection():
 
 def buscar_usuario_por_email(email):
     conn = get_db_connection()
+    # Garanta que todas as colunas necessárias para o Usuario.__init__ sejam selecionadas
     row = conn.execute(
-        "SELECT id, nome, email, senha, is_admin, tipo_usuario, telefone FROM usuarios WHERE email = ?", (
+        "SELECT id, nome, email, senha, is_admin, tipo_usuario, telefone, foto_perfil FROM usuarios WHERE email = ?", (
             email,)
     ).fetchone()
     conn.close()
     if row:
-        # Acessa diretamente 'tipo_usuario' e 'telefone' pois init_db garante sua existência
-        return Usuario(row["id"], row["nome"], row["email"], row["senha"],
-                       row["is_admin"],
-                       row['tipo_usuario'],
-                       row['telefone'])
+        # CORREÇÃO AQUI: Remova os .get(). Como a coluna foto_perfil agora existe no DB,
+        # e as outras já existem, acesso direto por row['chave'] é correto.
+        return Usuario(
+            id=row["id"],
+            nome=row["nome"],
+            email=row["email"],
+            senha_hash=row["senha"],
+            is_admin=row["is_admin"],  # Acesso direto
+            tipo_usuario=row["tipo_usuario"],  # Acesso direto
+            telefone=row["telefone"],     # Acesso direto
+            foto_perfil=row["foto_perfil"]  # Acesso direto
+        )
     return None
 
 
 @login_manager.user_loader
 def load_user(user_id):
     conn = get_db_connection()
+    # Garanta que todas as colunas necessárias para o Usuario.__init__ sejam selecionadas
     row = conn.execute(
-        "SELECT id, nome, email, senha, is_admin, tipo_usuario, telefone FROM usuarios WHERE id = ?", (
+        "SELECT id, nome, email, senha, is_admin, tipo_usuario, telefone, foto_perfil FROM usuarios WHERE id = ?", (
             user_id,)
     ).fetchone()
     conn.close()
     if row:
-        # Acessa diretamente 'tipo_usuario' e 'telefone'
-        return Usuario(row["id"], row["nome"], row["email"], row["senha"],
-                       row["is_admin"],
-                       row['tipo_usuario'],
-                       row['telefone'])
+        # CORREÇÃO AQUI: Remova os .get(). Acesso direto por row['chave'] é correto.
+        return Usuario(
+            id=row["id"],
+            nome=row["nome"],
+            email=row["email"],
+            senha_hash=row["senha"],
+            is_admin=row["is_admin"],
+            tipo_usuario=row["tipo_usuario"],
+            telefone=row["telefone"],
+            foto_perfil=row["foto_perfil"]
+        )
     return None
 
 # 🏠 Página inicial
@@ -103,7 +180,6 @@ def index():
     return render_template('index.html')
 
 # 🔐 Login
-
 # --- DECORATORS PARA PERMISSÃO ---
 
 
@@ -152,8 +228,9 @@ def permissoes_required(roles):
         return decorated_function
     return decorator
 
-
 # 🔐 Login
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -194,7 +271,6 @@ def logout():
 # 👤 Cadastro
 
 
-# 👤 Cadastro
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
     if current_user.is_authenticated:
@@ -204,7 +280,6 @@ def cadastro():
         email = request.form.get('email', '').strip()
         senha = request.form.get('senha', '')
         confirmar_senha = request.form.get('confirmar_senha', '')
-        # NOVO: Captura o telefone
         telefone = request.form.get('telefone', '').strip()
 
         errors = []
@@ -222,24 +297,22 @@ def cadastro():
         if len(senha) < 6:
             errors.append('A senha deve ter pelo menos 6 caracteres.')
 
-        # Confere se o email já existe *antes* de tentar inserir
         if not errors and buscar_usuario_por_email(email):
             errors.append('Este email já está cadastrado.')
 
         if errors:
             for error_msg in errors:
                 flash(error_msg, 'error')
-            # ATUALIZADO: Passa o telefone de volta para repopular o campo
             return render_template('cadastro.html', nome=nome, email=email, telefone=telefone)
 
         conn = None
         try:
             senha_hash = generate_password_hash(senha)
             conn = get_db_connection()
+            # NOVO: Inclui 'foto_perfil' com valor padrão None no INSERT de cadastro
             conn.execute(
-                'INSERT INTO usuarios (nome, email, senha, is_admin, tipo_usuario, telefone) VALUES (?, ?, ?, ?, ?, ?)',
-                # ATUALIZADO: Inclui o telefone
-                (nome, email, senha_hash, 0, 'cliente', telefone)
+                'INSERT INTO usuarios (nome, email, senha, is_admin, tipo_usuario, telefone, foto_perfil) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                (nome, email, senha_hash, 0, 'cliente', telefone, None)
             )
             conn.commit()
             flash('Cadastro realizado com sucesso! Faça login.', 'success')
@@ -263,12 +336,8 @@ def cadastro():
             if conn:
                 conn.close()
 
-        # Se houve um erro (e não foi redirecionado), re-renderiza com os dados do formulário
-        # ATUALIZADO: Garante que telefone seja passado aqui também
         return render_template('cadastro.html', nome=nome, email=email, telefone=telefone)
 
-    # NOVO: Para o método GET, o telefone deve ser passado como vazio ou None
-    # para que o campo não seja preenchido com lixo se o template tentar acessá-lo.
     return render_template('cadastro.html', nome='', email='', telefone='')
 
 
@@ -282,34 +351,26 @@ def perfil():
             novo_email = request.form.get('email', '').strip()
             novo_telefone = request.form.get('telefone', '').strip()
 
-            # Adicione .strip() para limpar espaços em branco
             senha_atual = request.form.get('senha_atual', '').strip()
-            nova_senha = request.form.get(
-                'nova_senha', '').strip()  # Adicione .strip()
+            nova_senha = request.form.get('nova_senha', '').strip()
             confirmar_nova_senha = request.form.get(
-                'confirmar_nova_senha', '').strip()  # Adicione .strip()
+                'confirmar_nova_senha', '').strip()
 
             errors = []
             success_messages = []
 
-            # ----------------------------------------------------------------------------------
             # --- Validação e Atualização de Dados Cadastrais (Nome, Email, Telefone) ---
-            # ----------------------------------------------------------------------------------
-
-            # Sempre valide e tente atualizar os dados cadastrais, independentemente das senhas
             if not novo_nome:
                 errors.append('O nome não pode ser vazio.')
             if not novo_email:
                 errors.append('O e-mail não pode ser vazio.')
 
-            # Checa se o email já existe, mas permite que seja o email do próprio usuário
             if novo_email != current_user.email:
                 existing_user = buscar_usuario_por_email(novo_email)
                 if existing_user:
                     errors.append(
                         'Este e-mail já está em uso por outro usuário.')
 
-            # Se não houver erros nos campos cadastrais e houver alguma alteração
             if not errors and (novo_nome != current_user.nome or
                                novo_email != current_user.email or
                                novo_telefone != current_user.telefone):
@@ -324,12 +385,10 @@ def perfil():
                     app.logger.info(
                         f"Usuário {current_user.email} (ID: {current_user.id}) atualizou dados cadastrais.")
 
-                    # Se o e-mail foi alterado, force o re-login para atualizar a sessão
                     if novo_email != current_user.email:
                         flash(
                             'Seu e-mail foi alterado. Por favor, faça login novamente com o novo e-mail.', 'info')
                         logout_user()
-                        # Redireciona para login e depois para o perfil
                         return redirect(url_for('login', next=url_for('perfil')))
 
                 except sqlite3.IntegrityError:
@@ -343,11 +402,7 @@ def perfil():
                     app.logger.error(
                         f"Erro DB ao atualizar perfil de {current_user.email}: {e}", exc_info=True)
 
-            # ----------------------------------------------------------------------------------
             # --- Validação e Atualização de Senha ---
-            # ----------------------------------------------------------------------------------
-            # A validação e atualização de senha só devem acontecer SE a nova senha foi preenchida
-            # Isso é o ponto crucial para torná-la opcional.
             if nova_senha:
                 if not senha_atual:
                     errors.append(
@@ -361,7 +416,6 @@ def perfil():
                     errors.append(
                         'A nova senha deve ter pelo menos 6 caracteres.')
 
-                # Se não há erros na validação da senha (e a nova senha foi fornecida)
                 if not errors:
                     try:
                         nova_senha_hash = generate_password_hash(nova_senha)
@@ -375,7 +429,6 @@ def perfil():
                         app.logger.info(
                             f"Usuário {current_user.email} (ID: {current_user.id}) alterou a senha.")
 
-                        # Após alterar a senha, é boa prática forçar o re-login
                         flash(
                             'Sua senha foi alterada. Por favor, faça login novamente.', 'info')
                         logout_user()
@@ -388,25 +441,21 @@ def perfil():
                             f"Erro DB ao atualizar senha de {current_user.email}: {e}", exc_info=True)
 
             # --- Pós-processamento ---
-            # Após todas as operações, se não houve redirecionamento de login,
-            # recarregue os dados do usuário na sessão para refletir as mudanças.
             if success_messages:
                 updated_user = buscar_usuario_por_email(current_user.email)
                 if updated_user:
-                    # Atualiza a sessão
                     login_user(updated_user, remember=True)
-                    for msg in success_messages:  # Flashes apenas as mensagens de sucesso
+                    for msg in success_messages:
                         flash(msg, 'success')
 
-            if errors:  # Flashes as mensagens de erro
+            if errors:
                 for msg in errors:
                     flash(msg, 'error')
 
-            # Redirecionar para evitar reenvio do formulário (POST-Redirect-GET)
             return redirect(url_for('perfil'))
 
         else:  # request.method == 'GET'
-            pass  # Dados do current_user já pré-preenchem
+            pass
 
     except Exception as e:
         flash(f'Ocorreu um erro inesperado: {str(e)}', 'error')
@@ -419,6 +468,68 @@ def perfil():
 
     return render_template('perfil.html')
 
+# --- NOVO: ROTA PARA UPLOAD DE FOTO DE PERFIL ---
+
+
+@app.route('/upload_foto_perfil', methods=['POST'])
+@login_required
+def upload_foto_perfil():
+    conn = get_db_connection()
+    try:
+        if 'foto' not in request.files:
+            flash('Nenhum arquivo enviado.', 'error')
+            return redirect(url_for('perfil'))
+
+        file = request.files['foto']
+
+        if file.filename == '':
+            flash('Nenhum arquivo selecionado.', 'error')
+            return redirect(url_for('perfil'))
+
+        if file and allowed_file(file.filename):
+            filename_base = secure_filename(file.filename)
+            unique_filename = str(uuid.uuid4()) + \
+                os.path.splitext(filename_base)[1]
+            filepath = os.path.join(
+                app.config['UPLOAD_FOLDER'], unique_filename)
+
+            file.save(filepath)
+
+            relative_path_for_db = os.path.join(
+                'uploads/perfil', unique_filename).replace('\\', '/')
+
+            conn.execute('UPDATE usuarios SET foto_perfil = ? WHERE id = ?',
+                         (relative_path_for_db, current_user.id))
+            conn.commit()
+
+            updated_user = buscar_usuario_por_email(current_user.email)
+            if updated_user:
+                login_user(updated_user, remember=True)
+                flash('Foto de perfil atualizada com sucesso!', 'success')
+                app.logger.info(
+                    f"Usuário {current_user.email} (ID: {current_user.id}) fez upload de nova foto de perfil: {unique_filename}")
+            else:
+                flash(
+                    'Erro ao recarregar dados do usuário. Tente fazer login novamente.', 'warning')
+                app.logger.warning(
+                    f"Erro ao recarregar usuário {current_user.email} após upload de foto.")
+
+        else:
+            flash(
+                'Tipo de arquivo não permitido. Apenas PNG, JPG, JPEG, GIF são aceitos.', 'error')
+            app.logger.warning(
+                f"Tentativa de upload de arquivo não permitido por {current_user.email}: {file.filename}")
+
+    except Exception as e:
+        flash(f'Erro ao fazer upload da foto: {str(e)}', 'error')
+        app.logger.error(
+            f"Erro no upload de foto de perfil para {current_user.email}: {e}", exc_info=True)
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for('perfil'))
+
 # Lógica de validação de agendamento (com `contato_agendamento` e atribuição de agente)
 
 
@@ -428,7 +539,6 @@ def agendar():
     conn = get_db_connection()
     try:
         if request.method == 'POST':
-            # Capturar 'contato' do formulário
             contato_agendamento_form = request.form.get('contato', '').strip()
             data_str = request.form.get('data')
             hora_str = request.form.get('hora')
@@ -445,7 +555,6 @@ def agendar():
             }
 
             errors = []
-            # Validações iniciais de campos vazios
             if not contato_agendamento_form:
                 errors.append("O campo 'Contato' é obrigatório.")
             if not data_str:
@@ -488,9 +597,8 @@ def agendar():
                 tipo_id = int(tipo_id_str)
                 empreendimento_id = int(empreendimento_id_str)
                 unidade_id = int(unidade_id_str)
-                usuario_id = current_user.id  # O ID do usuário que está fazendo o agendamento
+                usuario_id = current_user.id
 
-                # 1. Validação de Data e Hora no Passado
                 if data_hora_agendamento < datetime.now():
                     errors.append(
                         "Não é possível agendar em datas e horários passados.")
@@ -965,176 +1073,6 @@ def api_slots_disponiveis():
             conn.close()
 
 
-# 📅 Calendário e eventos
-
-
-@app.route('/calendario')
-@login_required
-def calendario():
-    if current_user.is_cliente:
-        flash('Você está vendo apenas seus agendamentos. Agentes e Administradores podem ver todos.', 'info')
-    return render_template('calendario.html')
-
-# 🗓️ Eventos para o calendário
-
-# --- NOVA ROTA: Detalhes do Agendamento (tela dedicada) ---
-
-
-@app.route('/agendamento/<int:agendamento_id>')
-@login_required
-def detalhes_agendamento(agendamento_id):
-    conn = get_db_connection()
-    agendamento = None
-    try:
-        # Consulta para buscar todos os detalhes necessários
-        query = '''
-            SELECT a.id, a.data, a.hora, a.observacoes, a.contato_agendamento, a.status,
-                   u_cliente.id as cliente_id, u_cliente.nome as cliente_nome, u_cliente.email as cliente_email, u_cliente.telefone as cliente_telefone,
-                   ta.nome as tipo_nome, ta.duracao_minutos,
-                   un.nome as unidade_nome,
-                   e.nome as empreendimento_nome,
-                   u_agente.id as agente_id, u_agente.nome as agente_nome, u_agente.email as agente_email
-            FROM agendamentos a
-            JOIN usuarios u_cliente ON a.usuario_id = u_cliente.id
-            JOIN tipos_agendamento ta ON a.tipo_id = ta.id
-            JOIN unidades un ON a.unidade_id = un.id
-            JOIN empreendimentos e ON un.empreendimento_id = e.id
-            LEFT JOIN usuarios u_agente ON a.agente_atribuido_id = u_agente.id
-            WHERE a.id = ?
-        '''
-        agendamento = conn.execute(query, (agendamento_id,)).fetchone()
-
-        if not agendamento:
-            flash('Agendamento não encontrado.', 'error')
-            return redirect(url_for('calendario'))
-
-        # Lógica de Permissão para ver o agendamento
-        if not current_user.is_admin_user:  # Se não for admin, verificar permissões específicas
-            is_owner = current_user.id == agendamento['cliente_id']
-            is_assigned_agent = current_user.id == agendamento['agente_id']
-
-            if not (is_owner or is_assigned_agent):
-                flash(
-                    'Você não tem permissão para ver os detalhes deste agendamento.', 'error')
-                app.logger.warning(
-                    f"Acesso negado: Usuário {current_user.email} (ID: {current_user.id}) tentou acessar agendamento {agendamento_id} sem permissão.")
-                return redirect(url_for('calendario'))
-
-    except sqlite3.Error as e:
-        flash(f'Erro ao carregar detalhes do agendamento: {str(e)}', 'error')
-        app.logger.error(
-            f'Erro DB em detalhes_agendamento: {str(e)}', exc_info=True)
-        return redirect(url_for('calendario'))
-    finally:
-        if conn:
-            conn.close()
-
-    # Formata a data para exibição (ex: "Sexta-feira, 31 de Maio de 2024")
-    data_formatada = datetime.strptime(
-        agendamento['data'], '%Y-%m-%d').strftime('%A, %d de %B de %Y')
-    # Traduz o dia da semana e o mês para português
-    dias_semana = {
-        'Monday': 'Segunda-feira', 'Tuesday': 'Terça-feira', 'Wednesday': 'Quarta-feira',
-        'Thursday': 'Quinta-feira', 'Friday': 'Sexta-feira', 'Saturday': 'Sábado', 'Sunday': 'Domingo'
-    }
-    meses = {
-        'January': 'Janeiro', 'February': 'Fevereiro', 'March': 'Março',
-        'April': 'Abril', 'May': 'Maio', 'June': 'Junho', 'July': 'Julho',
-        'August': 'Agosto', 'September': 'Setembro', 'October': 'Outubro',
-        'November': 'Novembro', 'December': 'Dezembro'
-    }
-
-    for en, pt in dias_semana.items():
-        data_formatada = data_formatada.replace(en, pt)
-    for en, pt in meses.items():
-        data_formatada = data_formatada.replace(en, pt)
-
-    return render_template('detalhes_agendamento.html',
-                           agendamento=agendamento,
-                           data_formatada=data_formatada,
-                           # Passar as permissões para o template novamente para exibição condicional
-                           is_admin=current_user.is_admin_user,
-                           is_agente=current_user.is_agente)
-
-
-# 🗓️ Eventos para o calendário
-
-# app.py (rota /eventos)
-
-@app.route('/eventos')
-@login_required
-def eventos():
-    conn = get_db_connection()
-    query = '''
-        SELECT a.id, u.nome as usuario_nome, u.email as usuario_email, a.data, a.hora, a.observacoes, 
-                t.nome AS tipo_nome, un.nome as unidade_nome, e.nome as empreendimento_nome,
-                a.status, a.contato_agendamento, 
-                a.agente_atribuido_id, u_agente.nome as agente_atribuido_nome -- NOVO: Incluir nome do agente atribuído
-        FROM agendamentos a
-        JOIN usuarios u ON a.usuario_id = u.id
-        JOIN tipos_agendamento t ON a.tipo_id = t.id
-        JOIN unidades un ON a.unidade_id = un.id
-        JOIN empreendimentos e ON un.empreendimento_id = e.id
-        LEFT JOIN usuarios u_agente ON a.agente_atribuido_id = u_agente.id -- NOVO: LEFT JOIN para obter nome do agente
-        WHERE t.ativo = 1 AND un.ativo = 1 AND e.ativo = 1
-    '''
-    params = []
-
-    if current_user.is_cliente:
-        query += " AND a.usuario_id = ?"
-        params.append(current_user.id)
-    # NOVO: Agentes também veem apenas seus agendamentos atribuídos (se não forem admin)
-    elif current_user.is_agente and not current_user.is_admin_user:
-        query += " AND a.agente_atribuido_id = ?"
-        params.append(current_user.id)
-
-    query += " ORDER BY a.data, a.hora"
-
-    eventos_db = conn.execute(query, params).fetchall()
-    conn.close()
-
-    eventos_lista = []
-    for row in eventos_db:
-        try:
-            start_datetime_str = f"{row['data']}T{row['hora']}"
-            datetime.strptime(start_datetime_str,
-                              '%Y-%m-%dT%H:%M')  # Valida formato
-            evento = {
-                "id": row["id"],
-                "title": f"{row['tipo_nome']} - {row['unidade_nome']} ({row['empreendimento_nome']})",
-                "start": start_datetime_str,
-                "extendedProps": {
-                    "usuario_nome": row['usuario_nome'],
-                    "usuario_email": row['usuario_email'],
-                    "tipo": row['tipo_nome'],
-                    "unidade": row['unidade_nome'],
-                    "empreendimento": row['empreendimento_nome'],
-                    # Padronizar para N/A se vazio
-                    "observacoes": row['observacoes'] or "N/A",
-                    # Padronizar
-                    "contato": row['contato_agendamento'] or "Não informado",
-                    "status": row['status'],
-                    # NOVO: Nome do agente
-                    "agente_atribuido_nome": row['agente_atribuido_nome'] or "Não atribuído",
-
-                    # --- NOVOS CAMPOS PARA O TOOLTIP ---
-                    "cliente": row['usuario_nome'],  # Nome do cliente
-                    "empreendimento": row['empreendimento_nome'],
-                    "unidade": row['unidade_nome'],
-                    "contato": row['contato_agendamento'] or "Não informado",
-                    "hora_agendamento": row['hora'],  # A hora do agendamento
-                }
-            }
-            eventos_lista.append(evento)
-        except ValueError:
-            app.logger.error(
-                f"Formato de data/hora inválido para agendamento ID {row['id']}: data='{row['data']}', hora='{row['hora']}'")
-        except Exception as e:
-            app.logger.error(
-                f"Erro ao processar evento ID {row['id']}: {e}", exc_info=True)
-
-    return jsonify(eventos_lista)
-
 # ... (restante do código do app.py) ...
 
 
@@ -1237,8 +1175,8 @@ def alterar_status_agendamento():
         conn.close()
     return redirect(url_for('painel_agente'))
 
-# 🛠️ Rota de depuração do usuário
 
+# 🛠️ Rota de depuração do usuário
 
 @app.route('/debug-user')
 @login_required
@@ -2006,7 +1944,6 @@ def remover_admin(user_id):
                     'Não é possível remover o status do último administrador do sistema.', 'error')
             else:
                 conn.execute(
-                    # BUG: a vírgula extra no final
                     "UPDATE usuarios SET is_admin = 0, tipo_usuario = 'cliente' WHERE id = ?", (user_id,))
                 conn.commit()
                 flash(
@@ -2193,8 +2130,173 @@ def api_clientes_busca():
 
     return jsonify({"clientes": clientes}), 200
 
+# 📅 Calendário
+
+
+@app.route('/calendario')
+@login_required
+def calendario():
+    if current_user.is_cliente:
+        flash('Você está vendo apenas seus agendamentos. Agentes e Administradores podem ver todos.', 'info')
+    return render_template('calendario.html')
+
+# 🗓️ Eventos para o calendário
+
+
+@app.route('/agendamento/<int:agendamento_id>')
+@login_required
+def detalhes_agendamento(agendamento_id):
+    conn = get_db_connection()
+    agendamento = None
+    try:
+        query = '''
+            SELECT a.id, a.data, a.hora, a.observacoes, a.contato_agendamento, a.status,
+                   u_cliente.id as cliente_id, u_cliente.nome as cliente_nome, u_cliente.email as cliente_email, u_cliente.telefone as cliente_telefone,
+                   ta.nome as tipo_nome, ta.duracao_minutos,
+                   un.nome as unidade_nome,
+                   e.nome as empreendimento_nome,
+                   u_agente.id as agente_id, u_agente.nome as agente_nome, u_agente.email as agente_email
+            FROM agendamentos a
+            JOIN usuarios u_cliente ON a.usuario_id = u_cliente.id
+            JOIN tipos_agendamento ta ON a.tipo_id = ta.id
+            JOIN unidades un ON a.unidade_id = un.id
+            JOIN empreendimentos e ON un.empreendimento_id = e.id
+            LEFT JOIN usuarios u_agente ON a.agente_atribuido_id = u_agente.id
+            WHERE a.id = ?
+        '''
+        agendamento = conn.execute(query, (agendamento_id,)).fetchone()
+
+        if not agendamento:
+            flash('Agendamento não encontrado.', 'error')
+            return redirect(url_for('calendario'))
+
+        if not current_user.is_admin_user:
+            is_owner = current_user.id == agendamento['cliente_id']
+            is_assigned_agent = current_user.id == agendamento['agente_id']
+
+            if not (is_owner or is_assigned_agent):
+                flash(
+                    'Você não tem permissão para ver os detalhes deste agendamento.', 'error')
+                app.logger.warning(
+                    f"Acesso negado: Usuário {current_user.email} (ID: {current_user.id}) tentou acessar agendamento {agendamento_id} sem permissão.")
+                return redirect(url_for('calendario'))
+
+    except sqlite3.Error as e:
+        flash(f'Erro ao carregar detalhes do agendamento: {str(e)}', 'error')
+        app.logger.error(
+            f'Erro DB em detalhes_agendamento: {str(e)}', exc_info=True)
+        return redirect(url_for('calendario'))
+    finally:
+        if conn:
+            conn.close()
+
+    data_formatada = datetime.strptime(
+        agendamento['data'], '%Y-%m-%d').strftime('%A, %d de %B de %Y')
+    dias_semana = {
+        'Monday': 'Segunda-feira', 'Tuesday': 'Terça-feira', 'Wednesday': 'Quarta-feira',
+        'Thursday': 'Quinta-feira', 'Friday': 'Sexta-feira', 'Saturday': 'Sábado', 'Sunday': 'Domingo'
+    }
+    meses = {
+        'January': 'Janeiro', 'February': 'Fevereiro', 'March': 'Março',
+        'April': 'Abril', 'May': 'Maio', 'June': 'Junho', 'July': 'Julho',
+        'August': 'Agosto', 'September': 'Setembro', 'October': 'Outubro',
+        'November': 'Novembro', 'December': 'Dezembro'
+    }
+
+    for en, pt in dias_semana.items():
+        data_formatada = data_formatada.replace(en, pt)
+    for en, pt in meses.items():
+        data_formatada = data_formatada.replace(en, pt)
+
+    return render_template('detalhes_agendamento.html',
+                           agendamento=agendamento,
+                           data_formatada=data_formatada,
+                           is_admin=current_user.is_admin_user,
+                           is_agente=current_user.is_agente)
+
+
+@app.route('/eventos')
+@login_required
+def eventos():
+    conn = get_db_connection()
+    query = '''
+        SELECT a.id, u.nome as usuario_nome, u.email as usuario_email, a.data, a.hora, a.observacoes, 
+                t.nome AS tipo_nome, un.nome as unidade_nome, e.nome as empreendimento_nome,
+                a.status, a.contato_agendamento, 
+                a.agente_atribuido_id, u_agente.nome as agente_atribuido_nome -- NOVO: Incluir nome do agente atribuído
+        FROM agendamentos a
+        JOIN usuarios u ON a.usuario_id = u.id
+        JOIN tipos_agendamento t ON a.tipo_id = t.id
+        JOIN unidades un ON a.unidade_id = un.id
+        JOIN empreendimentos e ON un.empreendimento_id = e.id
+        LEFT JOIN usuarios u_agente ON a.agente_atribuido_id = u_agente.id -- NOVO: LEFT JOIN para obter nome do agente
+        WHERE t.ativo = 1 AND un.ativo = 1 AND e.ativo = 1
+    '''
+    params = []
+
+    if current_user.is_cliente:
+        query += " AND a.usuario_id = ?"
+        params.append(current_user.id)
+    # NOVO: Agentes também veem apenas seus agendamentos atribuídos (se não forem admin)
+    elif current_user.is_agente and not current_user.is_admin_user:
+        query += " AND a.agente_atribuido_id = ?"
+        params.append(current_user.id)
+
+    query += " ORDER BY a.data, a.hora"
+
+    eventos_db = conn.execute(query, params).fetchall()
+    conn.close()
+
+    eventos_lista = []
+    for row in eventos_db:
+        try:
+            start_datetime_str = f"{row['data']}T{row['hora']}"
+            datetime.strptime(start_datetime_str,
+                              '%Y-%m-%dT%H:%M')  # Valida formato
+            evento = {
+                "id": row["id"],
+                "title": f"{row['tipo_nome']} - {row['unidade_nome']} ({row['empreendimento_nome']})",
+                "start": start_datetime_str,
+                "extendedProps": {
+                    "usuario_nome": row['usuario_nome'],
+                    "usuario_email": row['usuario_email'],
+                    "tipo": row['tipo_nome'],
+                    "unidade": row['unidade_nome'],
+                    "empreendimento": row['empreendimento_nome'],
+                    # Padronizar para N/A se vazio
+                    "observacoes": row['observacoes'] or "N/A",
+                    # Padronizar
+                    "contato": row['contato_agendamento'] or "Não informado",
+                    "status": row['status'],
+                    # NOVO: Nome do agente
+                    "agente_atribuido_nome": row['agente_atribuido_nome'] or "Não atribuído",
+
+                    # --- NOVOS CAMPOS PARA O TOOLTIP ---
+                    "cliente": row['usuario_nome'],  # Nome do cliente
+                    "empreendimento": row['empreendimento_nome'],
+                    "unidade": row['unidade_nome'],
+                    "contato": row['contato_agendamento'] or "Não informado",
+                    "hora_agendamento": row['hora'],  # A hora do agendamento
+                }
+            }
+            eventos_lista.append(evento)
+        except ValueError:
+            app.logger.error(
+                f"Formato de data/hora inválido para agendamento ID {row['id']}: data='{row['data']}', hora='{row['hora']}'")
+        except Exception as e:
+            app.logger.error(
+                f"Erro ao processar evento ID {row['id']}: {e}", exc_info=True)
+
+    return jsonify(eventos_lista)
+
 
 # 🧱 Banco de dados
+
+# app.py
+
+# ... (seus imports no início do arquivo) ...
+
+# 🛠️ Banco de dados
 
 def init_db():
     conn = get_db_connection()
@@ -2204,6 +2306,28 @@ def init_db():
         "Iniciando verificação/criação das tabelas do banco de dados...")
 
     # 1. Tabelas Independentes
+
+    # ESTA É A ÚNICA DEFINIÇÃO CORRETA E COMPLETA PARA A TABELA 'usuarios'
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT,
+            email TEXT UNIQUE NOT NULL,
+            senha TEXT NOT NULL,
+            is_admin INTEGER DEFAULT 0 CHECK(is_admin IN (0, 1)),
+            tipo_usuario TEXT DEFAULT 'cliente' NOT NULL,
+            telefone TEXT,
+            foto_perfil TEXT -- ESTA COLUNA AGORA ESTÁ AQUI
+        )
+    ''')
+    app.logger.info("Tabela 'usuarios' verificada/criada.")
+
+    # ---------------------------------------------------------------------
+    # GARANTA QUE QUALQUER OUTRA DEFINIÇÃO DE 'CREATE TABLE IF NOT EXISTS usuarios'
+    # ANTERIORMENTE EXISTENTE EM SEU init_db() SEJA REMOVIDA.
+    # DEIXE APENAS A DEFINIÇÃO ACIMA.
+    # ---------------------------------------------------------------------
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS empreendimentos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2222,19 +2346,6 @@ def init_db():
         )
     ''')
     app.logger.info("Tabela 'tipos_agendamento' verificada/criada.")
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT,
-            email TEXT UNIQUE NOT NULL,
-            senha TEXT NOT NULL,
-            is_admin INTEGER DEFAULT 0 CHECK(is_admin IN (0, 1)),
-            tipo_usuario TEXT DEFAULT 'cliente' NOT NULL,
-            telefone TEXT
-        )
-    ''')
-    app.logger.info("Tabela 'usuarios' verificada/criada.")
 
     # 2. Tabelas que dependem das tabelas acima
     cursor.execute('''
@@ -2294,7 +2405,11 @@ def init_db():
     ''')
     app.logger.info("Tabela 'agendamentos' verificada/criada.")
 
-    # --- Adição de Colunas (ALTER TABLE) e Migração de Dados Existentes (APENAS ALTERS) ---
+    # --- Adição de Colunas (ALTER TABLE) e Migração de Dados Existentes ---
+    # Estes ALTERs são importantes para bancos de dados já existentes
+    # Mas se você deletou database.db, eles podem ser ignorados.
+    # No entanto, é seguro mantê-los para futuras atualizações.
+
     try:
         cursor.execute(
             "ALTER TABLE tipos_agendamento ADD COLUMN duracao_minutos INTEGER DEFAULT 60")
@@ -2378,6 +2493,25 @@ def init_db():
             app.logger.error(
                 f"Erro ao adicionar coluna 'agente_atribuido_id': {e}")
 
+    # Este ALTER TABLE para foto_perfil NÃO é mais estritamente necessário
+    # se a coluna já estiver no CREATE TABLE acima, mas é seguro mantê-lo
+    # para caso de um database.db antigo (sem a coluna) ser carregado.
+    try:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN foto_perfil TEXT")
+        app.logger.info("Coluna 'foto_perfil' adicionada à tabela 'usuarios'.")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            app.logger.info(
+                "Coluna 'foto_perfil' já existe na tabela 'usuarios'.")
+        else:
+            app.logger.error(
+                f"Erro ao adicionar coluna 'foto_perfil': {e}")
+
+    # Certifique-se de que o diretório de upload exista
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    app.logger.info(
+        f"Diretório de upload '{app.config['UPLOAD_FOLDER']}' verificado/criado.")
+
     conn.commit()
     conn.close()
     app.logger.info("Banco de dados inicializado/verificado e atualizado.")
@@ -2414,10 +2548,10 @@ def criar_usuario_inicial():
         # Se 0 linhas foram afetadas, significa que o usuário não existe.
         if cursor.rowcount == 0:
             # Se o usuário não existe, então o inserimos.
+            # NOVO: Incluir 'foto_perfil' com valor None no INSERT de criar_usuario_inicial
             cursor.execute(
-                'INSERT INTO usuarios (nome, email, senha, is_admin, tipo_usuario, telefone) VALUES (?, ?, ?, ?, ?, ?)',
-                # Telefone é None para o admin inicial
-                (admin_nome, admin_email, senha_hash, 1, 'admin', None)
+                'INSERT INTO usuarios (nome, email, senha, is_admin, tipo_usuario, telefone, foto_perfil) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                (admin_nome, admin_email, senha_hash, 1, 'admin', None, None)
             )
             app.logger.info(
                 f"Usuário administrador inicial '{admin_email}' CRIADO com sucesso.")

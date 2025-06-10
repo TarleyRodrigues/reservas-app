@@ -1,16 +1,12 @@
 {# templates/perfil.html #}
 {% extends 'base.html' %}
 
-{% block title %}Meu Perfil{% endblock %} {# Define o título da página #}
+{% block title %}Meu Perfil{% endblock %}
 
 {% block content %}
-<div class="form-wrapper"> {# Usa a mesma classe de container do agendar.html #}
-    {# <button class="theme-toggle" aria-label="Alternar modo claro e escuro" id="toggleTheme">🌙</button> #}
-    {# O toggle de tema é específico do agendar.html, pode ser adicionado aqui se desejar #}
+<div class="form-wrapper">
+    <h2>Meu Perfil</h2>
 
-    <h2>Meu Perfil</h2> {# Título principal da página #}
-
-    {# Botão de navegação, semelhante ao "Ver Calendário" do agendar.html #}
     <a href="{{ url_for('index') }}" class="header-btn" style="display: inline-block; margin-bottom: 20px;">
         🏠 Voltar ao Início
     </a>
@@ -25,9 +21,9 @@
     {% endif %}
     {% endwith %}
 
+    {# Formulário de Dados Cadastrais e Senha #}
     <form action="{{ url_for('perfil') }}" method="POST" id="perfilForm">
         <h3>Dados Cadastrais</h3>
-        {# Mantendo a estrutura label + input direto, como no agendar.html #}
         <label for="nome">Nome Completo:</label>
         <input type="text" id="nome" name="nome" placeholder="Seu nome completo" value="{{ current_user.nome }}"
             required>
@@ -43,27 +39,53 @@
         <h3 class="mt-4">Alterar Senha</h3>
         <p class="text-muted small">Preencha apenas se desejar alterar sua senha.</p>
         <label for="senha_atual">Senha Atual:</label>
-        {# autocomplete="current-password" ou "off" para tentar controlar o autofill #}
         <input type="password" id="senha_atual" name="senha_atual" placeholder="Sua senha atual"
             autocomplete="current-password">
 
         <label for="nova_senha">Nova Senha:</label>
-        {# autocomplete="new-password" instrui o navegador que é um campo para nova senha #}
         <input type="password" id="nova_senha" name="nova_senha" placeholder="Mínimo 6 caracteres" minlength="6"
             autocomplete="new-password">
 
         <label for="confirmar_nova_senha">Confirmar Nova Senha:</label>
-        {# autocomplete="new-password" para a confirmação também #}
         <input type="password" id="confirmar_nova_senha" name="confirmar_nova_senha" placeholder="Repita a nova senha"
             autocomplete="new-password">
         <div id="senhaError" class="error-message" style="color: #c62828; display: none; margin-top: 5px;"></div>
 
         <button type="submit" class="btn-agendar mt-4">Atualizar Perfil</button>
     </form>
+
+    <hr class="my-5" style="border-color: rgba(255, 255, 255, 0.2);"> {# Linha separadora #}
+
+    {# --- NOVO: Seção para Foto de Perfil --- #}
+    <h3>Foto de Perfil</h3>
+    <div class="profile-photo-section">
+        <div class="profile-photo-container">
+            {% if current_user.foto_perfil %}
+            <img id="currentProfilePhoto" src="{{ url_for('static', filename=current_user.foto_perfil) }}"
+                alt="Foto de Perfil" class="profile-photo-preview">
+            {% else %}
+            <div id="currentProfilePhotoPlaceholder" class="profile-photo-preview profile-photo-placeholder">
+                {{ current_user.nome[:2].upper() }}
+            </div>
+            {% endif %}
+        </div>
+        <p class="text-muted small mt-2">Formatos aceitos: PNG, JPG, JPEG, GIF. Max: 16MB.</p>
+
+        <form action="{{ url_for('upload_foto_perfil') }}" method="POST" enctype="multipart/form-data" class="mt-3">
+            <label for="fotoInput" class="custom-file-upload">
+                Escolher Nova Foto
+            </label>
+            <input type="file" id="fotoInput" name="foto" accept="image/png, image/jpeg, image/gif"
+                style="display: none;">
+            <button type="submit" class="btn-agendar btn-small mt-3">Upload Foto</button>
+        </form>
+    </div>
+
 </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // ... (seu JavaScript existente para validação de senha - permanece o mesmo) ...
         const perfilForm = document.getElementById('perfilForm');
         const senhaAtualInput = document.getElementById('senha_atual');
         const novaSenhaInput = document.getElementById('nova_senha');
@@ -71,7 +93,6 @@
         const senhaErrorElement = document.getElementById('senhaError');
 
         function validatePasswordFields() {
-            // IMPORTANT: Use .trim() para garantir que espaços em branco não ativem a validação
             const novaSenha = novaSenhaInput.value.trim();
             const confirmarNovaSenha = confirmarNovaSenhaInput.value.trim();
             const senhaAtual = senhaAtualInput.value.trim();
@@ -79,10 +100,7 @@
             senhaErrorElement.style.display = 'none';
             senhaErrorElement.textContent = '';
 
-            // A validação de senha SÓ DEVE SER ATIVADA se o campo 'Nova Senha' foi preenchido.
-            // Se 'novaSenha' estiver vazio, o usuário NÃO deseja alterar a senha.
             if (novaSenha) {
-                // Se a nova senha foi fornecida, então todas as validações de senha são obrigatórias
                 if (novaSenha.length < 6) {
                     senhaErrorElement.textContent = 'A nova senha deve ter pelo menos 6 caracteres.';
                     senhaErrorElement.style.display = 'block';
@@ -99,21 +117,14 @@
                     return false;
                 }
             } else {
-                // Se 'novaSenha' está vazia, o usuário não pretende mudar a senha.
-                // Mas, se 'senhaAtual' ou 'confirmarNovaSenha' foram preenchidos (ex: por autofill),
-                // devemos limpar e ignorar, para evitar validações erradas no backend.
                 if (senhaAtual || confirmarNovaSenha) {
                     senhaAtualInput.value = '';
                     confirmarNovaSenhaInput.value = '';
-                    // Não é necessário limpar novaSenhaInput, pois sabemos que já está vazio.
                 }
             }
-
-            // Se chegamos aqui, ou a validação de senha passou, ou ela não foi ativada.
             return true;
         }
 
-        // Adiciona listeners para validação em tempo real (input) e ao perder o foco/autofill (change)
         novaSenhaInput.addEventListener('input', validatePasswordFields);
         confirmarNovaSenhaInput.addEventListener('input', validatePasswordFields);
         senhaAtualInput.addEventListener('input', validatePasswordFields);
@@ -122,13 +133,61 @@
         confirmarNovaSenhaInput.addEventListener('change', validatePasswordFields);
         senhaAtualInput.addEventListener('change', validatePasswordFields);
 
-
         perfilForm.addEventListener('submit', function (event) {
-            // A validação final antes de enviar o formulário
             if (!validatePasswordFields()) {
-                event.preventDefault(); // Impede o envio do formulário se a validação client-side falhar
+                event.preventDefault();
             }
         });
+
+        // --- NOVO: Lógica para pré-visualização da imagem de perfil ---
+        const fotoInput = document.getElementById('fotoInput');
+        const currentProfilePhoto = document.getElementById('currentProfilePhoto');
+        const currentProfilePhotoPlaceholder = document.getElementById('currentProfilePhotoPlaceholder');
+
+        if (fotoInput) {
+            fotoInput.addEventListener('change', function () {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    const fileType = file.type;
+                    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+
+                    if (!validImageTypes.includes(fileType)) {
+                        alert('Por favor, selecione um arquivo de imagem (PNG, JPG, JPEG, GIF).');
+                        this.value = ''; // Limpa o input
+                        return;
+                    }
+
+                    if (file.size > 16 * 1024 * 1024) { // 16MB
+                        alert('O arquivo é muito grande. Tamanho máximo permitido é 16MB.');
+                        this.value = ''; // Limpa o input
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        if (currentProfilePhoto) {
+                            currentProfilePhoto.src = e.target.result;
+                            currentProfilePhoto.style.display = 'block';
+                        } else {
+                            // Se não houver img, cria uma e adiciona ao container
+                            const img = document.createElement('img');
+                            img.id = "currentProfilePhoto";
+                            img.src = e.target.result;
+                            img.alt = "Foto de Perfil";
+                            img.classList.add("profile-photo-preview");
+                            document.querySelector('.profile-photo-container').innerHTML = ''; // Limpa placeholder
+                            document.querySelector('.profile-photo-container').appendChild(img);
+                            // Atualiza a referência para a nova imagem
+                            currentProfilePhoto = document.getElementById('currentProfilePhoto');
+                            if (currentProfilePhotoPlaceholder) {
+                                currentProfilePhotoPlaceholder.style.display = 'none';
+                            }
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
     });
 </script>
 {% endblock %}
