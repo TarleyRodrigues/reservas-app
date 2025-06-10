@@ -2149,6 +2149,11 @@ def calendario():
     return render_template('calendario.html')
 
 # 🗓️ Eventos para o calendário
+# app.py
+
+# ... (seus imports e código até a rota /detalhes_agendamento) ...
+
+# --- NOVA ROTA: Detalhes do Agendamento (tela dedicada) ---
 
 
 @app.route('/agendamento/<int:agendamento_id>')
@@ -2157,6 +2162,7 @@ def detalhes_agendamento(agendamento_id):
     conn = get_db_connection()
     agendamento = None
     try:
+        # Consulta para buscar todos os detalhes necessários
         query = '''
             SELECT a.id, a.data, a.hora, a.observacoes, a.contato_agendamento, a.status,
                    u_cliente.id as cliente_id, u_cliente.nome as cliente_nome, u_cliente.email as cliente_email, u_cliente.telefone as cliente_telefone,
@@ -2178,6 +2184,8 @@ def detalhes_agendamento(agendamento_id):
             flash('Agendamento não encontrado.', 'error')
             return redirect(url_for('calendario'))
 
+        # Lógica de Permissão para ver o agendamento: Cliente (dono), Agente (atribuído), Admin
+        # Esta lógica está correta e será mantida.
         if not current_user.is_admin_user:
             is_owner = current_user.id == agendamento['cliente_id']
             is_assigned_agent = current_user.id == agendamento['agente_id']
@@ -2198,6 +2206,7 @@ def detalhes_agendamento(agendamento_id):
         if conn:
             conn.close()
 
+    # Formata a data para exibição
     data_formatada = datetime.strptime(
         agendamento['data'], '%Y-%m-%d').strftime('%A, %d de %B de %Y')
     dias_semana = {
@@ -2220,7 +2229,68 @@ def detalhes_agendamento(agendamento_id):
                            agendamento=agendamento,
                            data_formatada=data_formatada,
                            is_admin=current_user.is_admin_user,
-                           is_agente=current_user.is_agente)
+                           is_agente=current_user.is_agente,
+                           is_cliente=current_user.is_cliente  # NOVO: Passa o status de cliente
+                           )
+
+# --- NOVO: ROTA PARA CANCELAR AGENDAMENTO PELO CLIENTE ---
+
+
+@app.route('/cancelar_agendamento', methods=['POST'])
+@login_required
+def cancelar_agendamento():
+    agendamento_id = request.form.get('agendamento_id')
+
+    if not agendamento_id:
+        flash('ID do agendamento não fornecido para cancelamento.', 'error')
+        return redirect(url_for('calendario'))
+
+    conn = get_db_connection()
+    try:
+        # Busca o agendamento e o ID do cliente que o criou
+        agendamento_db = conn.execute(
+            "SELECT id, usuario_id, status FROM agendamentos WHERE id = ?", (agendamento_id,)).fetchone()
+
+        if not agendamento_db:
+            flash('Agendamento não encontrado.', 'error')
+            return redirect(url_for('calendario'))
+
+        # Regra de segurança: APENAS o proprietário do agendamento ou um ADMIN pode cancelar via esta rota.
+        # Agentes só podem cancelar pelo painel deles, onde a lógica de status é diferente.
+        if agendamento_db['usuario_id'] != current_user.id and not current_user.is_admin_user:
+            flash('Você não tem permissão para cancelar este agendamento.', 'error')
+            app.logger.warning(
+                f"Tentativa de cancelamento não autorizado: Usuário {current_user.email} (ID: {current_user.id}) tentou cancelar agendamento {agendamento_id} de outro usuário.")
+            return redirect(url_for('calendario'))
+
+        # Regra de Negócio: Só pode cancelar se o status for Pendente ou Confirmado
+        if agendamento_db['status'] not in ['Pendente', 'Confirmado']:
+            flash(
+                f"Não é possível cancelar um agendamento com status '{agendamento_db['status']}'.", 'warning')
+            return redirect(url_for('detalhes_agendamento', agendamento_id=agendamento_id))
+
+        # Atualiza o status para 'Cancelado'
+        conn.execute('UPDATE agendamentos SET status = ? WHERE id = ?',
+                     ('Cancelado', agendamento_id))
+        conn.commit()
+
+        flash(
+            f'Agendamento {agendamento_id} cancelado com sucesso.', 'success')
+        app.logger.info(
+            f"Agendamento ID {agendamento_id} cancelado por {current_user.email} (Cliente ID: {current_user.id}).")
+
+    except sqlite3.Error as e:
+        flash(
+            f'Erro no banco de dados ao cancelar agendamento: {str(e)}', 'error')
+        app.logger.error(
+            f'Erro DB em cancelar_agendamento: {str(e)}', exc_info=True)
+    finally:
+        if conn:
+            conn.close()
+
+    # Redireciona de volta para a página de detalhes, ou para o calendário
+    # Redirecionar para ver o status atualizado
+    return redirect(url_for('detalhes_agendamento', agendamento_id=agendamento_id))
 
 
 @app.route('/eventos')

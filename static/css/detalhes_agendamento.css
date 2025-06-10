@@ -1,85 +1,158 @@
-    /* Estilos de fundo para a página de detalhes, similar ao calendário e agendar */
-    
+/* static/css/detalhes_agendamento.css (ou seu styles.css) */
 
-    /* Wrapper para o efeito de glassmorfismo, similar ao agendar.html */
-    .details-wrapper {
-        max-width: 700px;
-        /* Largura para o cartão de detalhes */
-        margin: 40px auto;
-        /* Centralizar na página */
-        padding: 30px;
-        background-color: rgba(255, 255, 255, 0.422);
-        /* Branco semi-transparente */
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        /* Para compatibilidade com Safari */
-        border-radius: 15px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        color: #333;
-        /* Cor do texto padrão dentro do wrapper */
-        box-sizing: border-box;
-    }
+/* Container principal (painel glassmorphism) */
+.detalhes-agendamento-wrapper {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    padding: 20px 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: var(--text); /* Cor do texto padrão */
+    margin-bottom: 30px;
+    max-width: 800px; /* Limita a largura do wrapper para melhor leitura */
+    margin-left: auto; /* Centraliza o wrapper */
+    margin-right: auto;
+}
 
-    .details-wrapper h1 {
-        color: #343a40;
-        text-align: center;
-        margin-top: 0;
-        margin-bottom: 25px;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-        padding-bottom: 15px;
-    }
+/* Título principal da página */
+.page-title {
+    color: #007bff; /* Cor azul primária */
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 2.2rem;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
 
-    .details-row {
-        display: flex;
-        margin-bottom: 10px;
-        line-height: 1.6;
-    }
+/* Seções de cards de detalhes (Informações do Agendamento, Cliente, Agente) */
+.details-card-section {
+    background-color: rgba(255, 255, 255, 0.9); /* Fundo claro para o card */
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px; /* Espaçamento entre as seções */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    color: #333; /* Cor do texto dentro do card */
+}
 
-    .details-label {
-        font-weight: bold;
-        min-width: 150px;
-        /* Largura mínima para os rótulos */
-        color: #555;
-        flex-shrink: 0;
-        /* Evita que o label encolha */
-    }
+.details-card-section .section-title { /* Título de cada seção dentro do card */
+    color: #007bff;
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee; /* Linha divisória */
+    padding-bottom: 10px;
+}
 
-    .details-value {
-        flex-grow: 1;
-        color: #333;
-    }
+/* Estilo para cada item de detalhe (label: value) */
+.details-item {
+    display: flex; /* Para alinhar label e value na mesma linha */
+    align-items: baseline; /* Alinha o texto na base */
+    margin-bottom: 10px; /* Espaçamento entre os itens */
+    line-height: 1.5; /* Espaçamento entre linhas de texto */
+}
 
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .details-wrapper {
-            margin: 20px;
-            padding: 20px;
-        }
+.details-item .details-label {
+    font-weight: bold;
+    color: #555; /* Cor um pouco mais escura para o label */
+    min-width: 150px; /* Largura mínima para o label para alinhamento */
+    flex-shrink: 0; /* Impede o label de encolher */
+    margin-right: 10px; /* Espaço entre label e value */
+}
 
-        .details-row {
-            flex-direction: column;
-            /* Empilha label e valor em telas menores */
-            margin-bottom: 15px;
-        }
+.details-item .details-value {
+    flex-grow: 1; /* Permite que o valor ocupe o espaço restante */
+    color: #333; /* Cor do texto do valor */
+}
 
-        .details-label {
-            min-width: unset;
-            margin-bottom: 5px;
-        }
-    }
+.details-item .text-muted-info { /* Para o texto "Disponível para Agentes..." */
+    font-style: italic;
+    color: #777;
+    font-size: 0.9em;
+}
 
-    .back-link {
-        display: inline-block;
-        margin-top: 30px;
-        padding: 10px 20px;
-        background-color: #007bff;
-        color: white;
-        text-decoration: none;
-        border-radius: 5px;
-        transition: background-color 0.3s ease;
-    }
+/* Estilos para os badges de status */
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 0.9em;
+    display: inline-block;
+    min-width: 90px; /* Garante uma largura mínima para todos os badges */
+    text-align: center;
+}
 
-    .back-link:hover {
-        background-color: #0056b3;
-    }
+.status-pendente {
+    background-color: #ffc107; /* Amarelo */
+    color: #333;
+}
+
+.status-confirmado {
+    background-color: #28a745; /* Verde */
+    color: white;
+}
+
+.status-cancelado {
+    background-color: #dc3545; /* Vermelho */
+    color: white;
+}
+
+.status-concluído {
+    background-color: #6c757d; /* Cinza */
+    color: white;
+}
+
+/* Grupo de botões de ação */
+.action-buttons-group {
+    margin-top: 30px;
+    display: flex;
+    gap: 15px; /* Espaçamento entre os botões */
+    justify-content: center; /* Centraliza os botões */
+}
+
+/* Estilos de botão (ajuste para o seu buttons.css, se tiver) */
+.btn {
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    border: none;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+/* Classes de espaçamento (mt-4, mt-5, my-5) */
+.mt-4 { margin-top: 1.5rem; } /* 1.5rem é um valor comum para mt-4 (Bootstrap) */
+.mt-5 { margin-top: 3rem; }   /* 3rem é um valor comum para mt-5 (Bootstrap) */
+.my-5 { margin-top: 3rem; margin-bottom: 3rem; }
+
+/* Para a linha horizontal, se usada */
+hr.my-5 {
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    margin: 3rem 0;
+}

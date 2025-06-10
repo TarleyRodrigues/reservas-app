@@ -1,104 +1,145 @@
+{# templates/detalhes_agendamento.html #}
 {% extends 'base.html' %}
 
 {% block title %}Detalhes do Agendamento{% endblock %}
 
 {% block head %}
 {{ super() }}
-
+{# Não há CSS específico novo, usamos classes já definidas #}
 {% endblock %}
 
 {% block content %}
-<div class="details-wrapper">
-    <h1>Detalhes do Agendamento #{{ agendamento.id }}</h1>
+<div class="container mt-4"> {# Mantendo o container para centralização #}
+    <div class="detalhes-agendamento-wrapper"> {# Este é o seu painel glassmorphism #}
+        <h1 class="page-title">Detalhes do Agendamento #{{ agendamento.id }}</h1>
 
-    {% if agendamento %}
-    <div class="details-row">
-        <span class="details-label">Título:</span>
-        <span class="details-value">{{ agendamento.tipo_nome }} - {{ agendamento.unidade_nome }} ({{
-            agendamento.empreendimento_nome }})</span>
-    </div>
-    <div class="details-row">
-        <span class="details-label">Status:</span>
-        <span class="details-value">{{ agendamento.status }}</span>
-    </div>
-    <div class="details-row">
-        <span class="details-label">Data:</span>
-        <span class="details-value">{{ data_formatada }}</span>
-    </div>
-    <div class="details-row">
-        <span class="details-label">Hora:</span>
-        <span class="details-value">{{ agendamento.hora }} (Duração: {{ agendamento.duracao_minutos }} min)</span>
-    </div>
-    <div class="details-row">
-        <span class="details-label">Serviço:</span>
-        <span class="details-value">{{ agendamento.tipo_nome }}</span>
-    </div>
-    <div class="details-row">
-        <span class="details-label">Local:</span>
-        <span class="details-value">{{ agendamento.unidade_nome }} ({{ agendamento.empreendimento_nome }})</span>
-    </div>
-    <div class="details-row">
-        <span class="details-label">Observações:</span>
-        <span class="details-value">{{ agendamento.observacoes if agendamento.observacoes else 'N/A' }}</span>
-    </div>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <ul class="flash-messages">
+            {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
 
-    <hr>
+        {# Seção Principal do Agendamento - Estilo de Card #}
+        <div class="details-card-section">
+            <h3 class="section-title">Informações do Agendamento</h3>
 
-    <h2>Informações do Cliente</h2>
-    <div class="details-row">
-        <span class="details-label">Nome:</span>
-        <span class="details-value">{{ agendamento.cliente_nome }}</span>
-    </div>
+            <div class="details-item">
+                <span class="details-label">Status:</span>
+                <span class="details-value">
+                    <span class="status-badge status-{{ agendamento.status | lower }}">{{ agendamento.status }}</span>
+                </span>
+            </div>
+            <div class="details-item">
+                <span class="details-label">Tipo de Serviço:</span>
+                <span class="details-value">{{ agendamento.tipo_nome }} (Duração: {{ agendamento.duracao_minutos }}
+                    min)</span>
+            </div>
+            <div class="details-item">
+                <span class="details-label">Local:</span>
+                <span class="details-value">{{ agendamento.unidade_nome }} ({{ agendamento.empreendimento_nome
+                    }})</span>
+            </div>
+            <div class="details-item">
+                <span class="details-label">Data:</span>
+                <span class="details-value">{{ data_formatada }}</span>
+            </div>
+            <div class="details-item">
+                <span class="details-label">Hora:</span>
+                <span class="details-value">{{ agendamento.hora }}</span>
+            </div>
+            <div class="details-item">
+                <span class="details-label">Observações:</span>
+                <span class="details-value">{{ agendamento.observacoes if agendamento.observacoes else 'N/A' }}</span>
+            </div>
+        </div>
 
-    {# Exibir informações sensíveis do cliente apenas para Agentes e Administradores #}
-    {% if is_admin or is_agente %}
-    <div class="details-row">
-        <span class="details-label">Contato:</span>
-        <span class="details-value">{{ agendamento.contato_agendamento if agendamento.contato_agendamento else 'Não
-            informado' }}</span>
-    </div>
-    <div class="details-row">
-        <span class="details-label">E-mail:</span>
-        <span class="details-value">{{ agendamento.cliente_email if agendamento.cliente_email else 'Não informado'
-            }}</span>
-    </div>
-    <div class="details-row">
-        <span class="details-label">Telefone (cadastro):</span>
-        <span class="details-value">{{ agendamento.cliente_telefone if agendamento.cliente_telefone else 'Não informado'
-            }}</span>
-    </div>
-    {% else %}
-    <div class="details-row">
-        <span class="details-label">Contato:</span>
-        <span class="details-value">Disponível para Agentes e Administradores</span>
-    </div>
-    <div class="details-row">
-        <span class="details-label">E-mail:</span>
-        <span class="details-value">Disponível para Agentes e Administradores</span>
-    </div>
-    {% endif %}
+        {# Seção de Informações do Cliente #}
+        <div class="details-card-section mt-4"> {# mt-4 para espaçamento #}
+            <h3 class="section-title">Informações do Cliente</h3>
+            <div class="details-item">
+                <span class="details-label">Nome:</span>
+                <span class="details-value">{{ agendamento.cliente_nome }}</span>
+            </div>
 
-    <hr>
+            {# Exibir informações sensíveis do cliente apenas para Agentes e Administradores #}
+            {% if is_admin or is_agente %}
+            <div class="details-item">
+                <span class="details-label">Contato (Agendamento):</span>
+                <span class="details-value">{{ agendamento.contato_agendamento if agendamento.contato_agendamento else
+                    'Não informado' }}</span>
+            </div>
+            <div class="details-item">
+                <span class="details-label">E-mail:</span>
+                <span class="details-value">{{ agendamento.cliente_email if agendamento.cliente_email else 'Não
+                    informado' }}</span>
+            </div>
+            <div class="details-item">
+                <span class="details-label">Telefone (Cadastro):</span>
+                <span class="details-value">{{ agendamento.cliente_telefone if agendamento.cliente_telefone else 'Não
+                    informado' }}</span>
+            </div>
+            {% else %}
+            <div class="details-item">
+                <span class="details-label">Contato:</span>
+                <span class="details-value text-muted-info">Disponível para Agentes e Administradores</span>
+            </div>
+            <div class="details-item">
+                <span class="details-label">E-mail:</span>
+                <span class="details-value text-muted-info">Disponível para Agentes e Administradores</span>
+            </div>
+            {% endif %}
+        </div>
 
-    <h2>Informações do Agente Atribuído</h2>
-    <div class="details-row">
-        <span class="details-label">Nome:</span>
-        <span class="details-value">{{ agendamento.agente_nome if agendamento.agente_nome else 'Não atribuído' }}</span>
+        {# Seção de Informações do Agente Atribuído #}
+        <div class="details-card-section mt-4">
+            <h3 class="section-title">Informações do Agente Atribuído</h3>
+            <div class="details-item">
+                <span class="details-label">Nome:</span>
+                <span class="details-value">{{ agendamento.agente_nome if agendamento.agente_nome else 'Não atribuído'
+                    }}</span>
+            </div>
+            {# Exibir e-mail do agente atribuído apenas para Administradores #}
+            {% if is_admin %}
+            <div class="details-item">
+                <span class="details-label">E-mail:</span>
+                <span class="details-value">{{ agendamento.agente_email if agendamento.agente_email else 'Não informado'
+                    }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        {# Grupo de Botões de Ação #}
+        <div class="action-buttons-group mt-4">
+            <a href="{{ url_for('calendario') }}" class="btn btn-secondary">Voltar ao Calendário</a>
+
+            {# Botão de Cancelar para Clientes #}
+            {% if is_cliente and current_user.id == agendamento.cliente_id and agendamento.status in ['Pendente',
+            'Confirmado'] %}
+            <form action="{{ url_for('cancelar_agendamento') }}" method="POST" class="cancel-form"
+                style="display:inline-block;">
+                <input type="hidden" name="agendamento_id" value="{{ agendamento.id }}">
+                <button type="submit" class="btn btn-danger">Cancelar Agendamento</button>
+            </form>
+            {% endif %}
+        </div>
+
     </div>
-    {# Exibir e-mail do agente atribuído apenas para Administradores #}
-    {% if is_admin %}
-    <div class="details-row">
-        <span class="details-label">E-mail:</span>
-        <span class="details-value">{{ agendamento.agente_email if agendamento.agente_email else 'Não informado'
-            }}</span>
-    </div>
-    {% endif %}
-
-    <a href="{{ url_for('calendario') }}" class="back-link">← Voltar ao Calendário</a>
-
-    {% else %}
-    <p>Não foi possível carregar os detalhes do agendamento.</p>
-    <a href="{{ url_for('calendario') }}" class="back-link">← Voltar ao Calendário</a>
-    {% endif %}
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const cancelForm = document.querySelector('.cancel-form');
+        if (cancelForm) {
+            cancelForm.addEventListener('submit', function (e) {
+                if (!confirm('Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.')) {
+                    e.preventDefault();
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}
