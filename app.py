@@ -57,8 +57,6 @@ class Usuario(UserMixin):
         self.is_admin = is_admin
         self.tipo_usuario = tipo_usuario
         self.telefone = telefone
-        # <--- PROBLEMA AQUI: 'foto_perfil' não é um parâmetro de __init__
-        self.foto_perfil = foto_perfil
 
 
 # 📋 Configuração de logs
