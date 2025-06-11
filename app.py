@@ -1396,6 +1396,7 @@ def remover_unidade(unidade_id):
 
 
 # ⚙️ Configurações (Acesso apenas para Administradores)
+
 @app.route('/configuracoes')
 @admin_required
 def configuracoes():
@@ -1406,8 +1407,12 @@ def configuracoes():
     agente_users_data = []
     cliente_users_data = []
     non_admin_users_for_promotion = []
-    regras_reservas = None  # NOVO: Variável para as regras de reservas
 
+    # NOVO: Obter a configuração de antecedência mínima
+    min_antecedencia_horas = get_global_setting(
+        'min_antecedencia_horas', '0')  # Padrão 0 horas
+
+    # NOVO: Obter o SUPER_ADMIN_EMAIL do ambiente
     super_admin_email = os.environ.get('SUPER_ADMIN_EMAIL', 'admin@admin.com')
 
     try:
@@ -1423,16 +1428,11 @@ def configuracoes():
         cliente_users_data = conn.execute(
             "SELECT id, nome, email, telefone, tipo_usuario FROM usuarios WHERE tipo_usuario = 'cliente' ORDER BY nome").fetchall()
 
-        # Lógica para filtrar usuários que podem ser promovidos a admin
         admin_user_ids = {user['id'] for user in admin_users_data}
         all_potential_promotees = agente_users_data + cliente_users_data
         for user in all_potential_promotees:
             if user['id'] not in admin_user_ids:
                 non_admin_users_for_promotion.append(user)
-
-        # NOVO: Busca as regras de reservas (deve haver apenas uma linha com ID 1)
-        regras_reservas = conn.execute(
-            "SELECT antecedencia_maxima_dias, antecedencia_minima_dias FROM regras_reservas WHERE id = 1").fetchone()
 
     except sqlite3.Error as e:
         flash("Erro ao carregar dados de configuração.", "error")
@@ -1449,59 +1449,37 @@ def configuracoes():
                            cliente_users=cliente_users_data,
                            super_admin_email=super_admin_email,
                            non_admin_users=non_admin_users_for_promotion,
-                           regras_reservas=regras_reservas  # NOVO: Passa as regras para o template
+                           min_antecedencia_horas=min_antecedencia_horas  # NOVO: Passa para o template
                            )
-
-# --- NOVO: ROTA PARA SALVAR REGRAS DE RESERVAS ---
 
 
 @app.route('/salvar_regras_reservas', methods=['POST'])
-@admin_required
+@admin_required  # Apenas administradores podem configurar isso
 def salvar_regras_reservas():
-    max_dias_str = request.form.get('antecedencia_maxima_dias', '').strip()
-    min_dias_str = request.form.get('antecedencia_minima_dias', '').strip()
+    min_antecedencia_horas_str = request.form.get(
+        'min_antecedencia_horas', '').strip()
 
-    errors = []
     try:
-        max_dias = int(max_dias_str)
-        min_dias = int(min_dias_str)
+        min_antecedencia_horas = int(min_antecedencia_horas_str)
+        if min_antecedencia_horas < 0:
+            flash('A antecedência mínima não pode ser um número negativo.', 'error')
+            return redirect(url_for('configuracoes', tab='regras'))
 
-        if max_dias <= 0 or min_dias <= 0:
-            errors.append(
-                'Os dias de antecedência máxima e mínima devem ser números positivos.')
-        if min_dias > max_dias:
-            errors.append(
-                'A antecedência mínima não pode ser maior que a antecedência máxima.')
-
+        if set_global_setting('min_antecedencia_horas', min_antecedencia_horas):
+            flash(
+                f'Regra de antecedência mínima de agendamento atualizada para {min_antecedencia_horas} horas.', 'success')
+            app.logger.info(
+                f"Admin {current_user.email} atualizou a antecedência mínima para {min_antecedencia_horas} horas.")
+        else:
+            flash('Erro ao salvar a regra de antecedência no banco de dados.', 'error')
     except ValueError:
-        errors.append(
-            'Os dias de antecedência devem ser números inteiros válidos.')
-
-    if errors:
-        for error_msg in errors:
-            flash(error_msg, 'error')
-        # Redireciona para a aba de regras
-        return redirect(url_for('configuracoes', tab='regras'))
-
-    conn = get_db_connection()
-    try:
-        # Atualiza a linha existente (ID 1)
-        conn.execute(
-            'UPDATE regras_reservas SET antecedencia_maxima_dias = ?, antecedencia_minima_dias = ? WHERE id = 1',
-            (max_dias, min_dias)
-        )
-        conn.commit()
-        flash('Regras de reservas salvas com sucesso!', 'success')
-        app.logger.info(
-            f"Regras de reservas atualizadas por {current_user.email}: Max {max_dias} dias, Min {min_dias} dias.")
-    except sqlite3.Error as e:
-        flash(f'Erro ao salvar regras de reservas: {str(e)}', 'error')
+        flash(
+            'Valor inválido para antecedência mínima. Deve ser um número inteiro.', 'error')
+    except Exception as e:
+        flash(f'Erro inesperado ao salvar regras: {str(e)}', 'error')
         app.logger.error(
-            f"Erro DB em salvar_regras_reservas: {e}", exc_info=True)
-    finally:
-        conn.close()
+            f"Erro inesperado em /salvar_regras_reservas: {e}", exc_info=True)
 
-    # Redireciona para a aba de regras
     return redirect(url_for('configuracoes', tab='regras'))
 
 
@@ -2471,231 +2449,63 @@ def init_db():
     app.logger.info(
         "Iniciando verificação/criação das tabelas do banco de dados...")
 
-    # 1. Tabelas Independentes
+    # ... (suas tabelas existentes: usuarios, empreendimentos, tipos_agendamento, unidades, etc.) ...
 
-    # ESTA É A ÚNICA DEFINIÇÃO CORRETA E COMPLETA PARA A TABELA 'usuarios'
+    # NOVO: Tabela para configurações globais
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS usuarios (
+        CREATE TABLE IF NOT EXISTS configuracoes_globais (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT,
-            email TEXT UNIQUE NOT NULL,
-            senha TEXT NOT NULL,
-            is_admin INTEGER DEFAULT 0 CHECK(is_admin IN (0, 1)),
-            tipo_usuario TEXT DEFAULT 'cliente' NOT NULL,
-            telefone TEXT,
-            foto_perfil TEXT -- ESTA COLUNA AGORA ESTÁ AQUI
+            chave TEXT UNIQUE NOT NULL, -- Ex: 'min_antecedencia_horas'
+            valor TEXT NOT NULL         -- Ex: '2'
         )
     ''')
-    app.logger.info("Tabela 'usuarios' verificada/criada.")
+    app.logger.info("Tabela 'configuracoes_globais' verificada/criada.")
 
-    # ---------------------------------------------------------------------
-    # GARANTA QUE QUALQUER OUTRA DEFINIÇÃO DE 'CREATE TABLE IF NOT EXISTS usuarios'
-    # ANTERIORMENTE EXISTENTE EM SEU init_db() SEJA REMOVIDA.
-    # DEIXE APENAS A DEFINIÇÃO ACIMA.
-    # ---------------------------------------------------------------------
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS empreendimentos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT UNIQUE NOT NULL,
-            ativo INTEGER DEFAULT 1 CHECK(ativo IN (0, 1))
-        )
-    ''')
-    app.logger.info("Tabela 'empreendimentos' verificada/criada.")
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS tipos_agendamento (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT UNIQUE NOT NULL,
-            ativo INTEGER DEFAULT 1 CHECK(ativo IN (0, 1)),
-            duracao_minutos INTEGER DEFAULT 60 NOT NULL
-        )
-    ''')
-    app.logger.info("Tabela 'tipos_agendamento' verificada/criada.")
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS regras_reservas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            antecedencia_maxima_dias INTEGER NOT NULL DEFAULT 365, -- Ex: 365 dias (1 ano)
-            antecedencia_minima_dias INTEGER NOT NULL DEFAULT 1    -- Ex: 1 dia (não pode agendar para hoje)
-        )
-    ''')
-    app.logger.info("Tabela 'regras_reservas' verificada/criada.")
-
-    # Garante que sempre haja uma linha na tabela de regras_reservas
-    # Se a tabela estiver vazia, insere uma linha padrão.
-    cursor.execute(
-        "INSERT OR IGNORE INTO regras_reservas (id, antecedencia_maxima_dias, antecedencia_minima_dias) VALUES (1, 365, 1)")
-    conn.commit()
-    app.logger.info("Linha padrão para 'regras_reservas' verificada/criada.")
-
-    # 2. Tabelas que dependem das tabelas acima
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS unidades (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            empreendimento_id INTEGER NOT NULL,
-            ativo INTEGER DEFAULT 1 CHECK(ativo IN (0, 1)),
-            FOREIGN KEY (empreendimento_id) REFERENCES empreendimentos(id) ON DELETE CASCADE,
-            UNIQUE(nome, empreendimento_id)
-        )
-    ''')
-    app.logger.info("Tabela 'unidades' verificada/criada.")
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS horarios_funcionamento (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            empreendimento_id INTEGER NOT NULL,
-            dia_semana INTEGER NOT NULL, -- 0=Segunda, 1=Terça, ..., 6=Domingo
-            hora_inicio TEXT NOT NULL,  -- Formato "HH:MM"
-            hora_fim TEXT NOT NULL,     -- Formato "HH:MM"
-            FOREIGN KEY (empreendimento_id) REFERENCES empreendimentos(id) ON DELETE CASCADE,
-            UNIQUE (empreendimento_id, dia_semana, hora_inicio, hora_fim)
-        )
-    ''')
-    app.logger.info("Tabela 'horarios_funcionamento' verificada/criada.")
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS agente_tipos_servico (
-            agente_id INTEGER NOT NULL,
-            tipo_id INTEGER NOT NULL,
-            PRIMARY KEY (agente_id, tipo_id),
-            FOREIGN KEY (agente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-            FOREIGN KEY (tipo_id) REFERENCES tipos_agendamento(id) ON DELETE CASCADE
-        )
-    ''')
-    app.logger.info("Tabela 'agente_tipos_servico' verificada/criada.")
-
-    # 3. Tabela que depende de várias outras
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS agendamentos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER, 
-            tipo_id INTEGER NOT NULL,
-            unidade_id INTEGER NOT NULL,
-            data TEXT NOT NULL,
-            hora TEXT NOT NULL,
-            observacoes TEXT,
-            contato_agendamento TEXT,
-            status TEXT DEFAULT 'Pendente' NOT NULL,
-            agente_atribuido_id INTEGER,
-            FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
-            FOREIGN KEY (tipo_id) REFERENCES tipos_agendamento(id) ON DELETE RESTRICT,
-            FOREIGN KEY (unidade_id) REFERENCES unidades(id) ON DELETE RESTRICT,
-            FOREIGN KEY (agente_atribuido_id) REFERENCES usuarios(id) ON DELETE SET NULL
-        )
-    ''')
-    app.logger.info("Tabela 'agendamentos' verificada/criada.")
-
-    # --- Adição de Colunas (ALTER TABLE) e Migração de Dados Existentes ---
-    # Estes ALTERs são importantes para bancos de dados já existentes
-    # Mas se você deletou database.db, eles podem ser ignorados.
-    # No entanto, é seguro mantê-los para futuras atualizações.
-
-    try:
-        cursor.execute(
-            "ALTER TABLE tipos_agendamento ADD COLUMN duracao_minutos INTEGER DEFAULT 60")
-        app.logger.info(
-            "Coluna 'duracao_minutos' adicionada à tabela 'tipos_agendamento'.")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            app.logger.info(
-                "Coluna 'duracao_minutos' já existe na tabela 'tipos_agendamento'.")
-        else:
-            app.logger.error(
-                f"Erro ao adicionar coluna 'duracao_minutos': {e}")
-
-    try:
-        cursor.execute(
-            "ALTER TABLE usuarios ADD COLUMN tipo_usuario TEXT DEFAULT 'cliente'")
-        app.logger.info(
-            "Coluna 'tipo_usuario' adicionada à tabela 'usuarios'.")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            app.logger.info(
-                "Coluna 'tipo_usuario' já existe na tabela 'usuarios'.")
-        else:
-            app.logger.error(f"Erro ao adicionar coluna 'tipo_usuario': {e}")
-
-    try:
-        cursor.execute("ALTER TABLE usuarios ADD COLUMN telefone TEXT")
-        app.logger.info("Coluna 'telefone' adicionada à tabela 'usuarios'.")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            app.logger.info(
-                "Coluna 'telefone' já existe na tabela 'usuarios'.")
-        else:
-            app.logger.error(f"Erro ao adicionar coluna 'telefone': {e}")
-
-    try:
-        cursor.execute("ALTER TABLE agendamentos ADD COLUMN observacoes TEXT")
-        app.logger.info(
-            "Coluna 'observacoes' adicionada à tabela 'agendamentos'.")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            app.logger.info(
-                "Coluna 'observacoes' já existe na tabela 'agendamentos'.")
-        else:
-            app.logger.error(f"Erro ao adicionar coluna 'observacoes': {e}")
-
-    try:
-        cursor.execute(
-            "ALTER TABLE agendamentos ADD COLUMN contato_agendamento TEXT")
-        app.logger.info(
-            "Coluna 'contato_agendamento' adicionada à tabela 'agendamentos'.")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            app.logger.info(
-                "Coluna 'contato_agendamento' já existe na tabela 'agendamentos'.")
-        else:
-            app.logger.error(
-                f"Erro ao adicionar coluna 'contato_agendamento': {e}")
-
-    try:
-        cursor.execute(
-            "ALTER TABLE agendamentos ADD COLUMN status TEXT DEFAULT 'Pendente' NOT NULL")
-        app.logger.info("Coluna 'status' adicionada à tabela 'agendamentos'.")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            app.logger.info(
-                "Coluna 'status' já existe na tabela 'agendamentos'.")
-        else:
-            app.logger.error(f"Erro ao adicionar coluna 'status': {e}")
-
-    try:
-        cursor.execute(
-            "ALTER TABLE agendamentos ADD COLUMN agente_atribuido_id INTEGER")
-        app.logger.info(
-            "Coluna 'agente_atribuido_id' adicionada à tabela 'agendamentos'.")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            app.logger.info(
-                "Coluna 'agente_atribuido_id' já existe na tabela 'agendamentos'.")
-        else:
-            app.logger.error(
-                f"Erro ao adicionar coluna 'agente_atribuido_id': {e}")
-
-    # Este ALTER TABLE para foto_perfil NÃO é mais estritamente necessário
-    # se a coluna já estiver no CREATE TABLE acima, mas é seguro mantê-lo
-    # para caso de um database.db antigo (sem a coluna) ser carregado.
-    try:
-        cursor.execute("ALTER TABLE usuarios ADD COLUMN foto_perfil TEXT")
-        app.logger.info("Coluna 'foto_perfil' adicionada à tabela 'usuarios'.")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            app.logger.info(
-                "Coluna 'foto_perfil' já existe na tabela 'usuarios'.")
-        else:
-            app.logger.error(
-                f"Erro ao adicionar coluna 'foto_perfil': {e}")
-
-    # Certifique-se de que o diretório de upload exista
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    app.logger.info(
-        f"Diretório de upload '{app.config['UPLOAD_FOLDER']}' verificado/criado.")
+    # ... (restante dos seus ALTER TABLEs existentes) ...
 
     conn.commit()
     conn.close()
+    app.logger.info("Banco de dados inicializado/verificado e atualizado.")
+
+# NOVO: Função auxiliar para obter configuração global
+
+
+def get_global_setting(key, default_value=None):
+    conn = get_db_connection()
+    value = default_value
+    try:
+        row = conn.execute(
+            "SELECT valor FROM configuracoes_globais WHERE chave = ?", (key,)
+        ).fetchone()
+        if row:
+            value = row['valor']
+    except sqlite3.Error as e:
+        app.logger.error(
+            f"Erro DB ao obter configuração global '{key}': {e}", exc_info=True)
+    finally:
+        if conn:
+            conn.close()
+    return value
+
+# NOVO: Função auxiliar para salvar configuração global
+
+
+def set_global_setting(key, value):
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO configuracoes_globais (chave, valor) VALUES (?, ?)",
+            (key, str(value))  # Garantir que o valor seja salvo como TEXT
+        )
+        conn.commit()
+        return True
+    except sqlite3.Error as e:
+        app.logger.error(
+            f"Erro DB ao salvar configuração global '{key}': {e}", exc_info=True)
+        return False
+    finally:
+        if conn:
+            conn.close()
     app.logger.info("Banco de dados inicializado/verificado e atualizado.")
 
 

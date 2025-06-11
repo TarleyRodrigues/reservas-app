@@ -14,8 +14,8 @@
             <li><a href="#usuarios" data-target="usuarios" class="config-menu-link">Gerenciamento de Usuários</a></li>
             <li><a href="#horarios" data-target="horarios" class="config-menu-link">Horários de Funcionamento</a></li>
             <li><a href="#seguranca" data-target="seguranca" class="config-menu-link">Segurança (Administradores)</a></li>
-            {# NOVO: Aba Regras de Reservas (se for implementar futuramente) #}
-            {# <li><a href="#regras" data-target="regras" class="config-menu-link">Regras de Reservas</a></li> #}
+            {# NOVO: Aba Regras de Reservas #}
+            <li><a href="#regras" data-target="regras" class="config-menu-link">Regras de Reservas</a></li>
         </ul>
     </div>
 
@@ -23,11 +23,10 @@
         <h1>Configurações do Sistema</h1>
 
         {# Mensagens Flash (já são tratadas pelo showToast em base.html, este bloco é um fallback visual) #}
-        {% with messages=get_flashed_messages(with_categories=true) %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <ul class="flash-messages">
             {% for category, message in messages %}
-            {# Remova as divs 'alert' se você só usa o showToast, ou use-as para fallback #}
             <li class="{{ category }}">{{ message }}</li>
             {% endfor %}
         </ul>
@@ -399,6 +398,21 @@
             <p>Não há usuários (clientes ou agentes) para promover a administrador no momento.</p>
             {% endif %}
         </div>
+
+        {# --- NOVO: SEÇÃO DE REGRAS DE RESERVAS --- #}
+        <div id="config-regras" class="config-content-section" style="display: none;">
+            <h2>Regras de Reservas</h2>
+            <h3>Antecedência Mínima de Agendamento</h3>
+            <p>Defina quantas horas de antecedência são necessárias para que um agendamento possa ser feito (ex: 2 horas significa que agendamentos de última hora não são permitidos).</p>
+            <form method="POST" action="{{ url_for('salvar_regras_reservas') }}" class="config-form">
+                <label for="min_antecedencia_horas">Mínimo de Horas de Antecedência:</label>
+                <input type="number" id="min_antecedencia_horas" name="min_antecedencia_horas" 
+                       placeholder="0" value="{{ min_antecedencia_horas }}" min="0" required>
+                <button type="submit" class="btn btn-primary btn-sm">Salvar Regra</button>
+            </form>
+            <p class="text-muted small mt-3">Valor atual: {{ min_antecedencia_horas }} hora(s).</p>
+        </div>
+
     </div>
 </div>
 
@@ -465,13 +479,16 @@
                     horariosTableBody.innerHTML = '<tr><td colspan="5">Nenhum horário cadastrado. Selecione um empreendimento acima para ver seus horários ou adicione um novo.</td></tr>';
                 }
             }
+            // NOVO: Adicione aqui a lógica para a aba 'regras' se ela precisar de JS ao ser ativada
+            // Ativar a aba 'regras' não requer carregamento de dados complexos via JS
+            // Se precisar de alguma ação, adicione aqui:
+            // if (targetId === 'regras') { /* Nenhuma ação JS complexa por enquanto */ }
         }
 
         menuLinks.forEach(link => {
             link.addEventListener('click', function (e) {
                 e.preventDefault();
                 const target = this.dataset.target;
-                // CORRIGIDO: Sintaxe correta para url_for em template literals JS
                 history.pushState(null, '', `{{ url_for('configuracoes') }}?tab=${target}`);
                 showSection(target);
             });
@@ -481,7 +498,6 @@
             button.addEventListener('click', function () {
                 const empreendimentoId = this.dataset.id;
                 const empreendimentoNome = this.closest('tr').querySelector('td:first-child').textContent;
-                // CORRIGIDO: Sintaxe correta para url_for em template literals JS
                 history.pushState(null, '', `{{ url_for('configuracoes') }}?tab=empreendimentos&active_emp_id=${empreendimentoId}`);
                 loadUnidades(empreendimentoId, empreendimentoNome);
             });
@@ -501,7 +517,6 @@
             unidadesTableBody.innerHTML = '<tr><td colspan="3">Carregando unidades...</td></tr>';
 
             try {
-                // CORRIGIDO: Sintaxe correta para template literal JS
                 const response = await fetch(`/api/empreendimento/${empreendimentoId}/unidades`);
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ detail: "Erro desconhecido ao buscar unidades." }));
@@ -517,7 +532,6 @@
                 } else {
                     unidades.forEach(unidade => {
                         const row = unidadesTableBody.insertRow();
-                        // CORRIGIDO: Sintaxe correta para template literal JS
                         const toggleUrl = `/toggle_unidade/${unidade.id}`;
                         const removeUrl = `/remover_unidade/${unidade.id}`;
 
@@ -616,7 +630,6 @@
                 const servicosSpan = document.getElementById(`agente-servicos-${userId}`);
 
                 try {
-                    // CORRIGIDO: Sintaxe correta para template literal JS
                     const response = await fetch(`/api/agente/${userId}/servicos`);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -640,7 +653,6 @@
             checkboxes.forEach(cb => cb.checked = false);
 
             try {
-                // CORRIGIDO: Sintaxe correta para template literal JS
                 const response = await fetch(`/api/agente/${agenteId}/servicos_ids`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -671,7 +683,6 @@
         async function loadHorariosEmpreendimento(empreendimentoId) {
             horariosTableBody.innerHTML = '<tr><td colspan="5">Carregando horários...</td></tr>';
             try {
-                // CORRIGIDO: Sintaxe correta para template literal JS
                 const response = await fetch(`/api/empreendimento/${empreendimentoId}/horarios`);
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ detail: "Erro desconhecido ao buscar horários." }));
@@ -685,7 +696,6 @@
                 } else {
                     horarios.forEach(horario => {
                         const row = horariosTableBody.insertRow();
-                        // CORRIGIDO: Sintaxe correta para template literal JS
                         const removeUrl = `/remover_horario_funcionamento/${horario.id}`;
 
                         row.innerHTML = `
@@ -756,6 +766,7 @@
                         horariosTableBody.innerHTML = '<tr><td colspan="5">Nenhum horário cadastrado. Selecione um empreendimento acima para ver seus horários ou adicione um novo.</td></tr>';
                     }
                 }
+                // Não há lógica JS complexa para a aba 'regras' ao ser ativada
             } else {
                 console.warn(`Aba com ID "${tabId}" não encontrada. Ativando aba padrão "tipos".`);
                 activateTab('tipos'); // Fallback para aba padrão
