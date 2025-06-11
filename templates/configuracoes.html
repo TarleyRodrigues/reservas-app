@@ -1,5 +1,4 @@
 {# templates/configuracoes.html #}
-
 {% extends 'base.html' %}
 
 {% block head %}
@@ -16,7 +15,6 @@
             <li><a href="#usuarios" data-target="usuarios" class="config-menu-link">Gerenciamento de Usuários</a></li>
             <li><a href="#horarios" data-target="horarios" class="config-menu-link">Horários de Funcionamento</a></li>
             <li><a href="#seguranca" data-target="seguranca" class="config-menu-link">Segurança (Administradores)</a></li>
-            {# NOVO: Aba Regras de Reservas #}
             <li><a href="#regras" data-target="regras" class="config-menu-link">Regras de Reservas</a></li>
         </ul>
     </div>
@@ -24,7 +22,6 @@
     <div class="config-main-content">
         <h1>Configurações do Sistema</h1>
 
-        {# Mensagens Flash (já são tratadas pelo showToast em base.html, este bloco é um fallback visual) #}
         {% with messages=get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <ul class="flash-messages">
@@ -403,22 +400,29 @@
         {# --- NOVO: SEÇÃO DE REGRAS DE RESERVAS --- #}
         <div id="config-regras" class="config-content-section" style="display: none;">
             <h2>Regras de Reservas</h2>
-            <h3>Antecedência Mínima de Agendamento</h3>
-            <p>Defina quantas horas de antecedência são necessárias para que um agendamento possa ser feito (ex: 2 horas significa que agendamentos de última hora não são permitidos).</p>
-            <form method="POST" action="{{ url_for('salvar_regras_reservas') }}" class="config-form config-form-vertical">
-                <label for="min_antecedencia_horas">Mínimo de Horas de Antecedência:</label>
-                <input type="number" id="min_antecedencia_horas" name="min_antecedencia_horas" 
-                       placeholder="0" value="{{ min_antecedencia_horas }}" min="0" required> {# CORRIGIDO AQUI: value="{{ min_antecedencia_horas }}" #}
-                <button type="submit" class="btn btn-primary btn-sm">Salvar Regra</button>
-            </form>
+            
+            {# Exibir configurações atuais #}
+            <div class="current-rules-summary">
+                <h4>Configurações Atuais:</h4>
+                <p><strong>Antecedência Mínima:</strong> {{ min_antecedencia_dias }} dia(s)</p>
+                <p><strong>Antecedência Máxima:</strong> {{ max_antecedencia_dias }} dia(s)</p>
+            </div>
             <hr>
-            <h3>Antecedência Máxima de Agendamento</h3>
-            <p>Defina quantos meses de antecedência são permitidos para novos agendamentos (ex: 6 meses significa que não é possível agendar para daqui mais de 6 meses).</p>
+
+            <h3>Atualizar Regras de Antecedência</h3>
+            <p>Defina quantos dias de antecedência são necessários para que um agendamento possa ser feito.</p>
+            
+            {# FORMULÁRIO UNIFICADO #}
             <form method="POST" action="{{ url_for('salvar_regras_reservas') }}" class="config-form config-form-vertical">
-                <label for="max_antecedencia_meses">Máximo de Meses de Antecedência:</label>
-                <input type="number" id="max_antecedencia_meses" name="max_antecedencia_meses" 
-                       placeholder="12" value="{{ max_antecedencia_meses }}" min="0" required> {# CORRIGIDO AQUI: value="{{ max_antecedencia_meses }}" #}
-                <button type="submit" class="btn btn-primary btn-sm">Salvar Regra</button>
+                <label for="min_antecedencia_dias">Mínimo de Dias de Antecedência:</label>
+                <input type="number" id="min_antecedencia_dias" name="antecedencia_minima_dias" 
+                       placeholder="1" value="{{ min_antecedencia_dias }}" min="0" required> 
+                
+                <label for="max_antecedencia_dias">Máximo de Dias de Antecedência:</label>
+                <input type="number" id="max_antecedencia_dias" name="antecedencia_maxima_dias" 
+                       placeholder="365" value="{{ max_antecedencia_dias }}" min="0" required> 
+                
+                <button type="submit" class="btn btn-primary btn-sm">Salvar Regras</button>
             </form>
         </div>
 
@@ -526,7 +530,7 @@
                 const response = await fetch(`/api/empreendimento/${empreendimentoId}/unidades`);
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ detail: "Erro desconhecido ao buscar unidades." }));
-                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const unidades = await response.json();
 
@@ -692,7 +696,7 @@
                 const response = await fetch(`/api/empreendimento/${empreendimentoId}/horarios`);
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ detail: "Erro desconhecido ao buscar horários." }));
-                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const horarios = await response.json();
 
