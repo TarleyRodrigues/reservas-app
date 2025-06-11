@@ -2,445 +2,39 @@
 
 {% block head %}
 {{ super() }}
-<style>
-    /* Estilos CSS para a página de configurações */
-    .config-page-container {
-        display: flex;
-        min-height: calc(100vh - 100px);
-        /* Ajuste conforme a altura do seu header/footer */
-        background-color: #f8f9fa;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-        /* Garante que o box-shadow seja contido */
-        margin: 20px auto;
-        max-width: 1200px;
-        /* Largura máxima do container */
-    }
-
-    .config-sidebar {
-        width: 250px;
-        background-color: #343a40;
-        /* Cor escura para a sidebar */
-        padding: 20px;
-        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    }
-
-    .config-menu {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    .config-menu li {
-        margin-bottom: 10px;
-    }
-
-    .config-menu-link {
-        display: block;
-        padding: 10px 15px;
-        color: #f8f9fa;
-        text-decoration: none;
-        border-radius: 4px;
-        transition: background-color 0.3s ease, color 0.3s ease;
-    }
-
-    .config-menu-link:hover,
-    .config-menu-link.active {
-        background-color: #007bff;
-        /* Cor primária para hover/ativo */
-        color: white;
-    }
-
-    .config-main-content {
-        flex-grow: 1;
-        padding: 30px;
-        background-color: #fff;
-    }
-
-    .config-main-content h1 {
-        color: #343a40;
-        margin-bottom: 25px;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 15px;
-    }
-
-    .config-content-section {
-        margin-bottom: 30px;
-    }
-
-    .config-content-section h2,
-    .config-content-section h3 {
-        color: #007bff;
-        margin-bottom: 20px;
-    }
-
-    .config-form {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-bottom: 20px;
-        align-items: center;
-    }
-
-    .config-form label {
-        min-width: 120px;
-        /* Para alinhar labels em formulários mais complexos */
-        font-weight: bold;
-        color: #555;
-        text-align: right;
-        /* Alinha o texto da label à direita */
-        padding-right: 10px;
-        /* Espaço entre label e input */
-        box-sizing: border-box;
-        /* Inclui padding na largura */
-    }
-
-    /* Ajuste para que labels fiquem em sua própria linha em telas pequenas */
-    @media (max-width: 768px) {
-        .config-form label {
-            width: 100%;
-            text-align: left;
-            padding-right: 0;
-        }
-    }
-
-
-    .config-form input[type="text"],
-    .config-form input[type="number"],
-    .config-form input[type="email"],
-    .config-form input[type="password"],
-    /* Adicionado para o novo formulário de agente */
-    .config-form input[type="tel"],
-    /* Adicionado para o novo formulário de agente */
-    .config-form input[type="time"],
-    .config-form select {
-        flex: 1;
-        padding: 8px 12px;
-        border: 1px solid #ced4da;
-        border-radius: 4px;
-        min-width: 180px;
-        /* Garante que não fiquem muito pequenos */
-    }
-
-    .config-form button {
-        padding: 8px 15px;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-        white-space: nowrap;
-        /* Evita que o texto do botão quebre */
-    }
-
-    /* Tabela base */
-    .config-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-    }
-
-    .config-table thead th {
-        background-color: #e9ecef;
-        color: #495057;
-        padding: 12px 15px;
-        text-align: left;
-        border-bottom: 2px solid #dee2e6;
-    }
-
-    .config-table tbody td {
-        padding: 10px 15px;
-        border-bottom: 1px solid #e2e6ea;
-        vertical-align: middle;
-    }
-
-    .config-table tbody tr:hover {
-        background-color: #f1f1f1;
-    }
-
-    /* Estilos para botões */
-    .btn {
-        display: inline-block;
-        font-weight: 400;
-        color: #212529;
-        text-align: center;
-        vertical-align: middle;
-        user-select: none;
-        background-color: transparent;
-        border: 1px solid transparent;
-        font-size: 0.875rem;
-        /* Menor para sm */
-        line-height: 1.5;
-        border-radius: 0.25rem;
-        transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
-            border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    }
-
-    .btn-sm {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.765rem;
-        border-radius: 0.2rem;
-    }
-
-    .btn-primary {
-        color: #fff;
-        background-color: #007bff;
-        border-color: #007bff;
-    }
-
-    .btn-primary:hover {
-        background-color: #0056b3;
-        border-color: #0056b3;
-    }
-
-    .btn-success {
-        color: #fff;
-        background-color: #28a745;
-        border-color: #28a745;
-    }
-
-    .btn-success:hover {
-        background-color: #218838;
-        border-color: #218838;
-    }
-
-    .btn-warning {
-        color: #212529;
-        background-color: #ffc107;
-        border-color: #ffc107;
-    }
-
-    .btn-warning:hover {
-        background-color: #e0a800;
-        border-color: #e0a800;
-    }
-
-    .btn-danger {
-        color: #fff;
-        background-color: #dc3545;
-        border-color: #dc3545;
-    }
-
-    .btn-danger:hover {
-        background-color: #c82333;
-        border-color: #bd2130;
-    }
-
-    .btn-info {
-        color: #fff;
-        background-color: #17a2b8;
-        border-color: #17a2b8;
-    }
-
-    .btn-info:hover {
-        background-color: #138496;
-        border-color: #117a8b;
-    }
-
-    .btn-secondary {
-        color: #fff;
-        background-color: #6c757d;
-        border-color: #6c757d;
-    }
-
-    .btn-secondary:hover {
-        background-color: #5a6268;
-        border-color: #545b62;
-    }
-
-    /* Estilos para status (Ativo/Inativo) */
-    .status {
-        display: inline-block;
-        padding: 0.3em 0.6em;
-        font-size: 0.75em;
-        font-weight: bold;
-        line-height: 1;
-        text-align: center;
-        white-space: nowrap;
-        vertical-align: baseline;
-        border-radius: 0.25rem;
-        color: white;
-        /* Cor do texto padrão para status */
-    }
-
-    .status-active {
-        background-color: #28a745;
-        /* Verde */
-    }
-
-    .status-inactive {
-        background-color: #6c757d;
-        /* Cinza */
-    }
-
-    /* Estilos para o container de serviços do agente */
-    .servicos-form-container {
-        padding: 15px;
-        background-color: #f0f8ff;
-        border-left: 5px solid #007bff;
-        margin-top: 10px;
-        border-radius: 4px;
-    }
-
-    .servicos-form-container h4 {
-        margin-top: 0;
-        color: #0056b3;
-        margin-bottom: 15px;
-    }
-
-    .checkbox-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 15px;
-        margin-bottom: 15px;
-    }
-
-    .checkbox-item {
-        display: flex;
-        align-items: center;
-    }
-
-    .checkbox-item input[type="checkbox"] {
-        margin-right: 8px;
-        transform: scale(1.2);
-        /* Aumenta um pouco o tamanho do checkbox */
-    }
-
-    /* Estilos para mensagens flash (alerts) - embora o JS as transforme em toasts */
-    .alert {
-        padding: 10px 15px;
-        margin-bottom: 20px;
-        border: 1px solid transparent;
-        border-radius: 4px;
-    }
-
-    .alert-success {
-        color: #155724;
-        background-color: #d4edda;
-        border-color: #c3e6cb;
-    }
-
-    .alert-error,
-    .alert-danger {
-        /* Usando alert-error para consistência com o JS */
-        color: #721c24;
-        background-color: #f8d7da;
-        border-color: #f5c6cb;
-    }
-
-    .alert-warning {
-        color: #856404;
-        background-color: #fff3cd;
-        border-color: #ffeeba;
-    }
-
-    .alert-info {
-        color: #0c5460;
-        background-color: #d1ecf1;
-        border-color: #bee5eb;
-    }
-
-    /* Ajustes para formulários inline na tabela */
-    .config-table form {
-        margin-bottom: 0;
-    }
-
-    .config-table input[type="number"] {
-        padding: 5px 8px;
-        width: 80px;
-        /* Ajuste para inputs de número */
-    }
-
-    .config-table .btn-sm {
-        margin-left: 5px;
-    }
-
-    hr {
-        margin-top: 30px;
-        margin-bottom: 30px;
-        border: 0;
-        border-top: 1px solid rgba(0, 0, 0, .1);
-    }
-
-    /* Responsividade básica */
-    @media (max-width: 768px) {
-        .config-page-container {
-            flex-direction: column;
-            margin: 10px;
-        }
-
-        .config-sidebar {
-            width: 100%;
-            padding: 15px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-
-        .config-menu {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 5px;
-        }
-
-        .config-menu li {
-            margin-bottom: 0;
-        }
-
-        .config-menu-link {
-            padding: 8px 10px;
-            font-size: 0.9em;
-        }
-
-        .config-main-content {
-            padding: 20px;
-        }
-
-        .config-form {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .config-form input,
-        .config-form select,
-        .config-form button {
-            width: 100%;
-            min-width: unset;
-        }
-
-        /* Reset de alinhamento para labels em telas pequenas */
-        .config-form label {
-            text-align: left;
-            padding-right: 0;
-        }
-    }
-</style>
+{# Não é necessário nenhuma tag <style> inline aqui se todo o CSS está em arquivos externos #}
 {% endblock %}
 
 {% block content %}
 <div class="config-page-container">
     <div class="config-sidebar">
         <ul class="config-menu">
-            <li><a href="#" data-target="tipos" class="config-menu-link">Tipos de Agendamento</a></li>
-            <li><a href="#" data-target="empreendimentos" class="config-menu-link">Empreendimentos e Unidades</a></li>
-            <li><a href="#" data-target="usuarios" class="config-menu-link">Gerenciamento de Usuários</a></li>
-            <li><a href="#" data-target="horarios" class="config-menu-link">Horários de Funcionamento</a></li>
-            <li><a href="#" data-target="seguranca" class="config-menu-link">Segurança (Administradores)</a></li>
+            <li><a href="#tipos" data-target="tipos" class="config-menu-link">Tipos de Agendamento</a></li>
+            <li><a href="#empreendimentos" data-target="empreendimentos" class="config-menu-link">Empreendimentos e Unidades</a></li>
+            <li><a href="#usuarios" data-target="usuarios" class="config-menu-link">Gerenciamento de Usuários</a></li>
+            <li><a href="#horarios" data-target="horarios" class="config-menu-link">Horários de Funcionamento</a></li>
+            <li><a href="#seguranca" data-target="seguranca" class="config-menu-link">Segurança (Administradores)</a></li>
+            {# NOVO: Aba Regras de Reservas (se for implementar futuramente) #}
+            {# <li><a href="#regras" data-target="regras" class="config-menu-link">Regras de Reservas</a></li> #}
         </ul>
     </div>
 
     <div class="config-main-content">
         <h1>Configurações do Sistema</h1>
 
-        {# Mensagens Flash (mantido o fallback, o JS já lida com os toasts) #}
-        {% with messages = get_flashed_messages(with_categories=true) %}
+        {# Mensagens Flash (já são tratadas pelo showToast em base.html, este bloco é um fallback visual) #}
+        {% with messages=get_flashed_messages(with_categories=true) %}
         {% if messages %}
-        {% for category, message in messages %}
-        {% set toast_type = category %}
-        {% if category == 'danger' %}{% set toast_type = 'error' %}{% endif %}
-        <div class="alert alert-{{ toast_type }}" style="display:none;">{{ message }}</div>
-        {% endfor %}
+        <ul class="flash-messages">
+            {% for category, message in messages %}
+            {# Remova as divs 'alert' se você só usa o showToast, ou use-as para fallback #}
+            <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
         {% endif %}
         {% endwith %}
 
+        {# Conteúdo da aba "Tipos de Agendamento" #}
         <div id="config-tipos" class="config-content-section">
             <h2>Tipos de Agendamento</h2>
             <form method="POST" action="{{ url_for('adicionar_tipo') }}" class="config-form">
@@ -473,7 +67,7 @@
                                 class="form-edit-duracao">
                                 <input type="hidden" name="tipo_id" value="{{ tipo.id }}">
                                 <input type="number" name="duracao" value="{{ tipo.duracao_minutos }}" min="1" required
-                                    style="width: 70px;">
+                                    class="small-input">
                                 <button type="submit" class="btn btn-success btn-sm">Salvar</button>
                             </form>
                         </td>
@@ -493,6 +87,7 @@
             </table>
         </div>
 
+        {# Conteúdo da aba "Empreendimentos & Unidades" #}
         <div id="config-empreendimentos" class="config-content-section" style="display: none;">
             <h2>Empreendimentos</h2>
             <form method="POST" action="{{ url_for('adicionar_empreendimento') }}" class="config-form">
@@ -695,7 +290,7 @@
 
             <h3>Adicionar Horário de Funcionamento</h3>
             <form method="POST" action="{{ url_for('adicionar_horario_funcionamento') }}" class="config-form">
-                <label for="horario_empreendimento_id_form">Empreendimento:</label> {# ID diferente do select do JS #}
+                <label for="horario_empreendimento_id_form">Empreendimento:</label>
                 <select id="horario_empreendimento_id_form" name="empreendimento_id" required>
                     <option value="" disabled selected>Selecione um empreendimento</option>
                     {% for emp in empreendimentos %}
@@ -745,7 +340,6 @@
                 </tbody>
             </table>
         </div>
-
 
         <div id="config-seguranca" class="config-content-section" style="display: none;">
             <h2>Gerenciamento de Administradores</h2>
@@ -818,14 +412,8 @@
         const formUnidadeEmpreendimentoId = document.getElementById('form-unidade-empreendimento-id');
         const noUnitsMessageRowOriginal = document.getElementById('no-units-message').parentNode.cloneNode(true);
 
-        // O select de empreendimentos para carregar horários, mantendo ID original
-        // ATENÇÃO: O ID do select no formulário HTML agora é 'horario_empreendimento_id_form'
-        // Mas o JavaScript ainda pode usar 'horario_empreendimento_id' se você tiver um select separado para o JS.
-        // Se houver apenas um select de empreendimento para HORÁRIOS, o ID deve ser o mesmo em HTML e JS.
-        // Vou assumir que o JS deveria referenciar o mesmo select que o formulário.
-        const horarioEmpreendimentoSelect = document.getElementById('horario_empreendimento_id_form'); // CORRIGIDO AQUI
+        const horarioEmpreendimentoSelect = document.getElementById('horario_empreendimento_id_form');
         const horariosTableBody = document.querySelector('#horarios-table tbody');
-
 
         const diasSemanaMap = {
             '0': 'Segunda-feira',
@@ -870,7 +458,6 @@
                 loadAgenteServicos();
             }
             if (targetId === 'horarios') {
-                // Apenas carregue se um empreendimento já estiver selecionado no dropdown de horários
                 const selectedEmpId = horarioEmpreendimentoSelect.value;
                 if (selectedEmpId) {
                     loadHorariosEmpreendimento(selectedEmpId);
@@ -884,6 +471,7 @@
             link.addEventListener('click', function (e) {
                 e.preventDefault();
                 const target = this.dataset.target;
+                // CORRIGIDO: Sintaxe correta para url_for em template literals JS
                 history.pushState(null, '', `{{ url_for('configuracoes') }}?tab=${target}`);
                 showSection(target);
             });
@@ -893,6 +481,7 @@
             button.addEventListener('click', function () {
                 const empreendimentoId = this.dataset.id;
                 const empreendimentoNome = this.closest('tr').querySelector('td:first-child').textContent;
+                // CORRIGIDO: Sintaxe correta para url_for em template literals JS
                 history.pushState(null, '', `{{ url_for('configuracoes') }}?tab=empreendimentos&active_emp_id=${empreendimentoId}`);
                 loadUnidades(empreendimentoId, empreendimentoNome);
             });
@@ -912,7 +501,7 @@
             unidadesTableBody.innerHTML = '<tr><td colspan="3">Carregando unidades...</td></tr>';
 
             try {
-                // CORREÇÃO: Constrói a URL diretamente no JavaScript, pois 'empreendimento_id' é um parâmetro de rota inteiro.
+                // CORRIGIDO: Sintaxe correta para template literal JS
                 const response = await fetch(`/api/empreendimento/${empreendimentoId}/unidades`);
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ detail: "Erro desconhecido ao buscar unidades." }));
@@ -928,8 +517,7 @@
                 } else {
                     unidades.forEach(unidade => {
                         const row = unidadesTableBody.insertRow();
-                        // CORREÇÃO: Constrói as URLs de ação diretamente no JavaScript.
-                        // Flask espera um ID inteiro no PATH para essas rotas.
+                        // CORRIGIDO: Sintaxe correta para template literal JS
                         const toggleUrl = `/toggle_unidade/${unidade.id}`;
                         const removeUrl = `/remover_unidade/${unidade.id}`;
 
@@ -1028,6 +616,7 @@
                 const servicosSpan = document.getElementById(`agente-servicos-${userId}`);
 
                 try {
+                    // CORRIGIDO: Sintaxe correta para template literal JS
                     const response = await fetch(`/api/agente/${userId}/servicos`);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1051,6 +640,7 @@
             checkboxes.forEach(cb => cb.checked = false);
 
             try {
+                // CORRIGIDO: Sintaxe correta para template literal JS
                 const response = await fetch(`/api/agente/${agenteId}/servicos_ids`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -1081,7 +671,7 @@
         async function loadHorariosEmpreendimento(empreendimentoId) {
             horariosTableBody.innerHTML = '<tr><td colspan="5">Carregando horários...</td></tr>';
             try {
-                // CORREÇÃO: Constrói a URL diretamente no JavaScript.
+                // CORRIGIDO: Sintaxe correta para template literal JS
                 const response = await fetch(`/api/empreendimento/${empreendimentoId}/horarios`);
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ detail: "Erro desconhecido ao buscar horários." }));
@@ -1095,7 +685,7 @@
                 } else {
                     horarios.forEach(horario => {
                         const row = horariosTableBody.insertRow();
-                        // CORREÇÃO: Constrói a URL de remoção diretamente no JavaScript.
+                        // CORRIGIDO: Sintaxe correta para template literal JS
                         const removeUrl = `/remover_horario_funcionamento/${horario.id}`;
 
                         row.innerHTML = `
@@ -1120,15 +710,60 @@
             }
         }
 
+        // Lógica para ativar a aba correta na carga da página
         const urlParams = new URLSearchParams(window.location.search);
         const activeTabFromUrl = urlParams.get('tab');
         const activeEmpIdFromUrl = urlParams.get('active_emp_id');
 
-        if (activeTabFromUrl) {
-            showSection(activeTabFromUrl, activeTabFromUrl === 'empreendimentos' && activeEmpIdFromUrl);
-        } else {
-            showSection('tipos'); // Aba padrão
+        // Função para ativar a aba
+        function activateTab(tabId, keepUnits = false) {
+            // Remove 'active' de todos os links do menu
+            document.querySelectorAll('.config-menu-link').forEach(link => link.classList.remove('active'));
+            // Oculta todas as seções de conteúdo
+            contentSections.forEach(section => section.style.display = 'none');
+
+            // Encontra e ativa o link do menu e a seção de conteúdo correspondente
+            const targetLink = document.querySelector(`.config-menu-link[data-target="${tabId}"]`);
+            const targetSection = document.getElementById(`config-${tabId}`);
+
+            if (targetLink && targetSection) {
+                targetLink.classList.add('active');
+                targetSection.style.display = 'block';
+
+                // Lógica específica para cada aba ao ser ativada
+                if (tabId === 'empreendimentos') {
+                    // Garante que a seção de unidades esteja visível apenas se houver um empreendimento ativo na URL
+                    if (activeEmpIdFromUrl && keepUnits) {
+                        const empRow = document.querySelector(`#empreendimentos-table tr[data-empreendimento-id="${activeEmpIdFromUrl}"]`);
+                        if (empRow) {
+                            const empName = empRow.querySelector('td:first-child').textContent;
+                            loadUnidades(activeEmpIdFromUrl, empName);
+                        } else {
+                            resetUnidadesView();
+                            unidadesSection.style.display = 'block';
+                        }
+                    } else {
+                        resetUnidadesView(); // Garante que a seção de unidades esteja resetada
+                        unidadesSection.style.display = 'block'; // Mostra a seção de unidades vazia
+                    }
+                } else if (tabId === 'usuarios') {
+                    loadAgenteServicos();
+                } else if (tabId === 'horarios') {
+                    const selectedEmpId = horarioEmpreendimentoSelect.value;
+                    if (selectedEmpId) {
+                        loadHorariosEmpreendimento(selectedEmpId);
+                    } else {
+                        horariosTableBody.innerHTML = '<tr><td colspan="5">Nenhum horário cadastrado. Selecione um empreendimento acima para ver seus horários ou adicione um novo.</td></tr>';
+                    }
+                }
+            } else {
+                console.warn(`Aba com ID "${tabId}" não encontrada. Ativando aba padrão "tipos".`);
+                activateTab('tipos'); // Fallback para aba padrão
+            }
         }
+
+        // Chamada inicial para ativar a aba correta
+        activateTab(activeTabFromUrl || 'tipos', activeTabFromUrl === 'empreendimentos' && !!activeEmpIdFromUrl);
     });
 </script>
 {% endblock %}
