@@ -23,7 +23,7 @@
         <h1>Configurações do Sistema</h1>
 
         {# Mensagens Flash (já são tratadas pelo showToast em base.html, este bloco é um fallback visual) #}
-        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% with messages=get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <ul class="flash-messages">
             {% for category, message in messages %}
@@ -173,7 +173,7 @@
 
             {# NOVO FORMULÁRIO: Adicionar novo Agente #}
             <h3>Cadastrar Novo Agente</h3>
-            <form method="POST" action="{{ url_for('adicionar_agente') }}" class="config-form">
+            <form method="POST" action="{{ url_for('adicionar_agente') }}" class="config-form config-form-vertical"> {# Aplicado a nova classe para verticalizar #}
                 <label for="agente_nome">Nome:</label>
                 <input type="text" id="agente_nome" name="nome" placeholder="Nome completo do agente" required>
 
@@ -264,22 +264,21 @@
             <hr>
 
             <h3>Promover Usuário a Agente</h3>
-            {% if cliente_users %}
-            <form method="POST" action="{{ url_for('gerenciar_agente') }}" id="form-promover-agente"
-                class="config-form">
+            {% if non_admin_users %}
+            <form method="POST" action="{{ url_for('gerenciar_agente') }}" id="form-promover-agente" class="config-form config-form-vertical"> {# Aplicado a nova classe para verticalizar #}
                 <label for="promover_agente_user_id">Selecione um usuário:</label>
                 <input type="hidden" name="action" value="promover">
                 <select id="promover_agente_user_id" name="user_id" required>
                     <option value="">Selecione um usuário...</option>
-                    {% for user in cliente_users %}
-                    <option value="{{ user.id }}">{{ user.nome if user.nome else user.email }} ({{ user.email }})
-                    </option>
+                    {% for user in non_admin_users %}
+                    <option value="{{ user.id }}">{{ user.nome if user.nome else user.email }} ({{ user.email }}) [{{
+                        user.tipo_usuario.capitalize() }}]</option>
                     {% endfor %}
                 </select>
                 <button type="submit" class="btn btn-success btn-sm">Tornar Agente</button>
             </form>
             {% else %}
-            <p>Não há Clientes para promover a Agente no momento.</p>
+            <p>Não há usuários (clientes ou agentes) para promover a administrador no momento.</p>
             {% endif %}
         </div>
 
@@ -288,7 +287,7 @@
             <h2>Gerenciar Horários de Funcionamento dos Empreendimentos</h2>
 
             <h3>Adicionar Horário de Funcionamento</h3>
-            <form method="POST" action="{{ url_for('adicionar_horario_funcionamento') }}" class="config-form">
+            <form method="POST" action="{{ url_for('adicionar_horario_funcionamento') }}" class="config-form config-form-vertical"> {# Aplicado a nova classe para verticalizar #}
                 <label for="horario_empreendimento_id_form">Empreendimento:</label>
                 <select id="horario_empreendimento_id_form" name="empreendimento_id" required>
                     <option value="" disabled selected>Selecione um empreendimento</option>
@@ -383,7 +382,7 @@
             <h3>Promover Usuário a Administrador</h3>
             {# non_admin_users é agora passado diretamente da rota Flask #}
             {% if non_admin_users %}
-            <form method="POST" action="{{ url_for('promover_admin') }}" id="form-promover-admin" class="config-form">
+            <form method="POST" action="{{ url_for('promover_admin') }}" id="form-promover-admin" class="config-form config-form-vertical"> {# Aplicado a nova classe para verticalizar #}
                 <label for="promover_admin_user_id">Selecione um usuário:</label>
                 <select id="promover_admin_user_id" name="user_to_promote_id" required>
                     <option value="">Selecione um usuário...</option>
@@ -404,13 +403,21 @@
             <h2>Regras de Reservas</h2>
             <h3>Antecedência Mínima de Agendamento</h3>
             <p>Defina quantas horas de antecedência são necessárias para que um agendamento possa ser feito (ex: 2 horas significa que agendamentos de última hora não são permitidos).</p>
-            <form method="POST" action="{{ url_for('salvar_regras_reservas') }}" class="config-form">
+            <form method="POST" action="{{ url_for('salvar_regras_reservas') }}" class="config-form config-form-vertical"> {# Aplicado a nova classe para verticalizar #}
                 <label for="min_antecedencia_horas">Mínimo de Horas de Antecedência:</label>
                 <input type="number" id="min_antecedencia_horas" name="min_antecedencia_horas" 
                        placeholder="0" value="{{ min_antecedencia_horas }}" min="0" required>
                 <button type="submit" class="btn btn-primary btn-sm">Salvar Regra</button>
             </form>
-            <p class="text-muted small mt-3">Valor atual: {{ min_antecedencia_horas }} hora(s).</p>
+            <hr>
+            <h3>Antecedência Máxima de Agendamento</h3>
+            <p>Defina quantos meses de antecedência são permitidos para novos agendamentos (ex: 6 meses significa que não é possível agendar para daqui mais de 6 meses).</p>
+            <form method="POST" action="{{ url_for('salvar_regras_reservas') }}" class="config-form config-form-vertical"> {# Aplicado a nova classe para verticalizar #}
+                <label for="max_antecedencia_meses">Máximo de Meses de Antecedência:</label>
+                <input type="number" id="max_antecedencia_meses" name="max_antecedencia_meses" 
+                       placeholder="12" value="{{ max_antecedencia_meses }}" min="0" required>
+                <button type="submit" class="btn btn-primary btn-sm">Salvar Regra</button>
+            </form>
         </div>
 
     </div>
@@ -479,10 +486,7 @@
                     horariosTableBody.innerHTML = '<tr><td colspan="5">Nenhum horário cadastrado. Selecione um empreendimento acima para ver seus horários ou adicione um novo.</td></tr>';
                 }
             }
-            // NOVO: Adicione aqui a lógica para a aba 'regras' se ela precisar de JS ao ser ativada
-            // Ativar a aba 'regras' não requer carregamento de dados complexos via JS
-            // Se precisar de alguma ação, adicione aqui:
-            // if (targetId === 'regras') { /* Nenhuma ação JS complexa por enquanto */ }
+            // Não há lógica JS complexa para a aba 'regras' ao ser ativada
         }
 
         menuLinks.forEach(link => {
