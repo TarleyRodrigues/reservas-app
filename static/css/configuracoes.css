@@ -88,36 +88,30 @@
     align-items: center; /* Alinha verticalmente os itens no centro */
 }
 
-.config-form label {
-    min-width: 120px; /* Para alinhar labels em formulários mais complexos */
-    font-weight: bold;
-    color: #555;
-    text-align: right; /* Alinha o texto da label à direita */
-    padding-right: 10px; /* Espaço entre label e input */
-    box-sizing: border-box; /* Inclui padding na largura */
+/* NOVO: Estilo para formulários que devem ter campos empilhados verticalmente */
+.config-form-vertical {
+    flex-direction: column; /* Empilha os itens verticalmente */
+    align-items: flex-start; /* Alinha os itens à esquerda */
+    gap: 15px; /* Espaçamento vertical entre os campos */
 }
 
-/* Ajuste para que labels fiquem em sua própria linha em telas pequenas */
-@media (max-width: 768px) {
-    .config-form label {
-        width: 100%;
-        text-align: left;
-        padding-right: 0;
-    }
+/* NOVO: Labels e inputs dentro de .config-form-vertical */
+.config-form-vertical label {
+    width: 100%; /* Label ocupa a largura total */
+    text-align: left; /* Alinha o texto da label à esquerda */
+    padding-right: 0; /* Remove padding extra da direita */
+    margin-bottom: -5px; /* Puxa o label mais perto do input */
 }
 
-.config-form input[type="text"],
-.config-form input[type="number"],
-.config-form input[type="email"],
-.config-form input[type="password"],
-.config-form input[type="tel"],
-.config-form input[type="time"],
-.config-form select {
-    flex: 1; /* Permite que o input cresça para preencher o espaço disponível */
-    padding: 8px 12px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    min-width: 180px; /* Garante que não fiquem muito pequenos em telas maiores */
+.config-form-vertical input[type="text"],
+.config-form-vertical input[type="number"],
+.config-form-vertical input[type="email"],
+.config-form-vertical input[type="password"],
+.config-form-vertical input[type="tel"],
+.config-form-vertical input[type="time"],
+.config-form-vertical select {
+    width: 100%; /* Input ocupa a largura total */
+    min-width: unset; /* Remove o min-width para preencher 100% */
 }
 
 .config-form button {
@@ -154,30 +148,6 @@
     background-color: #f1f1f1;
 }
 
-/* --- ESTILOS PARA BOTÕES (CLASSES GLOBAIS, APENAS COPIADAS PARA CONTEXTO) --- */
-/* Se estas classes (.btn, .btn-primary, etc.) já estão em styles.css ou buttons.css,
-   você pode remover estas definições duplicadas daqui e confiar nas globais.
-   Mantenho-as aqui para que o configuracoes.css seja "autossuficiente" em caso de teste. */
-.btn {
-    display: inline-block;
-    font-weight: 400;
-    color: #212529;
-    text-align: center;
-    vertical-align: middle;
-    user-select: none;
-    background-color: transparent;
-    border: 1px solid transparent;
-    font-size: 0.875rem;
-    line-height: 1.5;
-    border-radius: 0.25rem;
-    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
-        border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-.btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.765rem;
-    border-radius: 0.2rem;
-}
 .btn-primary { color: #fff; background-color: #007bff; border-color: #007bff; }
 .btn-primary:hover { background-color: #0056b3; border-color: #0056b3; }
 .btn-success { color: #fff; background-color: #28a745; border-color: #28a745; }
@@ -236,7 +206,6 @@
 }
 
 /* --- ESTILOS PARA MENSAGENS FLASH (ALERTS) --- */
-/* Embora o JS as transforme em toasts, estas classes podem ser usadas como fallback */
 .alert {
     padding: 10px 15px;
     margin-bottom: 20px;

@@ -236,11 +236,7 @@ input:focus {
     padding-bottom: 10px;
 }
 
-/* Os estilos .form-group, input[type="text"], input[type="email"], input[type="password"],
-   e .btn .btn-primary já devem ser aplicados a este formulário,
-   garantindo consistência visual. */
 
-/* Ajuste para tabelas pequenas na área de gerenciamento de usuários */
 .data-table.small-table th,
 .data-table.small-table td {
     font-size: 0.9em;
