@@ -16,6 +16,7 @@
             <li><a href="#horarios" data-target="horarios" class="config-menu-link">Horários de Funcionamento</a></li>
             <li><a href="#seguranca" data-target="seguranca" class="config-menu-link">Segurança (Administradores)</a></li>
             <li><a href="#regras" data-target="regras" class="config-menu-link">Regras de Reservas</a></li>
+            <li><a href="#app_config" data-target="app_config" class="config-menu-link">Configuração do APP</a></li>
         </ul>
     </div>
 
@@ -426,6 +427,23 @@
             </form>
         </div>
 
+        <div id="config-app_config" class="config-content-section" style="display: none;">
+            <h2>Configuração do Aplicativo</h2>
+            
+            <h3>Logo do Sistema</h3>
+            <p>Faça o upload de uma nova imagem para a logo do sistema. Recomendável: dimensões próximas a **400px de largura**.</p>
+            <div class="logo-preview-container">
+                <img id="currentSystemLogo" src="{{ url_for('static', filename=current_logo_path) }}" alt="Logo Atual" class="system-logo-preview">
+            </div>
+            <p class="text-muted small mt-2">Formatos aceitos: PNG, JPG, JPEG, GIF. Max: 16MB.</p>
+            <form action="{{ url_for('upload_logo_sistema') }}" method="POST" enctype="multipart/form-data" class="config-form config-form-vertical mt-3">
+                <label for="logoFileInput" class="custom-file-upload">
+                    Escolher Nova Logo
+                </label>
+                <input type="file" id="logoFileInput" name="logo_file" accept="image/png, image/jpeg, image/gif" style="display: none;">
+                <button type="submit" class="btn btn-primary btn-sm">Upload Nova Logo</button>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -786,5 +804,36 @@
         // Chamada inicial para ativar a aba correta
         activateTab(activeTabFromUrl || 'tipos', activeTabFromUrl === 'empreendimentos' && !!activeEmpIdFromUrl);
     });
+    const logoFileInput = document.getElementById('logoFileInput');
+        const currentSystemLogo = document.getElementById('currentSystemLogo');
+
+        if (logoFileInput) {
+            logoFileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    const fileType = file.type;
+                    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+
+                    if (!validImageTypes.includes(fileType)) {
+                        alert('Por favor, selecione um arquivo de imagem válido (PNG, JPG, JPEG, GIF).');
+                        this.value = ''; // Limpa o input
+                        return;
+                    }
+
+                    if (file.size > 16 * 1024 * 1024) { // 16MB
+                        alert('O arquivo é muito grande. Tamanho máximo permitido é 16MB.');
+                        this.value = ''; // Limpa o input
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        currentSystemLogo.src = e.target.result;
+                        currentSystemLogo.style.display = 'block'; // Garante que a imagem seja exibida
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
 </script>
 {% endblock %}

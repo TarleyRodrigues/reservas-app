@@ -1,4 +1,3 @@
-
 from dateutil.relativedelta import relativedelta
 from datetime import datetime, timedelta, date
 import uuid
@@ -17,49 +16,6 @@ import logging
 import sqlite3
 import os
 from datetime import datetime, timedelta
-
-
-# 📋 Configuração de logs
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
-
-# 🔧 Inicialização do app
-app = Flask(__name__)
-app.secret_key = os.environ.get(
-    'SECRET_KEY', 'DevSecretKeyForReservasApp')
-
-# 🔐 Configuração do Flask-Login
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
-login_manager.login_message = "Por favor, realize o login para acessar esta página."
-login_manager.login_message_category = "info"
-
-# 🖼️ Configuração de Uploads de Imagem
-UPLOAD_FOLDER = 'static/uploads/perfil'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limite de 16MB
-
-# Função auxiliar para verificar extensões permitidas
-
-
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# 🔗 Classe de usuário
-
-
-class Usuario(UserMixin):
-    def __init__(self, id, nome, email, senha_hash, is_admin=0, tipo_usuario='cliente', telefone=None):
-        self.id = id
-        self.nome = nome
-        self.email = email
-        self.senha_hash = senha_hash
-        self.is_admin = is_admin
-        self.tipo_usuario = tipo_usuario
-        self.telefone = telefone
-
 
 # 📋 Configuração de logs
 logging.basicConfig(level=logging.INFO,
@@ -116,6 +72,47 @@ class Usuario(UserMixin):
     def is_admin_user(self):
         return self.tipo_usuario == 'admin' or self.is_admin == 1
 
+
+# 📋 Configuração de logs
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+
+# 🔧 Inicialização do app
+app = Flask(__name__)
+app.secret_key = os.environ.get(
+    'SECRET_KEY', 'DevSecretKeyForReservasApp')
+
+# 🔐 Configuração do Flask-Login
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+login_manager.login_message = "Por favor, realize o login para acessar esta página."
+login_manager.login_message_category = "info"
+
+# 🖼️ Configuração de Uploads de Imagem
+UPLOAD_FOLDER = 'static/uploads/perfil'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limite de 16MB
+
+# Função auxiliar para verificar extensões permitidas
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+    @property
+    def is_cliente(self):
+        return self.tipo_usuario == 'cliente'
+
+    @property
+    def is_agente(self):
+        return self.tipo_usuario == 'agente'
+
+    @property
+    def is_admin_user(self):
+        return self.tipo_usuario == 'admin' or self.is_admin == 1
+
 # 🔍 Funções auxiliares
 
 
@@ -124,7 +121,40 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-# CORRIGIDO: Funções para interagir com a tabela regras_reservas (min_dias, max_dias)
+# Funções auxiliares para configurações globais
+
+
+def get_global_setting(key, default_value=None):
+    conn = get_db_connection()
+    value = default_value
+    try:
+        row = conn.execute(
+            "SELECT valor FROM configuracoes_globais WHERE chave = ?", (key,)).fetchone()
+        if row:
+            value = row['valor']
+    except sqlite3.Error as e:
+        app.logger.error(
+            f"Erro DB ao obter configuração global '{key}': {e}", exc_info=True)
+    finally:
+        if conn:
+            conn.close()
+    return value
+
+
+def set_global_setting(key, value):
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO configuracoes_globais (chave, valor) VALUES (?, ?)", (key, str(value)))
+        conn.commit()
+        return True
+    except sqlite3.Error as e:
+        app.logger.error(
+            f"Erro DB ao salvar configuração global '{key}': {e}", exc_info=True)
+        return False
+    finally:
+        if conn:
+            conn.close()
 
 
 def get_regras_reservas():
@@ -212,7 +242,8 @@ def load_user(user_id):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    logo_path = get_global_setting('logo_sistema_path', 'images/logo.png')
+    return render_template('index.html', logo_path=logo_path)
 
 # 🔐 Login
 # --- DECORATORS PARA PERMISSÃO ---
@@ -565,7 +596,74 @@ def upload_foto_perfil():
 
     return redirect(url_for('perfil'))
 
-# --- Lógica de validação de agendamento ---
+# app.py
+
+# ... (seus imports no início, incluindo werkzeug.utils e uuid) ...
+
+# --- ROTA PARA UPLOAD DA LOGO DO SISTEMA ---
+
+
+@app.route('/upload_logo_sistema', methods=['POST'])
+@admin_required  # Garante que apenas administradores podem usar esta rota
+def upload_logo_sistema():
+    """
+    Lida com o upload da logo principal do sistema.
+    O arquivo é salvo na pasta 'static/uploads/system' e o caminho é
+    armazenado na tabela 'configuracoes_globais' sob a chave 'logo_sistema_path'.
+    """
+
+    # Certifique-se de que a pasta de uploads do sistema exista antes de salvar
+    os.makedirs(app.config['SYSTEM_IMAGES_FOLDER'], exist_ok=True)
+
+    # 1. Verifica se o campo de arquivo ('logo_file') está no formulário enviado
+    if 'logo_file' not in request.files:
+        flash('Nenhum campo de arquivo foi encontrado no formulário.', 'error')
+        return redirect(url_for('configuracoes', tab='app_config'))
+
+    file = request.files['logo_file']
+
+    # 2. Verifica se o usuário de fato selecionou um arquivo
+    if file.filename == '':
+        flash('Nenhum arquivo de logo foi selecionado.', 'warning')
+        return redirect(url_for('configuracoes', tab='app_config'))
+
+    # 3. Se um arquivo foi selecionado, valida seu tipo e salva
+    if file and allowed_file(file.filename):
+        # Gera um nome de arquivo único para evitar que navegadores usem cache antigo
+        filename_base = secure_filename(file.filename)
+        # Ex: "logo_uuid_aleatorio.png"
+        unique_filename = f"logo_{uuid.uuid4().hex}{os.path.splitext(filename_base)[1]}"
+
+        filepath = os.path.join(
+            app.config['SYSTEM_IMAGES_FOLDER'], unique_filename)
+
+        # Salva o arquivo no sistema de arquivos
+        file.save(filepath)
+
+        # Armazena o caminho relativo (a partir da pasta 'static') no banco de dados
+        relative_path_for_db = os.path.join(
+            'uploads/system', unique_filename).replace('\\', '/')
+
+        # Usa a função auxiliar set_global_setting para atualizar a configuração
+        if set_global_setting('logo_sistema_path', relative_path_for_db):
+            flash('Logo do sistema atualizada com sucesso!', 'success')
+            app.logger.info(
+                f"Admin {current_user.email} atualizou a logo do sistema para: {unique_filename}")
+        else:
+            flash('Erro ao salvar o caminho da nova logo no banco de dados.', 'error')
+            # Opcional, mas recomendado: tenta remover o arquivo salvo se o DB falhar
+            os.remove(filepath)
+            app.logger.error(
+                f"Erro DB ao salvar caminho da logo para {current_user.email}.")
+
+    else:
+        # Se o arquivo não for de um tipo permitido
+        flash('Tipo de arquivo não permitido. Apenas PNG, JPG, JPEG e GIF são aceitos.', 'error')
+        app.logger.warning(
+            f"Tentativa de upload de logo com arquivo não permitido por {current_user.email}: {file.filename}")
+
+    # Redireciona para a aba de configurações do app
+    return redirect(url_for('configuracoes', tab='app_config'))
 
 
 @app.route('/agendar', methods=['GET', 'POST'])
@@ -1461,6 +1559,8 @@ def configuracoes():
     regras_atuais = get_regras_reservas()
     min_antecedencia_dias = regras_atuais['min_dias']
     max_antecedencia_dias = regras_atuais['max_dias']
+    current_logo_path = get_global_setting(
+        'logo_sistema_path', 'images/logo.png')
 
     super_admin_email = os.environ.get('SUPER_ADMIN_EMAIL', 'admin@admin.com')
 
