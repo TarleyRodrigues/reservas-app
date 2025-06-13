@@ -1299,13 +1299,11 @@ def configuracoes():
     agente_users_data = []
     cliente_users_data = []
     non_admin_users_for_promotion = []
-
-    # CORRIGIDO: Obter regras de reservas usando a nova função e os nomes corretos
     regras_atuais = get_regras_reservas()
     min_antecedencia_dias = regras_atuais['min_dias']
     max_antecedencia_dias = regras_atuais['max_dias']
-    current_logo_path = get_global_setting(
-        'logo_sistema_path', 'images/logo.png')
+    db_logo_path = get_global_setting('logo_sistema_path')
+    current_logo_path = db_logo_path or 'images/logo.png'
 
     super_admin_email = os.environ.get('SUPER_ADMIN_EMAIL', 'admin@admin.com')
 
@@ -1343,9 +1341,9 @@ def configuracoes():
                            cliente_users=cliente_users_data,
                            super_admin_email=super_admin_email,
                            non_admin_users=non_admin_users_for_promotion,
-                           # Passa os valores de DIAS para o template
                            min_antecedencia_dias=min_antecedencia_dias,
-                           max_antecedencia_dias=max_antecedencia_dias
+                           max_antecedencia_dias=max_antecedencia_dias,
+                           current_logo_path=current_logo_path
                            )
 
     # Gerenciamento de Empreendimentos e Unidades

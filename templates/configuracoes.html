@@ -433,7 +433,16 @@
             <h3>Logo do Sistema</h3>
             <p>Faça o upload de uma nova imagem para a logo do sistema. Recomendável: dimensões próximas a **400px de largura**.</p>
             <div class="logo-preview-container">
-                <img id="currentSystemLogo" src="{{ url_for('static', filename=current_logo_path) }}" alt="Logo Atual" class="system-logo-preview">
+                {% if current_logo_path %}
+                    {# Garante que o caminho não inclua 'static/' para evitar duplicidade de URL.
+                        O split('static/')[-1] pega a última parte do texto após a divisão,
+                        removendo efetivamente o prefixo 'static/' se ele existir. #}
+                    {% set clean_path = current_logo_path.split('static/')[-1] %}
+                    <img id="currentSystemLogo" src="{{ url_for('static', filename=clean_path) }}" alt="Logo Atual" class="system-logo-preview">
+                {% else %}
+                    {# Opcional: Mostra uma mensagem ou um placeholder se nenhuma logo estiver configurada #}
+                    <p>Nenhuma logo do sistema foi definida.</p>
+                {% endif %}
             </div>
             <p class="text-muted small mt-2">Formatos aceitos: PNG, JPG, JPEG, GIF. Max: 16MB.</p>
             <form action="{{ url_for('upload_logo_sistema') }}" method="POST" enctype="multipart/form-data" class="config-form config-form-vertical mt-3">
