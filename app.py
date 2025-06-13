@@ -15,7 +15,7 @@ from flask import (
 import logging
 import sqlite3
 import os
-from datetime import datetime, timedelta
+
 
 # 📋 Configuração de logs
 logging.basicConfig(level=logging.INFO,
@@ -34,8 +34,11 @@ login_manager.login_message_category = "info"
 
 # 🖼️ Configuração de Uploads de Imagem
 UPLOAD_FOLDER = 'static/uploads/perfil'
+SYSTEM_IMAGES_FOLDER = 'static/uploads/system'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['SYSTEM_IMAGES_FOLDER'] = SYSTEM_IMAGES_FOLDER
+app.config['ALLOWED_EXTENSIONS'] = ALLOWED_EXTENSIONS
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limite de 16MB
 
 # Função auxiliar para verificar extensões permitidas
@@ -71,49 +74,6 @@ class Usuario(UserMixin):
     @property
     def is_admin_user(self):
         return self.tipo_usuario == 'admin' or self.is_admin == 1
-
-
-# 📋 Configuração de logs
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
-
-# 🔧 Inicialização do app
-app = Flask(__name__)
-app.secret_key = os.environ.get(
-    'SECRET_KEY', 'DevSecretKeyForReservasApp')
-
-# 🔐 Configuração do Flask-Login
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
-login_manager.login_message = "Por favor, realize o login para acessar esta página."
-login_manager.login_message_category = "info"
-
-# 🖼️ Configuração de Uploads de Imagem
-UPLOAD_FOLDER = 'static/uploads/perfil'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limite de 16MB
-
-# Função auxiliar para verificar extensões permitidas
-
-
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-    @property
-    def is_cliente(self):
-        return self.tipo_usuario == 'cliente'
-
-    @property
-    def is_agente(self):
-        return self.tipo_usuario == 'agente'
-
-    @property
-    def is_admin_user(self):
-        return self.tipo_usuario == 'admin' or self.is_admin == 1
-
-# 🔍 Funções auxiliares
 
 
 def get_db_connection():
@@ -863,18 +823,6 @@ def agendar():
                 errors.append(
                     f"O agendamento de {duracao_agendamento} minutos excede o horário de funcionamento do empreendimento ou não se encaixa em uma faixa contínua de horário disponível. Fim previsto: {data_hora_fim_agendamento.strftime('%H:%M')}.")
 
-            if errors:
-                for error in errors:
-                    flash(error, 'error')
-                tipos_refresh = conn.execute(
-                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute(
-                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
-                unidades_refresh = conn.execute(
-                    '''SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id WHERE u.ativo = 1 AND e.ativo = 1 ORDER BY e.nome, u.nome''').fetchall()
-                return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
-                                       form_data=form_data_for_repopulation, regras_reservas=regras_reservas_for_template)
-
             existing_agendamentos_unidade = conn.execute('''
                 SELECT a.hora, ta.duracao_minutos 
                 FROM agendamentos a
@@ -907,15 +855,6 @@ def agendar():
                     '''SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id WHERE u.ativo = 1 AND e.ativo = 1 ORDER BY e.nome, u.nome''').fetchall()
                 return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
                                        form_data=form_data_for_repopulation, regras_reservas=regras_reservas_for_template)
-
-            # --- LÓGICA DE ATRIBUIÇÃO AUTOMÁTICA DE AGENTE REMOVIDA DAQUI ---
-            #
-            # O código para buscar agentes disponíveis (agentes_para_tipo) foi removido
-            # e a lógica para iterar sobre eles e encontrar um agente_disponivel_id
-            # também foi removida. O agendamento será inserido com agente_atribuido_id
-            # como None.
-            #
-            # --- FIM DA LÓGICA REMOVIDA ---
 
             try:
                 conn.execute(
@@ -2670,7 +2609,14 @@ def init_db():
     app.logger.info("Tabela 'tipos_agendamento' verificada/criada.")
 
     # NOVO/CORRIGIDO: Tabela 'regras_reservas' (garante que existe)
-    # REMOVIDO: 'configuracoes_globais'
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS configuracoes_globais (
+            chave TEXT PRIMARY KEY,
+            valor TEXT
+        )
+    ''')
+    app.logger.info("Tabela 'configuracoes_globais' verificada/criada.")
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS regras_reservas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
