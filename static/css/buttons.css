@@ -33,7 +33,7 @@
     border-radius: 12px;
     cursor: pointer;
     color: white;
-    background: linear-gradient(135deg, rgba(167, 40, 40, 0.9), rgba(201, 72, 72, 0.9));
+    background: linear-gradient(135deg, rgba(101, 25, 25, 0.9), rgba(201, 72, 72, 0.9));
     box-shadow: 0 4px 10px rgba(167, 40, 40, 0.3);
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;

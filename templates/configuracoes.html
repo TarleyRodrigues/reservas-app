@@ -446,11 +446,11 @@
             </div>
             <p class="text-muted small mt-2">Formatos aceitos: PNG, JPG, JPEG, GIF. Max: 16MB.</p>
             <form action="{{ url_for('upload_logo_sistema') }}" method="POST" enctype="multipart/form-data" class="config-form config-form-vertical mt-3">
-                <label for="logoFileInput" class="custom-file-upload">
+                <label for="logoFileInput" class="custom-file-upload-perfil">
                     Escolher Nova Logo
                 </label>
                 <input type="file" id="logoFileInput" name="logo_file" accept="image/png, image/jpeg, image/gif" style="display: none;">
-                <button type="submit" class="btn btn-primary btn-sm">Upload Nova Logo</button>
+                <button type="submit" class="btn btn-primary btn-sm">Salvar Logo</button>
             </form>
         </div>
     </div>

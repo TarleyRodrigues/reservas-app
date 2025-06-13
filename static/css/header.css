@@ -166,16 +166,7 @@ header {
     text-transform: uppercase;
 }
 
-.custom-file-upload {
-    background-color: #007bff;
-    color: white;
-    padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    text-align: center;
-    display: inline-block;
-}
+
 
 .custom-file-upload:hover {
     background-color: #0056b3;

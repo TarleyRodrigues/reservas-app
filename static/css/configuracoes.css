@@ -93,15 +93,13 @@
     flex-direction: column; /* Empilha os itens verticalmente */
     align-items: flex-start; /* Alinha os itens à esquerda */
     gap: 15px; /* Espaçamento vertical entre os campos */
-}
-
-/* NOVO: Labels e inputs dentro de .config-form-vertical */
-.config-form-vertical label {
     width: 100%; /* Label ocupa a largura total */
     text-align: left; /* Alinha o texto da label à esquerda */
     padding-right: 0; /* Remove padding extra da direita */
     margin-bottom: -5px; /* Puxa o label mais perto do input */
 }
+
+
 
 .config-form-vertical input[type="text"],
 .config-form-vertical input[type="number"],
@@ -115,11 +113,37 @@
 }
 
 .config-form button {
-    padding: 8px 15px;
-    border-radius: 4px;
+    width: fit-content;
+    padding: 12px 24px;
+    margin: 20px auto 0;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
-    white-space: nowrap; /* Evita que o texto do botão quebre */
+    color: white;
+    background: linear-gradient(135deg, rgba(94, 24, 24, 0.9), rgba(201, 72, 72, 0.9));
+    box-shadow: 0 4px 10px rgba(167, 40, 40, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    display: block; /* Necessário para margin auto funcionar */
+}
+
+.config-form-selection-imagem button {
+    width: fit-content;
+    padding: 12px 24px;
+    margin: 20px auto 0;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    color: white;
+    background: linear-gradient(135deg, rgba(167, 40, 40, 0.9), rgba(201, 72, 72, 0.9));
+    box-shadow: 0 4px 10px rgba(167, 40, 40, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    display: block; /* Necessário para margin auto funcionar */
 }
 
 /* --- ESTILOS DE TABELA --- */
@@ -147,19 +171,6 @@
 .config-table tbody tr:hover {
     background-color: #f1f1f1;
 }
-
-.btn-primary { color: #fff; background-color: #007bff; border-color: #007bff; }
-.btn-primary:hover { background-color: #0056b3; border-color: #0056b3; }
-.btn-success { color: #fff; background-color: #28a745; border-color: #28a745; }
-.btn-success:hover { background-color: #218838; border-color: #218838; }
-.btn-warning { color: #212529; background-color: #ffc107; border-color: #ffc107; }
-.btn-warning:hover { background-color: #e0a800; border-color: #e0a800; }
-.btn-danger { color: #fff; background-color: #dc3545; border-color: #dc3545; }
-.btn-danger:hover { background-color: #c82333; border-color: #bd2130; }
-.btn-info { color: #fff; background-color: #17a2b8; border-color: #17a2b8; }
-.btn-info:hover { background-color: #138496; border-color: #117a8b; }
-.btn-secondary { color: #fff; background-color: #6c757d; border-color: #6c757d; }
-.btn-secondary:hover { background-color: #5a6268; border-color: #545b62; }
 
 /* --- ESTILOS PARA STATUS (Ativo/Inativo) --- */
 .status {
@@ -235,6 +246,20 @@ hr {
     border-top: 1px solid rgba(0, 0, 0, .1); /* Linha horizontal sutil */
 }
 
+.system-logo-preview {
+    width: 400px;
+    height: 400px;
+
+    /* MUITO IMPORTANTE: Evita que a imagem fique distorcida */
+    object-fit: contain; 
+
+    /* Estilos opcionais para deixar a caixa mais bonita */
+    border: 1px solid #ddd; /* Adiciona uma borda cinza claro */
+    padding: 5px;           /* Um pequeno espaçamento interno */
+    background-color: #f8f9fa; /* Um fundo levemente acinzentado */
+    border-radius: 5px;     /* Bordas arredondadas */
+}
+
 /* --- RESPONSIVIDADE BÁSICA --- */
 @media (max-width: 768px) {
     .config-page-container {
@@ -268,13 +293,10 @@ hr {
     }
     .config-form input,
     .config-form select,
-    .config-form button {
-        width: 100%;
-        min-width: unset;
-    }
-    /* Reset de alinhamento para labels em telas pequenas */
+        /* Reset de alinhamento para labels em telas pequenas */
     .config-form label {
         text-align: left;
         padding-right: 0;
     }
+    
 }
