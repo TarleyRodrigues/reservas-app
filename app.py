@@ -625,280 +625,270 @@ def upload_logo_sistema():
     # Redireciona para a aba de configurações do app
     return redirect(url_for('configuracoes', tab='app_config'))
 
+ # --- Funções Auxiliares para a Rota /agendar ---
+
+
+def _get_dados_para_template_agendamento(conn):
+    """Busca no banco de dados os dados necessários para renderizar a página de agendamento."""
+    tipos = conn.execute(
+        'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento WHERE ativo = 1 ORDER BY nome'
+    ).fetchall()
+    empreendimentos = conn.execute(
+        'SELECT id, nome, ativo FROM empreendimentos WHERE ativo = 1 ORDER BY nome'
+    ).fetchall()
+    unidades = conn.execute('''
+        SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento
+        FROM unidades u
+        JOIN empreendimentos e ON u.empreendimento_id = e.id
+        WHERE u.ativo = 1 AND e.ativo = 1 ORDER BY e.nome, u.nome
+    ''').fetchall()
+    return {'tipos': tipos, 'empreendimentos': empreendimentos, 'unidades': unidades}
+
+
+def _validar_payload_agendamento(form):
+    """Valida se os campos obrigatórios do formulário foram preenchidos."""
+    errors = []
+    campos_obrigatorios = {
+        'contato': "O campo 'Contato' é obrigatório.",
+        'data': "A data é obrigatória.",
+        'hora': "A hora é obrigatória.",
+        'tipo_id': "O tipo de agendamento é obrigatório.",
+        'empreendimento_id': "O empreendimento é obrigatório.",
+        'unidade_id': "A unidade é obrigatória."
+    }
+    for campo, msg in campos_obrigatorios.items():
+        if not form.get(campo):
+            errors.append(msg)
+    return errors
+
+
+def _validar_regras_de_negocio(conn, data_hora_agendamento, unidade_id, tipo_id, regras_reservas):
+    """Executa todas as validações de regras de negócio para um novo agendamento."""
+    errors = []
+
+    # 1. Validação de data no passado
+    if data_hora_agendamento < datetime.now():
+        errors.append("Não é possível agendar em datas e horários passados.")
+        # Se a data já passou, outras validações de tempo são desnecessárias.
+        return errors
+
+    # 2. Validação de antecedência (mínima e máxima)
+    min_dias = regras_reservas['min_dias']
+    max_dias = regras_reservas['max_dias']
+    if min_dias > 0:
+        min_limite = datetime.now() + timedelta(days=min_dias)
+        if data_hora_agendamento < min_limite:
+            errors.append(
+                f"Agendamentos devem ser feitos com no mínimo {min_dias} dia(s) de antecedência.")
+    if max_dias > 0:
+        max_limite = date.today() + timedelta(days=max_dias)
+        if data_hora_agendamento.date() > max_limite:
+            errors.append(
+                f"Não é possível agendar com mais de {max_dias} dia(s) de antecedência.")
+
+    # 3. Validação de Entidades (Unidade, Tipo)
+    tipo_selecionado = conn.execute(
+        'SELECT ativo, duracao_minutos FROM tipos_agendamento WHERE id = ?', (tipo_id,)).fetchone()
+    unidade_selecionada = conn.execute(
+        'SELECT u.ativo as unidade_ativa, e.ativo as empreendimento_ativo, u.empreendimento_id FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id WHERE u.id = ?', (unidade_id,)).fetchone()
+
+    if not (tipo_selecionado and tipo_selecionado['ativo']):
+        errors.append('O tipo de agendamento selecionado não está ativo.')
+    if not (unidade_selecionada and unidade_selecionada['unidade_ativa'] and unidade_selecionada['empreendimento_ativo']):
+        errors.append(
+            'A unidade selecionada ou seu empreendimento não estão ativos.')
+
+    # Se houver erros até aqui, não adianta checar horários e conflitos
+    if errors:
+        return errors
+
+    # 4. Validação de Horário de Funcionamento
+    dia_semana = data_hora_agendamento.weekday()
+    empreendimento_id = unidade_selecionada['empreendimento_id']
+    horarios_op = conn.execute(
+        'SELECT hora_inicio, hora_fim FROM horarios_funcionamento WHERE empreendimento_id = ? AND dia_semana = ?', (empreendimento_id, dia_semana)).fetchall()
+
+    hora_agendamento_obj = data_hora_agendamento.time()
+    duracao = tipo_selecionado['duracao_minutos']
+    hora_fim_agendamento = (data_hora_agendamento +
+                            timedelta(minutes=duracao)).time()
+
+    dentro_horario_funcionamento = False
+    for h in horarios_op:
+        inicio_op = datetime.strptime(h['hora_inicio'], '%H:%M').time()
+        fim_op = datetime.strptime(h['hora_fim'], '%H:%M').time()
+        if inicio_op <= hora_agendamento_obj and hora_fim_agendamento <= fim_op:
+            dentro_horario_funcionamento = True
+            break
+
+    if not dentro_horario_funcionamento:
+        errors.append(
+            f"O agendamento (duração: {duracao} min) não se encaixa no horário de funcionamento do empreendimento neste dia.")
+
+    # 5. Validação de Conflitos de Horário na Unidade
+    agendamentos_existentes = conn.execute('SELECT a.hora, ta.duracao_minutos FROM agendamentos a JOIN tipos_agendamento ta ON a.tipo_id = ta.id WHERE a.unidade_id = ? AND a.data = ?', (
+        unidade_id, data_hora_agendamento.strftime('%Y-%m-%d'))).fetchall()
+
+    data_hora_fim_agendamento = data_hora_agendamento + \
+        timedelta(minutes=duracao)
+
+    for ag_existente in agendamentos_existentes:
+        inicio_existente = datetime.combine(data_hora_agendamento.date(
+        ), datetime.strptime(ag_existente['hora'], '%H:%M').time())
+        fim_existente = inicio_existente + \
+            timedelta(minutes=ag_existente['duracao_minutos'])
+        # Checa sobreposição
+        if data_hora_agendamento < fim_existente and data_hora_fim_agendamento > inicio_existente:
+            errors.append(
+                f"Conflito de horário. A unidade já está reservada das {inicio_existente.strftime('%H:%M')} às {fim_existente.strftime('%H:%M')}.")
+            break
+
+    return errors
+
+# --- Funções Auxiliares para a API de Slots ---
+
+
+def _validar_e_parsear_parametros_api(args):
+    """Valida e converte os parâmetros da requisição GET para a API de slots."""
+    params = {}
+    errors = []
+
+    # Valida a presença dos parâmetros
+    for p in ['empreendimento_id', 'unidade_id', 'data', 'tipo_id']:
+        if not args.get(p):
+            errors.append(f"Parâmetro obrigatório ausente: {p}.")
+            return None, errors
+
+    # Tenta converter os tipos de dados
+    try:
+        params['empreendimento_id'] = int(args.get('empreendimento_id'))
+        params['unidade_id'] = int(args.get('unidade_id'))
+        params['tipo_id'] = int(args.get('tipo_id'))
+        params['data_str'] = args.get('data')
+        params['data_obj'] = datetime.strptime(
+            params['data_str'], '%Y-%m-%d').date()
+    except (ValueError, TypeError) as e:
+        errors.append(f"Formato de parâmetro inválido: {e}")
+        return None, errors
+
+    return params, None
+
+
+def _get_intervalos_ocupados(conn, data_obj, unidade_id, agentes_ids):
+    """Busca e retorna uma lista de tuplas (início, fim) para todos os agendamentos ocupados."""
+    intervalos = []
+    data_str = data_obj.strftime('%Y-%m-%d')
+
+    # Busca agendamentos da unidade
+    agendamentos_unidade = conn.execute('''
+        SELECT a.hora, ta.duracao_minutos FROM agendamentos a
+        JOIN tipos_agendamento ta ON a.tipo_id = ta.id
+        WHERE a.unidade_id = ? AND a.data = ? AND a.status IN ('Pendente', 'Confirmado')
+    ''', (unidade_id, data_str)).fetchall()
+    for ag in agendamentos_unidade:
+        inicio = datetime.combine(
+            data_obj, datetime.strptime(ag['hora'], '%H:%M').time())
+        fim = inicio + timedelta(minutes=ag['duracao_minutos'])
+        intervalos.append((inicio, fim))
+
+    # Busca agendamentos de todos os agentes relevantes de uma só vez
+    if agentes_ids:
+        placeholders = ','.join('?' for _ in agentes_ids)
+        agendamentos_agentes = conn.execute(f'''
+            SELECT a.hora, ta.duracao_minutos FROM agendamentos a
+            JOIN tipos_agendamento ta ON a.tipo_id = ta.id
+            WHERE a.agente_atribuido_id IN ({placeholders}) AND a.data = ? AND a.status = 'Confirmado'
+        ''', (*agentes_ids, data_str)).fetchall()
+        for ag in agendamentos_agentes:
+            inicio = datetime.combine(
+                data_obj, datetime.strptime(ag['hora'], '%H:%M').time())
+            fim = inicio + timedelta(minutes=ag['duracao_minutos'])
+            intervalos.append((inicio, fim))
+
+    return intervalos
+
+
+def _is_slot_disponivel(slot_inicio, slot_fim, intervalos_ocupados):
+    """Verifica se um slot específico conflita com algum intervalo já ocupado."""
+    for inicio_ocupado, fim_ocupado in intervalos_ocupados:
+        # Verifica sobreposição: (StartA < EndB) and (EndA > StartB)
+        if slot_inicio < fim_ocupado and slot_fim > inicio_ocupado:
+            return False  # Conflito encontrado
+    return True  # Slot está livre
+
 
 @app.route('/agendar', methods=['GET', 'POST'])
 @login_required
 def agendar():
     conn = get_db_connection()
     try:
-        # Busca as regras de reservas usando a função auxiliar
-        regras_atuais = get_regras_reservas()
-        min_antecedencia_dias = regras_atuais['min_dias']
-        max_antecedencia_dias = regras_atuais['max_dias']
+        regras_reservas = get_regras_reservas()
 
-        # Passar os valores das regras para o template (para exibir dicas ao usuário)
-        regras_reservas_for_template = {
-            'min_dias': min_antecedencia_dias,
-            'max_dias': max_antecedencia_dias
-        }
+        # Coleta os dados para popular os selects do formulário (tipos, empreendimentos, etc.)
+        contexto_template = _get_dados_para_template_agendamento(conn)
+        contexto_template['regras_reservas'] = regras_reservas
 
         if request.method == 'POST':
-            contato_agendamento_form = request.form.get('contato', '').strip()
-            data_str = request.form.get('data')
-            hora_str = request.form.get('hora')
-            tipo_id_str = request.form.get('tipo_id')
-            empreendimento_id_str = request.form.get('empreendimento_id')
-            unidade_id_str = request.form.get('unidade_id')
-            observacoes = request.form.get('observacoes', '').strip()
+            # Cria um dicionário com os dados do formulário para fácil manipulação
+            form_data = {k: v.strip() for k, v in request.form.items()}
 
-            form_data_for_repopulation = {
-                'contato': contato_agendamento_form,
-                'data': data_str, 'hora': hora_str,
-                'tipo_id': tipo_id_str, 'empreendimento_id': empreendimento_id_str, 'unidade_id': unidade_id_str,
-                'observacoes': observacoes
-            }
-
-            errors = []
-            if not contato_agendamento_form:
-                errors.append("O campo 'Contato' é obrigatório.")
-            if not data_str:
-                errors.append("A data é obrigatória.")
-            if not hora_str:
-                errors.append("A hora é obrigatória.")
-            if not tipo_id_str:
-                errors.append("O tipo de agendamento é obrigatório.")
-            if not empreendimento_id_str:
-                errors.append("O empreendimento é obrigatório.")
-            if not unidade_id_str:
-                errors.append("A unidade é obrigatória.")
-
+            # 1. Validação básica de preenchimento do formulário
+            errors = _validar_payload_agendamento(form_data)
             if errors:
                 for error in errors:
                     flash(error, 'error')
-                tipos_refresh = conn.execute(
-                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute(
-                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
-                unidades_refresh = conn.execute(
-                    '''SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id WHERE u.ativo = 1 AND e.ativo = 1 ORDER BY e.nome, u.nome''').fetchall()
-                return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
-                                       form_data=form_data_for_repopulation, regras_reservas=regras_reservas_for_template)
+                contexto_template['form_data'] = form_data
+                return render_template('agendar.html', **contexto_template)
 
             try:
+                # 2. Conversão e Validação das regras de negócio
                 data_agendamento_obj = datetime.strptime(
-                    data_str, '%Y-%m-%d').date()
+                    form_data['data'], '%Y-%m-%d').date()
                 hora_agendamento_obj = datetime.strptime(
-                    hora_str, '%H:%M').time()
+                    form_data['hora'], '%H:%M').time()
                 data_hora_agendamento = datetime.combine(
                     data_agendamento_obj, hora_agendamento_obj)
 
-                data_para_db = data_agendamento_obj.strftime('%Y-%m-%d')
-                hora_para_db = hora_agendamento_obj.strftime('%H:%M')
-
-                tipo_id = int(tipo_id_str)
-                empreendimento_id = int(empreendimento_id_str)
-                unidade_id = int(unidade_id_str)
-                usuario_id = current_user.id
-
-                # 1. Validação de Data e Hora no Passado
-                if data_hora_agendamento < datetime.now():
-                    errors.append(
-                        "Não é possível agendar em datas e horários passados.")
-
-                # 2. Validação de Antecedência Mínima (em DIAS)
-                if min_antecedencia_dias > 0:
-                    min_agendamento_datetime_limit = datetime.now(
-                    ) + timedelta(days=min_antecedencia_dias)
-                    if data_hora_agendamento < min_agendamento_datetime_limit:
-                        errors.append(
-                            f"Agendamentos devem ser feitos com no mínimo {min_antecedencia_dias} dia(s) de antecedência. A data e hora mais próxima permitida é {min_agendamento_datetime_limit.strftime('%d/%m/%Y %H:%M')}.")
-
-                # 3. Validação de Antecedência Máxima (em DIAS)
-                if max_antecedencia_dias > 0:
-                    max_agendamento_date_limit = date.today() + timedelta(days=max_antecedencia_dias)
-                    if data_agendamento_obj > max_agendamento_date_limit:
-                        errors.append(
-                            f"Não é possível agendar com mais de {max_antecedencia_dias} dia(s) de antecedência. A data máxima permitida é {max_agendamento_date_limit.strftime('%d/%m/%Y')}.")
-
-            except ValueError as ve:
+                errors = _validar_regras_de_negocio(conn, data_hora_agendamento, int(
+                    form_data['unidade_id']), int(form_data['tipo_id']), regras_reservas)
+            except (ValueError, KeyError) as e:
                 errors.append(
-                    f'Erro de formato nos dados: {str(ve)}. Verifique a data e a hora (HH:MM).')
-                app.logger.error(
-                    f'Erro de conversão em /agendar (POST): {str(ve)}', exc_info=True)
-            except Exception as e:
-                errors.append(
-                    f'Ocorreu um erro inesperado ao processar a data/hora: {str(e)}.')
-                app.logger.error(
-                    f'Erro inesperado em /agendar (POST) ao processar data/hora: {str(e)}', exc_info=True)
+                    f"Erro no formato dos dados: {e}. Verifique se todos os campos foram selecionados.")
 
             if errors:
                 for error in errors:
                     flash(error, 'error')
-                tipos_refresh = conn.execute(
-                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute(
-                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
-                unidades_refresh = conn.execute(
-                    '''SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id WHERE u.ativo = 1 AND e.ativo = 1 ORDER BY e.nome, u.nome''').fetchall()
-                return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
-                                       form_data=form_data_for_repopulation, regras_reservas=regras_reservas_for_template)
+                contexto_template['form_data'] = form_data
+                return render_template('agendar.html', **contexto_template)
 
-            unidade_selecionada = conn.execute('''
-                SELECT u.id, u.ativo as unidade_ativa, u.nome as unidade_nome, e.ativo as empreendimento_ativo, e.id as empreendimento_id 
-                FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id 
-                WHERE u.id = ?
-            ''', (unidade_id,)).fetchone()
-
-            tipo_selecionado = conn.execute(
-                'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento WHERE id = ?', (tipo_id,)).fetchone()
-
-            if not (unidade_selecionada and unidade_selecionada['unidade_ativa'] and unidade_selecionada['empreendimento_ativo']):
-                errors.append(
-                    'A unidade selecionada ou seu empreendimento não estão ativos.')
-            elif not (tipo_selecionado and tipo_selecionado['ativo']):
-                errors.append(
-                    'O tipo de agendamento selecionado não está ativo.')
-
-            if errors:
-                for error in errors:
-                    flash(error, 'error')
-                tipos_refresh = conn.execute(
-                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute(
-                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
-                unidades_refresh = conn.execute(
-                    '''SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id WHERE u.ativo = 1 AND e.ativo = 1 ORDER BY e.nome, u.nome''').fetchall()
-                return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
-                                       form_data=form_data_for_repopulation, regras_reservas=regras_reservas_for_template)
-
-            dia_semana_agendamento = data_hora_agendamento.weekday()
-
-            horarios_disponiveis = conn.execute('''
-                SELECT hora_inicio, hora_fim FROM horarios_funcionamento
-                WHERE empreendimento_id = ? AND dia_semana = ?
-                ORDER BY hora_inicio
-            ''', (empreendimento_id, dia_semana_agendamento)).fetchall()
-
-            is_within_operating_hours = False
-            for h in horarios_disponiveis:
-                inicio_op = datetime.strptime(h['hora_inicio'], '%H:%M').time()
-                fim_op = datetime.strptime(h['hora_fim'], '%H:%M').time()
-
-                if inicio_op <= hora_agendamento_obj < fim_op:
-                    is_within_operating_hours = True
-                    break
-
-            if not is_within_operating_hours:
-                errors.append(
-                    "O empreendimento não está aberto ou disponível neste horário no dia selecionado.")
-
-            if errors:
-                for error in errors:
-                    flash(error, 'error')
-                tipos_refresh = conn.execute(
-                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute(
-                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
-                unidades_refresh = conn.execute(
-                    '''SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id WHERE u.ativo = 1 AND e.ativo = 1 ORDER BY e.nome, u.nome''').fetchall()
-                return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
-                                       form_data=form_data_for_repopulation, regras_reservas=regras_reservas_for_template)
-
-            duracao_agendamento = tipo_selecionado['duracao_minutos']
-            data_hora_fim_agendamento = data_hora_agendamento + \
-                timedelta(minutes=duracao_agendamento)
-
-            is_end_within_operating_hours = False
-            for h in horarios_disponiveis:
-                inicio_op_dt = datetime.combine(
-                    data_agendamento_obj, datetime.strptime(h['hora_inicio'], '%H:%M').time())
-                fim_op_dt = datetime.combine(
-                    data_agendamento_obj, datetime.strptime(h['hora_fim'], '%H:%M').time())
-
-                if inicio_op_dt <= data_hora_agendamento and data_hora_fim_agendamento <= fim_op_dt:
-                    is_end_within_operating_hours = True
-                    break
-
-            if not is_end_within_operating_hours:
-                errors.append(
-                    f"O agendamento de {duracao_agendamento} minutos excede o horário de funcionamento do empreendimento ou não se encaixa em uma faixa contínua de horário disponível. Fim previsto: {data_hora_fim_agendamento.strftime('%H:%M')}.")
-
-            existing_agendamentos_unidade = conn.execute('''
-                SELECT a.hora, ta.duracao_minutos 
-                FROM agendamentos a
-                JOIN tipos_agendamento ta ON a.tipo_id = ta.id
-                WHERE a.unidade_id = ? AND a.data = ?
-            ''', (unidade_id, data_para_db)).fetchall()
-
-            for existing_a in existing_agendamentos_unidade:
-                existing_start_time = datetime.strptime(
-                    existing_a['hora'], '%H:%M').time()
-                existing_start_datetime = datetime.combine(
-                    data_agendamento_obj, existing_start_time)
-                existing_end_datetime = existing_start_datetime + \
-                    timedelta(minutes=existing_a['duracao_minutos'])
-
-                if (data_hora_agendamento < existing_end_datetime) and \
-                   (data_hora_fim_agendamento > existing_start_datetime):
-                    errors.append(
-                        f"A unidade já possui um agendamento conflitante das {existing_start_time.strftime('%H:%M')} às {existing_end_datetime.strftime('%H:%M')} no mesmo dia.")
-                    break
-
-            if errors:
-                for error in errors:
-                    flash(error, 'error')
-                tipos_refresh = conn.execute(
-                    'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-                empreendimentos_refresh = conn.execute(
-                    'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
-                unidades_refresh = conn.execute(
-                    '''SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento FROM unidades u JOIN empreendimentos e ON u.empreendimento_id = e.id WHERE u.ativo = 1 AND e.ativo = 1 ORDER BY e.nome, u.nome''').fetchall()
-                return render_template('agendar.html', tipos=tipos_refresh, empreendimentos=empreendimentos_refresh, unidades=unidades_refresh,
-                                       form_data=form_data_for_repopulation, regras_reservas=regras_reservas_for_template)
-
+            # 3. Se todas as validações passaram, insere no banco de dados
             try:
                 conn.execute(
-                    '''INSERT INTO agendamentos (usuario_id, tipo_id, unidade_id, data, hora, observacoes, contato_agendamento, agente_atribuido_id, status)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (usuario_id, tipo_id, unidade_id,
+                    '''INSERT INTO agendamentos (usuario_id, tipo_id, unidade_id, data, hora, observacoes, contato_agendamento, status)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (current_user.id, int(form_data['tipo_id']), int(form_data['unidade_id']),
                      data_hora_agendamento.strftime('%Y-%m-%d'),
                      data_hora_agendamento.strftime('%H:%M'),
-                     observacoes,
-                     contato_agendamento_form,
-                     None,  # CORRIGIDO: Agente atribuído é NULL no início
-                     'Pendente')
+                     form_data.get('observacoes'), form_data.get('contato'), 'Pendente')
                 )
                 conn.commit()
                 flash(
                     'Agendamento realizado com sucesso! Aguardando atribuição de um agente.', 'success')
                 app.logger.info(
-                    f"Novo agendamento por {current_user.email} (ID: {usuario_id}) para {data_hora_agendamento.strftime('%Y-%m-%d')} às {data_hora_agendamento.strftime('%H:%M')}. AGENTE NÃO ATRIBUÍDO INICIALMENTE.")
+                    f"Novo agendamento criado por {current_user.email} para {data_hora_agendamento.strftime('%d/%m/%Y %H:%M')}.")
                 return redirect(url_for('calendario'))
             except sqlite3.Error as db_error:
                 flash(
-                    f'Erro ao salvar agendamento no banco de dados: {str(db_error)}', 'error')
+                    f'Erro ao salvar agendamento no banco de dados: {db_error}', 'error')
                 app.logger.error(
-                    f'Erro de DB em /agendar (POST): {str(db_error)}', exc_info=True)
+                    f'Erro de DB em /agendar (POST): {db_error}', exc_info=True)
 
-        else:  # request.method == 'GET'
-            tipos = conn.execute(
-                'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento ORDER BY nome').fetchall()
-            empreendimentos = conn.execute(
-                'SELECT id, nome, ativo FROM empreendimentos ORDER BY nome').fetchall()
-            unidades = conn.execute('''
-                SELECT u.id, u.nome, u.empreendimento_id, e.nome as nome_empreendimento
-                FROM unidades u
-                JOIN empreendimentos e ON u.empreendimento_id = e.id
-                WHERE u.ativo = 1 AND e.ativo = 1 ORDER BY e.nome, u.nome
-            ''').fetchall()
-            app.logger.debug(
-                f"Dados para GET /agendar: Tipos={len(tipos)}, Empreendimentos={len(empreendimentos)}, Unidades={len(unidades)}")
-            return render_template('agendar.html', tipos=tipos, empreendimentos=empreendimentos, unidades=unidades, form_data={},
-                                   regras_reservas=regras_reservas_for_template)
+        # Para request.method == 'GET'
+        contexto_template['form_data'] = {}
+        return render_template('agendar.html', **contexto_template)
 
     except Exception as e:
-        flash(
-            f'Erro interno ao processar a página de agendamento: {str(e)}', 'error')
+        flash(f'Ocorreu um erro interno inesperado: {str(e)}', 'error')
         app.logger.error(
             f'Erro inesperado em /agendar: {str(e)}', exc_info=True)
         return redirect(url_for('index'))
@@ -910,217 +900,85 @@ def agendar():
 @app.route('/api/slots_disponiveis', methods=['GET'])
 @login_required
 def api_slots_disponiveis():
-    empreendimento_id_str = request.args.get('empreendimento_id')
-    unidade_id_str = request.args.get('unidade_id')
-    data_str = request.args.get('data')
-    tipo_id_str = request.args.get('tipo_id')
-
-    # Validação inicial de parâmetros obrigatórios
-    if not all([empreendimento_id_str, unidade_id_str, data_str, tipo_id_str]):
-        return jsonify({"error": "Parâmetros empreendimento_id, unidade_id, data e tipo_id são obrigatórios."}), 400
+    # 1. Validar e converter parâmetros da requisição
+    params, errors = _validar_e_parsear_parametros_api(request.args)
+    if errors:
+        return jsonify({"error": " ".join(errors)}), 400
 
     conn = get_db_connection()
     try:
-        empreendimento_id = int(empreendimento_id_str)
-        unidade_id = int(unidade_id_str)
-        tipo_id = int(tipo_id_str)
-        data_agendamento_obj = datetime.strptime(data_str, '%Y-%m-%d').date()
+        # 2. Buscar dados essenciais do DB
+        tipo_id = params['tipo_id']
+        empreendimento_id = params['empreendimento_id']
+        data_obj = params['data_obj']
 
-        # --- BUSCA DAS REGRAS DE ANTECEDÊNCIA (agora corretamente no início) ---
-        regras_atuais = get_regras_reservas()  # Chama a função para obter as regras
-        min_antecedencia_dias = regras_atuais['min_dias']
-        max_antecedencia_dias = regras_atuais['max_dias']
-
-        # --- BUSCA DE DADOS ESSENCIAIS DO BANCO DE DADOS ---
-
-        # 1. Obter detalhes do Tipo de Agendamento (principalmente a duração)
-        tipo_selecionado = conn.execute(
-            'SELECT id, nome, ativo, duracao_minutos FROM tipos_agendamento WHERE id = ?', (tipo_id,)).fetchone()
-        if not tipo_selecionado or not tipo_selecionado['ativo']:
+        tipo = conn.execute(
+            'SELECT ativo, duracao_minutos FROM tipos_agendamento WHERE id = ?', (tipo_id,)).fetchone()
+        if not tipo or not tipo['ativo']:
             return jsonify({"error": "Tipo de agendamento não encontrado ou inativo."}), 404
-        duracao_agendamento = tipo_selecionado['duracao_minutos']
 
-        # 2. Obter horários de funcionamento do Empreendimento para o dia da semana
-        dia_semana_agendamento = data_agendamento_obj.weekday()  # 0=Segunda, 6=Domingo
-        horarios_operacao = conn.execute('''
-            SELECT hora_inicio, hora_fim FROM horarios_funcionamento
-            WHERE empreendimento_id = ? AND dia_semana = ?
-            ORDER BY hora_inicio
-        ''', (empreendimento_id, dia_semana_agendamento)).fetchall()
+        regras = get_regras_reservas()
 
-        if not horarios_operacao:
-            return jsonify({"slots_disponiveis": [], "message": "Empreendimento não possui horários de funcionamento configurados para este dia."}), 200
+        # 3. Validar regras de antecedência (verificações que podem encerrar a requisição cedo)
+        if regras['max_dias'] > 0 and data_obj > date.today() + timedelta(days=regras['max_dias']):
+            msg = f"Não é possível agendar com mais de {regras['max_dias']} dia(s) de antecedência."
+            return jsonify({"slots_disponiveis": [], "message": msg}), 200
 
-        # 3. Obter agendamentos existentes para a UNIDADE na data selecionada
-        agendamentos_unidade = conn.execute('''
-            SELECT a.hora, ta.duracao_minutos 
-            FROM agendamentos a
-            JOIN tipos_agendamento ta ON a.tipo_id = ta.id
-            WHERE a.unidade_id = ? AND a.data = ?
-        ''', (unidade_id, data_str)).fetchall()
+        dia_semana = data_obj.weekday()
+        horarios_op = conn.execute(
+            'SELECT hora_inicio, hora_fim FROM horarios_funcionamento WHERE empreendimento_id = ? AND dia_semana = ? ORDER BY hora_inicio', (empreendimento_id, dia_semana)).fetchall()
+        if not horarios_op:
+            return jsonify({"slots_disponiveis": [], "message": "Empreendimento fechado neste dia."}), 200
 
-        # 4. Obter agentes vinculados ao tipo de serviço
-        agentes_para_tipo = conn.execute('''
-            SELECT u.id
-            FROM usuarios u
-            JOIN agente_tipos_servico ats ON u.id = ats.agente_id
-            WHERE ats.tipo_id = ? AND u.tipo_usuario = 'agente'
-        ''', (tipo_id,)).fetchall()
+        # 4. Preparar dados para verificação de conflitos
+        agentes_para_tipo = conn.execute(
+            'SELECT id FROM usuarios WHERE tipo_usuario = "agente" AND id IN (SELECT agente_id FROM agente_tipos_servico WHERE tipo_id = ?)', (tipo_id,)).fetchall()
+        agentes_ids = [agente['id'] for agente in agentes_para_tipo]
 
-        # --- REGRAS DE ANTECEDÊNCIA (Mínima e Máxima - Usando min_dias e max_dias) ---
+        # Otimização: se não há agentes para o serviço, não há slots.
+        if not agentes_ids:
+            return jsonify({"slots_disponiveis": [], "message": "Nenhum agente disponível para este tipo de serviço."}), 200
 
-        # Validação de Antecedência Máxima (em DIAS, agora com as regras corretas)
-        if max_antecedencia_dias > 0:
-            max_agendamento_date_limit = date.today() + timedelta(days=max_antecedencia_dias)
-            if data_agendamento_obj > max_agendamento_date_limit:
-                # Se a data solicitada excede a antecedência máxima, retorna slots vazios e mensagem
-                return jsonify({"slots_disponiveis": [], "message": f"Não é possível agendar com mais de {max_antecedencia_dias} dia(s) de antecedência. A data máxima permitida é {max_agendamento_date_limit.strftime('%d/%m/%Y')}."}), 200
+        intervalos_ocupados = _get_intervalos_ocupados(
+            conn, data_obj, params['unidade_id'], agentes_ids)
 
-        # --- Lógica para gerar slots disponíveis ---
+        # 5. Gerar e filtrar os slots
         slots_disponiveis = []
-        now = datetime.now()
-        today = datetime.now().date()
+        duracao_agendamento = tipo['duracao_minutos']
+        granularidade = 30  # Gerar slots a cada 30 minutos
 
-        # Calcula o datetime mínimo para agendamento (usando min_antecedencia_dias)
-        min_agendamento_datetime_limit = datetime.combine(
-            date.today(), datetime.min.time()) + timedelta(days=min_antecedencia_dias)
+        # Define o ponto de partida para a geração de slots, respeitando a antecedência mínima
+        agora = datetime.now()
+        horario_minimo_hoje = agora + timedelta(days=regras['min_dias'])
 
-        # Se a data solicitada é o dia mínimo ou posterior, considera o tempo atual
-        if data_agendamento_obj == date.today():
-            # Ex: 1 hora no mínimo de agora, para o dia atual
-            min_agendamento_datetime_for_today = datetime.now() + timedelta(hours=1)
+        for faixa in horarios_op:
+            slot_atual = datetime.combine(data_obj, datetime.strptime(
+                faixa['hora_inicio'], '%H:%M').time())
+            fim_faixa = datetime.combine(
+                data_obj, datetime.strptime(faixa['hora_fim'], '%H:%M').time())
 
-            if min_antecedencia_dias > 0:  # Se há uma antecedência mínima em dias configurada
-                # Usar os dias, não horas para o datetime limite
-                min_agendamento_datetime_for_today = datetime.now(
-                ) + timedelta(days=min_antecedencia_dias)
+            # Ajusta o início do slot se a data for hoje, para não mostrar horários passados
+            if slot_atual < horario_minimo_hoje:
+                slot_atual = horario_minimo_hoje
+                # Arredonda para a próxima granularidade
+                if slot_atual.minute % granularidade != 0:
+                    slot_atual += timedelta(minutes=(granularidade -
+                                            slot_atual.minute % granularidade))
 
-        for h_op in horarios_operacao:
-            start_op_time = datetime.strptime(
-                h_op['hora_inicio'], '%H:%M').time()
-            end_op_time = datetime.strptime(h_op['hora_fim'], '%H:%M').time()
+            while slot_atual < fim_faixa:
+                slot_fim = slot_atual + timedelta(minutes=duracao_agendamento)
 
-            current_slot_start_dt = datetime.combine(
-                data_agendamento_obj, start_op_time)
+                # O agendamento deve terminar dentro da faixa de horário
+                if slot_fim > fim_faixa:
+                    break
 
-            # --- Ajustes de Início de Slot Baseado nas Regras ---
+                if _is_slot_disponivel(slot_atual, slot_fim, intervalos_ocupados):
+                    slots_disponiveis.append(slot_atual.strftime('%H:%M'))
 
-            # 1. Se o dia solicitado é hoje
-            if data_agendamento_obj == today:
-                # Calcule o horário mínimo para hoje (agora + min_antecedencia_dias, ou apenas agora se min_dias é 0)
-                # Convertendo min_antecedencia_dias para horas para uma comparação precisa de tempo
-                min_agendamento_dt_considering_today = datetime.now(
-                ) + timedelta(days=min_antecedencia_dias)
+                slot_atual += timedelta(minutes=granularidade)
 
-                # Se o slot que estamos avaliando é antes do horário mínimo permitido para agendar hoje
-                if current_slot_start_dt < min_agendamento_dt_considering_today:
-                    current_slot_start_dt = min_agendamento_dt_considering_today.replace(
-                        second=0, microsecond=0)
-                    # Arredonda para o próximo intervalo de 30 minutos
-                    if current_slot_start_dt.minute % 30 != 0:
-                        current_slot_start_dt += timedelta(
-                            minutes=(30 - current_slot_start_dt.minute % 30))
+        return jsonify({"slots_disponiveis": list(sorted(set(slots_disponiveis)))}), 200
 
-                    # Se, ao arredondar, pulamos para o dia seguinte, não há mais slots neste dia
-                    if current_slot_start_dt.date() > data_agendamento_obj:
-                        # Pula para a próxima faixa de horário (se houver) ou encerra o loop para esta data.
-                        continue
-
-            # 2. Se o dia solicitado não é hoje, mas ainda está antes do dia mínimo permitido
-            elif data_agendamento_obj < (date.today() + timedelta(days=min_antecedencia_dias)):
-                # Se estamos num dia anterior ao mínimo permitido, não há slots.
-                # Esta condição é mais para a validação no frontend que deveria impedir a seleção da data.
-                # Pula para a próxima faixa de horário, que não deve existir ou não fará diferença.
-                continue
-
-            # Gerar slots dentro desta faixa de operação
-            while current_slot_start_dt.time() < end_op_time:
-                slot_end_dt = current_slot_start_dt + \
-                    timedelta(minutes=duracao_agendamento)
-
-                # O slot deve terminar dentro da faixa de operação
-                if slot_end_dt.time() > end_op_time:
-                    break  # Este slot excede o horário de funcionamento, não é válido
-
-                is_slot_available = True
-
-                # Validação: Checar colisão com agendamentos da UNIDADE
-                for existing_a in agendamentos_unidade:
-                    existing_start_time = datetime.strptime(
-                        existing_a['hora'], '%H:%M').time()
-                    existing_start_dt = datetime.combine(
-                        data_agendamento_obj, existing_start_time)
-                    existing_end_dt = existing_start_dt + \
-                        timedelta(minutes=existing_a['duracao_minutos'])
-
-                    if (current_slot_start_dt < existing_end_dt) and \
-                       (slot_end_dt > existing_start_dt):
-                        is_slot_available = False
-                        break  # Unidade ocupada neste slot
-
-                if not is_slot_available:
-                    # Pula para o fim do agendamento que causou a colisão,
-                    # ajustando para a granularidade se necessário
-                    new_start = existing_end_dt
-                    if new_start.minute % 30 != 0:
-                        new_start = new_start + \
-                            timedelta(minutes=(30 - new_start.minute % 30))
-                    current_slot_start_dt = new_start
-                    continue  # Próxima iteração do while, verificando a partir do novo current_slot_start_dt
-
-                # Validação: Checar colisão com agendamentos dos AGENTES disponíveis
-                if not agentes_para_tipo:
-                    # Nenhum agente disponível para este tipo (no geral)
-                    is_slot_available = False
-                else:
-                    # Tentar encontrar pelo menos UM agente disponível para este slot
-                    found_available_agente_for_slot = False
-                    for agente_id_dict in agentes_para_tipo:
-                        agente_id = agente_id_dict['id']
-                        is_agente_available_for_this_slot = True
-
-                        # Verificar agendamentos do agente específico
-                        agendamentos_agente_especifico = conn.execute('''
-                            SELECT a.hora, ta.duracao_minutos
-                            FROM agendamentos a
-                            JOIN tipos_agendamento ta ON a.tipo_id = ta.id
-                            WHERE a.agente_atribuido_id = ? AND a.data = ?
-                        ''', (agente_id, data_str)).fetchall()
-
-                        for existing_a_agente in agendamentos_agente_especifico:
-                            existing_start_time_agente = datetime.strptime(
-                                existing_a_agente['hora'], '%H:%M').time()
-                            existing_start_dt_agente = datetime.combine(
-                                data_agendamento_obj, existing_start_time_agente)
-                            existing_end_dt_agente = existing_start_dt_agente + \
-                                timedelta(
-                                    minutes=existing_a_agente['duracao_minutos'])
-
-                            if (current_slot_start_dt < existing_end_dt_agente) and \
-                               (slot_end_dt > existing_start_dt_agente):
-                                is_agente_available_for_this_slot = False
-                                break
-
-                        if is_agente_available_for_this_slot:
-                            found_available_agente_for_slot = True
-                            break  # Encontrou um agente, o slot é válido em relação a agentes
-
-                    if not found_available_agente_for_slot:
-                        is_slot_available = False  # Nenhum agente disponível para este slot
-
-                if is_slot_available:
-                    slots_disponiveis.append(
-                        current_slot_start_dt.strftime('%H:%M'))
-
-                # Avança para o próximo slot (granularidade de 30 em 30 minutos)
-                current_slot_start_dt += timedelta(minutes=30)
-
-        return jsonify({"slots_disponiveis": slots_disponiveis}), 200
-
-    except ValueError as ve:
-        app.logger.error(
-            f"Erro de valor em api_slots_disponiveis: {ve}", exc_info=True)
-        return jsonify({"error": f"Formato de dado inválido: {ve}"}), 400
     except Exception as e:
         app.logger.error(
             f"Erro inesperado em api_slots_disponiveis: {e}", exc_info=True)
