@@ -71,13 +71,13 @@
         </div>
         <p class="text-muted small mt-2">Formatos aceitos: PNG, JPG, JPEG, GIF. Max: 16MB.</p>
 
-        <form action="{{ url_for('upload_foto_perfil') }}" method="POST" enctype="multipart/form-data" class="mt-3">
+        <form id="fotoForm" action="{{ url_for('upload_foto_perfil') }}" method="POST" enctype="multipart/form-data" class="mt-3">
             <label for="fotoInput" class="custom-file-upload-perfil">
                 Escolher Nova Foto
             </label>
             <input type="file" id="fotoInput" name="foto" accept="image/png, image/jpeg, image/gif"
                 style="display: none;">
-            <button type="submit" class="btn-agendar btn-small mt-3">Salvar Foto</button>
+            <button type="submit" form="fotoForm" class="btn-agendar btn-small mt-3">Salvar Foto</button>
         </form>
     </div>
 

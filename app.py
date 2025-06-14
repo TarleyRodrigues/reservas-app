@@ -8,7 +8,6 @@ import uuid
 from datetime import date, datetime, timedelta
 from functools import wraps
 
-from dateutil.relativedelta import relativedelta
 from flask import (Flask, abort, flash, jsonify, redirect, render_template,
                    request, url_for)
 from flask_login import (LoginManager, UserMixin, current_user, login_required,
@@ -753,129 +752,64 @@ def perfil():
 @app.route('/upload_foto_perfil', methods=['POST'])
 @login_required
 def upload_foto_perfil():
+    """
+    Lida exclusivamente com o upload da foto de perfil do usuário.
+    """
     conn = get_db_connection()
     try:
-        if request.method == 'POST':
-            novo_nome = request.form.get('nome', '').strip()
-            novo_email = request.form.get('email', '').strip()
-            novo_telefone = request.form.get('telefone', '').strip()
-
-            senha_atual = request.form.get('senha_atual', '').strip()
-            nova_senha = request.form.get('nova_senha', '').strip()
-            confirmar_nova_senha = request.form.get(
-                'confirmar_nova_senha', '').strip()
-
-            errors = []
-            success_messages = []
-
-            # --- Validação e Atualização de Dados Cadastrais (Nome, Email, Telefone) ---
-            if not novo_nome:
-                errors.append('O nome não pode ser vazio.')
-            if not novo_email:
-                errors.append('O e-mail não pode ser vazio.')
-
-            if novo_email != current_user.email:
-                existing_user = buscar_usuario_por_email(novo_email)
-                if existing_user:
-                    errors.append(
-                        'Este e-mail já está em uso por outro usuário.')
-
-            if not errors and (novo_nome != current_user.nome or
-                               novo_email != current_user.email or
-                               novo_telefone != current_user.telefone):
-                try:
-                    conn.execute(
-                        'UPDATE usuarios SET nome = ?, email = ?, telefone = ? WHERE id = ?',
-                        (novo_nome, novo_email, novo_telefone, current_user.id)
-                    )
-                    conn.commit()
-                    success_messages.append(
-                        'Dados cadastrais atualizados com sucesso!')
-                    app.logger.info(
-                        f"Usuário {current_user.email} (ID: {current_user.id}) atualizou dados cadastrais.")
-
-                    if novo_email != current_user.email:
-                        flash(
-                            'Seu e-mail foi alterado. Por favor, faça login novamente com o novo e-mail.', 'info')
-                        logout_user()
-                        return redirect(url_for('login', next=url_for('perfil')))
-
-                except sqlite3.IntegrityError:
-                    errors.append(
-                        'Erro de integridade ao atualizar dados. O e-mail pode já estar em uso.')
-                    app.logger.error(
-                        f"IntegrityError ao atualizar perfil de {current_user.email}: {e}", exc_info=True)
-                except sqlite3.Error as e:
-                    errors.append(
-                        f'Erro no banco de dados ao atualizar dados: {str(e)}')
-                    app.logger.error(
-                        f"Erro DB ao atualizar perfil de {current_user.email}: {e}", exc_info=True)
-
-            # --- Validação e Atualização de Senha ---
-            if nova_senha:
-                if not senha_atual:
-                    errors.append(
-                        'Para alterar a senha, você deve informar sua senha atual.')
-                elif not check_password_hash(current_user.senha_hash, senha_atual):
-                    errors.append('Senha atual incorreta.')
-                elif nova_senha != confirmar_nova_senha:
-                    errors.append(
-                        'A nova senha e a confirmação não coincidem.')
-                elif len(nova_senha) < 6:
-                    errors.append(
-                        'A nova senha deve ter pelo menos 6 caracteres.')
-
-                if not errors:
-                    try:
-                        nova_senha_hash = generate_password_hash(nova_senha)
-                        conn.execute(
-                            'UPDATE usuarios SET senha = ? WHERE id = ?',
-                            (nova_senha_hash, current_user.id)
-                        )
-                        conn.commit()
-                        success_messages.append(
-                            'Senha atualizada com sucesso!')
-                        app.logger.info(
-                            f"Usuário {current_user.email} (ID: {current_user.id}) alterou a senha.")
-
-                        flash(
-                            'Sua senha foi alterada. Por favor, faça login novamente.', 'info')
-                        logout_user()
-                        return redirect(url_for('login'))
-
-                    except sqlite3.Error as e:
-                        errors.append(
-                            f'Erro no banco de dados ao atualizar senha: {str(e)}')
-                        app.logger.error(
-                            f"Erro DB ao atualizar senha de {current_user.email}: {e}", exc_info=True)
-
-            # --- Pós-processamento ---
-            if success_messages:
-                updated_user = buscar_usuario_por_email(current_user.email)
-                if updated_user:
-                    login_user(updated_user, remember=True)
-                    for msg in success_messages:
-                        flash(msg, 'success')
-
-            if errors:
-                for msg in errors:
-                    flash(msg, 'error')
-
+        # 1. Valida se um arquivo foi enviado na requisição
+        if 'foto' not in request.files:
+            flash('Nenhum arquivo enviado.', 'error')
             return redirect(url_for('perfil'))
 
-        else:  # request.method == 'GET'
-            pass
+        file = request.files['foto']
+
+        # 2. Valida se o nome do arquivo não está vazio
+        if file.filename == '':
+            flash('Nenhum arquivo selecionado.', 'error')
+            return redirect(url_for('perfil'))
+
+        # 3. Valida a extensão do arquivo e o salva
+        if file and allowed_file(file.filename):
+            # Gera um nome de arquivo único para evitar problemas de cache no navegador
+            filename_base = secure_filename(file.filename)
+            unique_filename = str(uuid.uuid4()) + \
+                os.path.splitext(filename_base)[1]
+            filepath = os.path.join(
+                app.config['UPLOAD_FOLDER'], unique_filename)
+
+            # Salva o arquivo no disco
+            file.save(filepath)
+
+            # O caminho salvo no DB deve ser relativo à pasta 'static'
+            relative_path_for_db = os.path.join(
+                'uploads/perfil', unique_filename).replace('\\', '/')
+
+            # Atualiza o caminho da foto no banco de dados
+            conn.execute('UPDATE usuarios SET foto_perfil = ? WHERE id = ?',
+                         (relative_path_for_db, current_user.id))
+            conn.commit()
+
+            flash('Foto de perfil atualizada com sucesso!', 'success')
+            app.logger.info(
+                f"Usuário {current_user.email} (ID: {current_user.id}) atualizou a foto de perfil: {unique_filename}")
+
+        else:
+            flash(
+                'Tipo de arquivo não permitido. Apenas PNG, JPG, JPEG, GIF são aceitos.', 'error')
+            app.logger.warning(
+                f"Tentativa de upload de arquivo não permitido por {current_user.email}: {file.filename}")
 
     except Exception as e:
-        flash(f'Ocorreu um erro inesperado: {str(e)}', 'error')
+        flash(f'Erro ao fazer upload da foto: {str(e)}', 'error')
         app.logger.error(
-            f"Erro inesperado na rota /perfil para {current_user.email}: {e}", exc_info=True)
-        return redirect(url_for('index'))
+            f"Erro no upload de foto de perfil para {current_user.email}: {e}", exc_info=True)
     finally:
         if conn:
             conn.close()
 
-    return render_template('perfil.html')
+    # Ao final, sempre redireciona de volta para a página de perfil
+    return redirect(url_for('perfil'))
 
     # --- 7.3. Rotas de Agendamento e Calendário ---
 
